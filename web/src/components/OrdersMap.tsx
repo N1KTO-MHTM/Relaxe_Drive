@@ -35,23 +35,24 @@ export interface OrderRouteData {
   driverToPickupPolyline?: string;
   driverToPickupMinutes?: number;
   driverToPickupSteps?: RouteStep[];
+  /** Alternative routes (driver can choose) */
+  alternativeRoutes?: Array<{ polyline: string; durationMinutes: number; distanceKm: number }>;
 }
+
+export type DriverReportMap = { id: string; lat: number; lng: number; type: string; description?: string | null };
 
 interface OrdersMapProps {
   drivers?: DriverForMap[];
   showDriverMarkers?: boolean;
-  /** When set, show route and pickup/dropoff markers for this order */
   routeData?: OrderRouteData | null;
-  /** Driver's current position (e.g. "You" marker when viewing own route) */
   currentUserLocation?: { lat: number; lng: number } | null;
-  /** When set, clicking the map calls this with lat/lng (e.g. pick address from map) */
   onMapClick?: (lat: number, lng: number) => void;
-  /** Show a temporary marker at this point (e.g. chosen pickup/dropoff) */
   pickPoint?: { lat: number; lng: number } | null;
-  /** Driver nav mode: car at bottom third, map follows route, fast updates */
   navMode?: boolean;
-  /** Increment to trigger fitBounds to current route/drivers */
   centerTrigger?: number;
+  reports?: DriverReportMap[];
+  /** When alternative routes exist, 0 = main, 1 = first alternative, etc. */
+  selectedRouteIndex?: number;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -111,12 +112,32 @@ function driverIcon(status: DriverMapStatus): L.DivIcon {
   });
 }
 
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0 }: OrdersMapProps) {
+const REPORT_COLORS: Record<string, string> = {
+  POLICE: '#3b82f6',
+  TRAFFIC: '#f59e0b',
+  WORK_ZONE: '#eab308',
+  CAR_CRASH: '#ef4444',
+  OTHER: '#6b7280',
+};
+
+function reportIcon(type: string): L.DivIcon {
+  const color = REPORT_COLORS[type] || REPORT_COLORS.OTHER;
+  const label = type.replace('_', ' ').slice(0, 2);
+  return L.divIcon({
+    className: 'orders-map-report-marker',
+    html: `<span style="background:${color};color:#fff;border:2px solid #fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;box-shadow:0 1px 3px rgba(0,0,0,0.4);">${label}</span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+}
+
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0 }: OrdersMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const driverClusterRef = useRef<L.MarkerClusterGroup | null>(null);
   const routeLayersRef = useRef<L.Polyline[]>([]);
   const orderMarkersRef = useRef<L.Marker[]>([]);
+  const reportMarkersRef = useRef<L.Marker[]>([]);
   const currentUserMarkerRef = useRef<L.Marker | null>(null);
   const pickPointMarkerRef = useRef<L.Marker | null>(null);
 
@@ -285,9 +306,13 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         // ignore
       }
     }
-    if (polyline && polyline.length > 0) {
+    const altRoutes = routeData.alternativeRoutes ?? [];
+    const effectivePolyline = altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
+      ? altRoutes[selectedRouteIndex - 1].polyline
+      : polyline;
+    if (effectivePolyline && effectivePolyline.length > 0) {
       try {
-        const latLngs = decodePolyline(polyline).map(([lat, lng]) => L.latLng(lat, lng));
+        const latLngs = decodePolyline(effectivePolyline).map(([lat, lng]) => L.latLng(lat, lng));
         const outline = L.polyline(latLngs, routeOutline).addTo(map);
         const line = L.polyline(latLngs, routeMain).addTo(map);
         routeLayersRef.current.push(outline, line);
@@ -296,6 +321,17 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         // ignore
       }
     }
+    altRoutes.forEach((alt, i) => {
+      if (alt.polyline && alt.polyline.length > 0 && i !== selectedRouteIndex - 1) {
+        try {
+          const latLngs = decodePolyline(alt.polyline).map(([lat, lng]) => L.latLng(lat, lng));
+          const gray = L.polyline(latLngs, { color: '#64748b', weight: 5, opacity: 0.7, dashArray: '8,8' }).addTo(map);
+          routeLayersRef.current.push(gray);
+        } catch {
+          // ignore
+        }
+      }
+    });
     if (allLatLngs.length > 0 && !navMode) {
       map.invalidateSize();
       const bounds = L.latLngBounds(allLatLngs);
@@ -307,7 +343,21 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       orderMarkersRef.current.forEach((m) => m.remove());
       orderMarkersRef.current = [];
     };
-  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode]);
+  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode, selectedRouteIndex]);
+
+  useEffect(() => {
+    if (!mapRef.current || reports.length === 0) return;
+    const map = mapRef.current;
+    reports.forEach((r) => {
+      const m = L.marker([r.lat, r.lng], { icon: reportIcon(r.type) }).addTo(map);
+      m.bindPopup(`${r.type.replace('_', ' ')}${r.description ? `: ${r.description}` : ''}`);
+      reportMarkersRef.current.push(m);
+    });
+    return () => {
+      reportMarkersRef.current.forEach((m) => m.remove());
+      reportMarkersRef.current = [];
+    };
+  }, [reports]);
 
   // centerTrigger: re-fit map to route/drivers when "Center on map" is clicked
   useEffect(() => {

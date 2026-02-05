@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { PassengersService } from './passengers.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -40,5 +40,27 @@ export class PassengersController {
     },
   ) {
     return this.passengersService.create(body);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      phone?: string;
+      name?: string;
+      pickupAddr?: string;
+      dropoffAddr?: string;
+      pickupType?: string;
+      dropoffType?: string;
+    },
+  ) {
+    return this.passengersService.update(id, body);
+  }
+
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    await this.passengersService.delete(id);
+    return { deleted: true };
   }
 }

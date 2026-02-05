@@ -20,6 +20,8 @@ export default function Roles() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [passwordResettingId, setPasswordResettingId] = useState<string | null>(null);
+  const [resetLinkUserId, setResetLinkUserId] = useState<string | null>(null);
+  const [generatedLinkFor, setGeneratedLinkFor] = useState<{ userId: string; link: string } | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -60,6 +62,23 @@ export default function Roles() {
       setError(e instanceof Error ? e.message : 'Failed to reset password');
     } finally {
       setPasswordResettingId(null);
+    }
+  }
+
+  async function handleGenerateResetLink(userId: string) {
+    setResetLinkUserId(userId);
+    setGeneratedLinkFor(null);
+    setError('');
+    try {
+      const res = await api.post<{ token: string; link: string }>('/auth/admin/generate-reset-token', { userId });
+      setGeneratedLinkFor({ userId, link: res.link });
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(res.link).catch(() => {});
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate link');
+    } finally {
+      setResetLinkUserId(null);
     }
   }
 
@@ -108,6 +127,21 @@ export default function Roles() {
                   >
                     {passwordResettingId === u.id ? '…' : t('roles.resetPassword')}
                   </button>
+                  {' '}
+                  <button
+                    type="button"
+                    className="rd-btn"
+                    disabled={resetLinkUserId === u.id}
+                    onClick={() => handleGenerateResetLink(u.id)}
+                    title={t('roles.resetLinkTitle')}
+                  >
+                    {resetLinkUserId === u.id ? '…' : t('roles.resetLink')}
+                  </button>
+                  {generatedLinkFor?.userId === u.id && (
+                    <div style={{ marginTop: 8, fontSize: '0.85rem', wordBreak: 'break-all' }}>
+                      {t('roles.resetLinkCopied')}: <a href={generatedLinkFor.link} target="_blank" rel="noopener noreferrer">{generatedLinkFor.link}</a>
+                    </div>
+                  )}
                   {updatingId === u.id && ` ${t('roles.saved')}`}
                 </td>
               </tr>

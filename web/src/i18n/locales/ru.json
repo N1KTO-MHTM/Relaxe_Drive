@@ -18,7 +18,14 @@
     "forgotPasswordSent": "Если аккаунт с таким никнеймом есть, обратитесь к администратору для сброса пароля.",
     "forgotPasswordHint": "Введите никнейм. Администратор может сбросить пароль.",
     "forgotPasswordSubmit": "Запросить сброс",
-    "registerFailed": "Ошибка регистрации"
+    "registerFailed": "Ошибка регистрации",
+    "setNewPassword": "Задать новый пароль",
+    "setNewPasswordHint": "Введите и подтвердите новый пароль. Ссылка действительна 24 часа.",
+    "confirmPassword": "Подтвердите пароль",
+    "passwordMismatch": "Пароли не совпадают",
+    "resetLinkInvalid": "Недействительная или просроченная ссылка",
+    "resetPasswordDone": "Пароль изменён. Войдите с новым паролем.",
+    "setNewPasswordSubmit": "Сохранить пароль"
   },
   "about": {
     "title": "О приложении",
@@ -50,6 +57,8 @@
     "sessions": "Сессии",
     "costControl": "Контроль затрат",
     "whiteLabel": "White Label",
+    "audit": "Аудит",
+    "health": "Состояние системы",
     "about": "О приложении"
   },
   "toast": {
@@ -150,7 +159,8 @@
     "locationOn": "Геолокация вкл",
     "busy": "Занят",
     "offline": "Офлайн",
-    "available": "Доступен",
+    "available": "Доступен для заказов",
+    "unavailable": "Не доступен",
     "noAlerts": "Нет уведомлений",
     "alertOrderAssigned": "Заказ назначен → {{pickup}}",
     "alertOrderCreated": "Новый заказ → {{pickup}}",
@@ -160,12 +170,15 @@
   },
   "drivers": { "title": "Водители", "subtitle": "Все водители. Перейдите на панель с картой, чтобы видеть местоположения.", "showOnMap": "Показать на карте", "nickname": "Водитель", "phone": "Телефон", "status": "Статус", "noDrivers": "Нет водителей", "onMap": "На карте", "offline": "Офлайн", "blocked": "Заблокирован", "banned": "Забанен" },
   "calendar": { "title": "Календарь", "day": "День", "week": "Неделя", "preOrder": "Предзаказ (до 6 дней)", "conflict": "Конфликт" },
-  "passengers": { "title": "Клиенты", "addClient": "Добавить клиента", "phone": "Телефон", "name": "Имя", "type": "Тип", "driver": "Водитель", "pickup": "Подача", "dropoff": "Высадка", "add": "Добавить", "addresses": "Адреса", "history": "История поездок", "subtitle": "Клиенты с телефоном и адресом подачи. Тип места показывается, если не дом. Водители появляются при регистрации по телефону. Завершённые заказы автоматически добавляют номер, имя и адрес подачи.", "noClients": "Нет клиентов", "loadError": "Не удалось загрузить клиентов. Проверьте, что API запущен и вы авторизованы.", "placeHome": "Дом", "placeSynagogue": "Синагога", "placeSchool": "Школа", "placeHospital": "Больница", "placeStore": "Магазин", "placeOffice": "Офис", "placeOther": "Другое" },
+  "passengers": { "title": "Клиенты", "addClient": "Добавить клиента", "phone": "Телефон", "name": "Имя", "type": "Тип", "driver": "Водитель", "pickup": "Подача", "dropoff": "Высадка", "add": "Добавить", "addresses": "Адреса", "history": "История поездок", "subtitle": "Клиенты с телефоном и адресом подачи. Тип места показывается, если не дом. Водители появляются при регистрации по телефону. Завершённые заказы автоматически добавляют номер, имя и адрес подачи.", "noClients": "Нет клиентов", "loadError": "Не удалось загрузить клиентов. Проверьте, что API запущен и вы авторизованы.", "placeHome": "Дом", "placeSynagogue": "Синагога", "placeSchool": "Школа", "placeHospital": "Больница", "placeStore": "Магазин", "placeOffice": "Офис", "placeOther": "Другое", "edit": "Изменить", "delete": "Удалить", "save": "Сохранить", "editClient": "Редактировать клиента", "deleteConfirm": "Удалить этого клиента?", "deleted": "Клиент удалён", "saved": "Клиент сохранён" },
   "translation": { "title": "Центр переводов", "voiceToText": "Голос → Текст", "autoLanguage": "Авто язык", "history": "История" },
-  "analytics": { "title": "Аналитика", "heatmap": "Тепловая карта", "filters": "Фильтры" },
-  "roles": { "title": "Роли и права", "admin": "Админ", "dispatcher": "Диспетчер", "driver": "Водитель", "usersList": "Пользователи и роли", "changeRole": "Изменить роль", "saved": "Сохранено", "actions": "Действия", "resetPassword": "Сбросить пароль", "resetPasswordPrompt": "Новый пароль для {{nickname}} (мин. 6 символов)", "passwordMinLength": "Пароль не менее 6 символов" },
-  "sessions": { "title": "Монитор сессий", "online": "Онлайн", "device": "Устройство", "ip": "IP", "lastActive": "Активность" },
-  "costControl": { "title": "Контроль затрат", "maps": "Карты", "translation": "Перевод", "ai": "AI", "tts": "TTS", "usage": "Использование (вызовы API)", "loading": "Загрузка…", "loadError": "Не удалось загрузить данные." },
-  "whiteLabel": { "title": "White Label", "logo": "Логотип", "colors": "Цвета", "domains": "Домены", "languages": "Языки" },
-  "status": { "ok": "OK", "warning": "Внимание", "critical": "Критично", "connected": "Подключено" }
+  "analytics": { "title": "Аналитика", "heatmap": "Тепловая карта", "filters": "Фильтры", "from": "С", "to": "По", "apply": "Применить", "loading": "Загрузка…", "ordersCreated": "Заказов создано", "ordersCompleted": "Заказов выполнено", "scheduled": "Запланировано", "assigned": "Назначено", "inProgress": "В пути", "heatmapHint": "Активность по дню и часу (создание/завершение заказа).", "noData": "Нет активности за период." },
+  "roles": { "title": "Роли и права", "admin": "Админ", "dispatcher": "Диспетчер", "driver": "Водитель", "usersList": "Пользователи и роли", "changeRole": "Изменить роль", "saved": "Сохранено", "actions": "Действия", "resetPassword": "Сбросить пароль", "resetPasswordPrompt": "Новый пароль для {{nickname}} (мин. 6 символов)", "passwordMinLength": "Пароль не менее 6 символов", "resetLink": "Ссылка сброса", "resetLinkTitle": "Создать одноразовую ссылку для этого пользователя", "resetLinkCopied": "Ссылка (скопирована)" },
+  "sessions": { "title": "Монитор сессий", "online": "Онлайн", "device": "Устройство", "ip": "IP", "lastActive": "Активность", "actions": "Действия", "endSession": "Завершить сессию", "endSessionConfirm": "Завершить эту сессию? Пользователь будет разлогинен.", "tabSessions": "Активные сессии", "tabAccounts": "Зарегистрированные аккаунты", "phone": "Телефон", "user": "Пользователь", "role": "Роль", "status": "Статус", "active": "Активен", "offline": "Не в сети", "filterRole": "Роль", "filterStatus": "Статус", "searchPlaceholder": "Поиск по имени или телефону…", "noAccounts": "Нет зарегистрированных аккаунтов", "allRoles": "Все роли", "allStatuses": "Все" },
+  "costControl": { "title": "Контроль затрат", "maps": "Карты", "translation": "Перевод", "ai": "AI", "tts": "TTS", "usage": "Использование (вызовы API)", "loading": "Загрузка…", "loadError": "Не удалось загрузить данные.", "limit": "лимит", "limitExceeded": "Один или несколько лимитов использования превышены." },
+  "whiteLabel": { "title": "White Label", "logo": "Логотип", "colors": "Цвета", "domains": "Домены", "languages": "Языки", "logoUrl": "URL логотипа", "primaryColor": "Основной цвет", "domain": "Домен", "locales": "Локали (через запятую)", "save": "Сохранить", "saved": "Настройки сохранены", "loadError": "Не удалось загрузить настройки" },
+  "audit": { "title": "Аудит", "subtitle": "Фильтр и просмотр записей журнала аудита.", "userId": "ID пользователя", "action": "Действие", "resource": "Ресурс", "from": "С", "to": "По", "limit": "Лимит", "time": "Время", "user": "Пользователь", "payload": "Данные", "noData": "Нет записей" },
+  "health": { "title": "Состояние системы", "subtitle": "Статус сервисов и последняя проверка.", "lastCheck": "Проверка", "services": "Сервисы" },
+  "status": { "ok": "OK", "warning": "Внимание", "critical": "Критично", "connected": "Подключено" },
+  "pagination": { "prev": "Назад", "next": "Вперёд", "page": "Страница {{current}} из {{total}}" }
 }

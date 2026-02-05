@@ -1,22 +1,26 @@
+import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
-import Login from './pages/login/Login';
-import Register from './pages/register/Register';
-import ForgotPassword from './pages/forgot-password/ForgotPassword';
-import Dashboard from './pages/dashboard/Dashboard';
-import Calendar from './pages/calendar/Calendar';
-import Passengers from './pages/passengers/Passengers';
-import Drivers from './pages/drivers/Drivers';
-import Translation from './pages/translation/Translation';
-import Analytics from './pages/analytics/Analytics';
-import Roles from './pages/roles/Roles';
-import SessionMonitor from './pages/session-monitor/SessionMonitor';
-import CostControl from './pages/cost-control/CostControl';
-import WhiteLabel from './pages/white-label/WhiteLabel';
-import About from './pages/about/About';
+
+const Login = lazy(() => import('./pages/login/Login'));
+const Register = lazy(() => import('./pages/register/Register'));
+const ForgotPassword = lazy(() => import('./pages/forgot-password/ForgotPassword'));
+const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const Calendar = lazy(() => import('./pages/calendar/Calendar'));
+const Passengers = lazy(() => import('./pages/passengers/Passengers'));
+const Drivers = lazy(() => import('./pages/drivers/Drivers'));
+const Translation = lazy(() => import('./pages/translation/Translation'));
+const Analytics = lazy(() => import('./pages/analytics/Analytics'));
+const Roles = lazy(() => import('./pages/roles/Roles'));
+const SessionMonitor = lazy(() => import('./pages/session-monitor/SessionMonitor'));
+const CostControl = lazy(() => import('./pages/cost-control/CostControl'));
+const WhiteLabel = lazy(() => import('./pages/white-label/WhiteLabel'));
+const Audit = lazy(() => import('./pages/audit/Audit'));
+const Health = lazy(() => import('./pages/health/Health'));
+const About = lazy(() => import('./pages/about/About'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -52,6 +56,8 @@ export default function App() {
         <Route path="/sessions" element={<SessionMonitor />} />
         <Route path="/cost-control" element={<CostControl />} />
         <Route path="/white-label" element={<WhiteLabel />} />
+        <Route path="/audit" element={<Audit />} />
+        <Route path="/health" element={<Health />} />
         <Route path="/about" element={<About />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

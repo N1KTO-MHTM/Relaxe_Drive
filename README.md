@@ -4,6 +4,62 @@
 
 ---
 
+## Что скачать, добавить и обновить
+
+### Установка (скачать зависимости)
+
+Из корня проекта:
+
+```bash
+npm run install:all
+```
+
+Или по частям: `npm install` в корне, затем `npm install` в `backend`, `web`, `desktop`.
+
+**Нужно установить:** Node.js 18+ (с [nodejs.org](https://nodejs.org)).
+
+---
+
+### Добавить (опционально)
+
+| Что | Зачем |
+|-----|--------|
+| **PostgreSQL** | Для продакшена вместо SQLite: задать `DATABASE_URL` в `backend/.env`. |
+| **Переменные в backend** | `JWT_SECRET`, `CORS_ORIGINS`, при лимитах — `COST_LIMIT_MAPS`, `COST_LIMIT_TRANSLATION`, `COST_LIMIT_AI`, `COST_LIMIT_TTS`. |
+| **Переменные в web/desktop** | `VITE_API_URL`, `VITE_WS_URL` — если API не на localhost. |
+| **Свой OSRM** | Переменная `OSRM_URL` в backend — свои маршруты/альтернативы вместо публичного сервера. |
+
+---
+
+### Обновить (после изменений в коде)
+
+1. **База данных (новая таблица отчётов водителей)**  
+   В `backend`:
+   - **SQLite:** `npx prisma db push`
+   - **PostgreSQL:** `npx prisma migrate deploy` (миграции уже в `backend/prisma/migrations/`)
+
+2. **Сгенерировать Prisma-клиент**  
+   ```bash
+   cd backend && npx prisma generate
+   ```
+
+3. **Сборки**  
+   - Backend: `cd backend && npm run build`  
+   - Web: `cd web && npm run build`  
+   - Desktop exe: `cd desktop && npm run build:win` → `dist-electron/RelaxDrive-Desktop.exe`
+
+4. **Обновить зависимости до последних версий**  
+   В каждой папке (`backend`, `web`, `desktop`):
+   ```bash
+   npm update
+   ```
+   Проверить устаревшие: `npm outdated`.
+
+5. **Деплой (Render)**  
+   После пуша в GitHub сервисы пересоберутся. Для PostgreSQL выполните миграции в Shell: `npx prisma migrate deploy`.
+
+---
+
 ## Структура проекта
 
 | Папка | Описание |

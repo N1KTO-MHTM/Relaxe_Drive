@@ -1,28 +1,44 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore } from '../../store/auth';
 import { api } from '../../api/client';
 import OrdersMap from '../../components/OrdersMap';
-import type { OrderRouteData, DriverForMap } from '../../components/OrdersMap';
+import type { OrderRouteData, DriverForMap, DriverReportMap } from '../../components/OrdersMap';
 import NavBar from '../../components/NavBar';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
 import type { Order, DriverEta } from '../../types';
 import './Dashboard.css';
 
-/** Wait billing: first 5 min free; total wait 20 min = $5, 30 min = $10, 60 min = $20. */
+/** Wait billing: first 5 min free. 20 min = $5, 30 = $10, 1h = $20, 1h20 = $25, 1h30 = $30, 2h = $40. */
 function getWaitChargeDollars(totalMinutes: number): number {
   if (totalMinutes < 20) return 0;
   if (totalMinutes < 30) return 5;
   if (totalMinutes < 60) return 10;
-  return 20;
+  if (totalMinutes < 80) return 20;
+  if (totalMinutes < 90) return 25;
+  if (totalMinutes < 120) return 30;
+  return 40;
 }
 function getTotalWaitMinutes(arrivedAt: string, leftAt: string | null): number {
   const arrived = new Date(arrivedAt).getTime();
   const end = leftAt ? new Date(leftAt).getTime() : Date.now();
   return Math.floor((end - arrived) / 60_000);
+}
+
+/** Distance in meters (approximate). */
+function distanceMeters(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+): number {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 interface User {
@@ -32,6 +48,7 @@ interface User {
   phone?: string | null;
   lat?: number | null;
   lng?: number | null;
+  available?: boolean;
 }
 
 export default function Dashboard() {
@@ -41,6 +58,7 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { socket, connected } = useSocket();
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const toast = useToastStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,18 +92,41 @@ export default function Dashboard() {
   const [orderPassengerName, setOrderPassengerName] = useState('');
   const [orderTab, setOrderTab] = useState<'active' | 'completed'>('active');
   const [orderStatusFilter, setOrderStatusFilter] = useState('');
+  const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
+  const [completedLoading, setCompletedLoading] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [alerts, setAlerts] = useState<Array<{ id: string; type: string; orderId?: string; driverId?: string; pickupAddress?: string; at: string }>>([]);
+  const [reports, setReports] = useState<DriverReportMap[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState('TRAFFIC');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [routeRefreshKey, setRouteRefreshKey] = useState(0);
+  const autoStopSentForOrderIdRef = useRef<string | null>(null);
 
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+  const isDriver = user?.role === 'DRIVER';
+
+  useEffect(() => {
+    if (orderTab !== 'completed' || isDriver) return;
+    const to = new Date();
+    const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+    setCompletedLoading(true);
+    api.get<Order[]>(`/orders?from=${from.toISOString()}&to=${to.toISOString()}`)
+      .then((data) => setCompletedOrders(Array.isArray(data) ? data : []))
+      .catch(() => setCompletedOrders([]))
+      .finally(() => setCompletedLoading(false));
+  }, [orderTab, isDriver]);
 
   const filteredOrders = useMemo(() => {
-    let list = orders;
-    if (orderTab === 'active') list = list.filter((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED');
-    else list = list.filter((o) => o.status === 'COMPLETED' || o.status === 'CANCELLED');
-    if (orderStatusFilter) list = list.filter((o) => o.status === orderStatusFilter);
-    return list.sort((a, b) => new Date(b.pickupAt).getTime() - new Date(a.pickupAt).getTime());
-  }, [orders, orderTab, orderStatusFilter]);
+    const list = orderTab === 'active' ? orders : completedOrders;
+    let out = orderTab === 'active'
+      ? list.filter((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED')
+      : list.filter((o) => o.status === 'COMPLETED' || o.status === 'CANCELLED');
+    if (orderStatusFilter) out = out.filter((o) => o.status === orderStatusFilter);
+    return out.sort((a, b) => new Date(b.pickupAt).getTime() - new Date(a.pickupAt).getTime());
+  }, [orders, completedOrders, orderTab, orderStatusFilter]);
 
   const driversForMap: DriverForMap[] = useMemo(() => drivers.map((d) => ({
     id: d.id,
@@ -108,7 +149,6 @@ export default function Dashboard() {
   ];
   const canAssign = canCreateOrder;
   const canChangeStatus = !!user?.role;
-  const isDriver = user?.role === 'DRIVER';
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +214,35 @@ export default function Dashboard() {
     socket.on('alerts', onAlert);
     return () => { socket.off('alerts', onAlert); };
   }, [socket, canAssign]);
+
+  // Browser notifications: driver on assignment, dispatcher/admin on new order (only when tab in background)
+  useEffect(() => {
+    if (!socket || !user || typeof document === 'undefined' || !('Notification' in window)) return;
+    const onAlert = (data: unknown) => {
+      const d = data as { type?: string; orderId?: string; driverId?: string; pickupAddress?: string };
+      if (!d?.type || !document.hidden) return;
+      const pickup = d.pickupAddress ?? '';
+      if (user.role === 'DRIVER' && d.type === 'order.assigned' && d.driverId === user.id) {
+        if (Notification.permission === 'granted') {
+          new Notification(t('dashboard.alertOrderAssigned', { pickup }) || 'Order assigned', { body: pickup });
+        }
+      } else if ((user.role === 'ADMIN' || user.role === 'DISPATCHER') && d.type === 'order.created') {
+        if (Notification.permission === 'granted') {
+          new Notification(t('dashboard.alertOrderCreated', { pickup }) || 'New order', { body: pickup });
+        }
+      }
+    };
+    socket.on('alerts', onAlert);
+    return () => { socket.off('alerts', onAlert); };
+  }, [socket, user?.id, user?.role, t]);
+
+  // Request notification permission when dashboard is shown (once)
+  useEffect(() => {
+    if (!user || typeof document === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default' && (user.role === 'DRIVER' || user.role === 'ADMIN' || user.role === 'DISPATCHER')) {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!canAssign) return;
@@ -243,9 +312,12 @@ export default function Dashboard() {
     }
     let cancelled = false;
     const fetchRoute = (fromLat?: number, fromLng?: number) => {
-      const q = fromLat != null && fromLng != null ? `?fromLat=${fromLat}&fromLng=${fromLng}` : '';
+      const params = new URLSearchParams();
+      if (fromLat != null && fromLng != null) { params.set('fromLat', String(fromLat)); params.set('fromLng', String(fromLng)); }
+      if (isDriver) params.set('alternatives', '1');
+      const q = params.toString() ? `?${params.toString()}` : '';
       api.get<OrderRouteData>(`/orders/${selectedOrderId}/route${q}`).then((data) => {
-        if (!cancelled) setRouteData(data);
+        if (!cancelled) { setRouteData(data); setSelectedRouteIndex(0); }
       }).catch(() => {
         if (!cancelled) setRouteData(null);
       });
@@ -269,7 +341,61 @@ export default function Dashboard() {
       fetchRoute();
     }
     return () => { cancelled = true; };
-  }, [selectedOrderId, isDriver, driverLocation?.lat, driverLocation?.lng]);
+  }, [selectedOrderId, isDriver, driverLocation?.lat, driverLocation?.lng, routeRefreshKey]);
+
+  useEffect(() => {
+    const bbox = (() => {
+      if (routeData?.pickupCoords && routeData?.dropoffCoords) {
+        const lats = [routeData.pickupCoords.lat, routeData.dropoffCoords.lat];
+        const lngs = [routeData.pickupCoords.lng, routeData.dropoffCoords.lng];
+        if (driverLocation) { lats.push(driverLocation.lat); lngs.push(driverLocation.lng); }
+        const pad = 0.02;
+        return { minLat: Math.min(...lats) - pad, maxLat: Math.max(...lats) + pad, minLng: Math.min(...lngs) - pad, maxLng: Math.max(...lngs) + pad };
+      }
+      if (driverLocation) {
+        const pad = 0.05;
+        return { minLat: driverLocation.lat - pad, maxLat: driverLocation.lat + pad, minLng: driverLocation.lng - pad, maxLng: driverLocation.lng + pad };
+      }
+      return null;
+    })();
+    if (!bbox) return;
+    api.get<DriverReportMap[]>(`/reports?minLat=${bbox.minLat}&maxLat=${bbox.maxLat}&minLng=${bbox.minLng}&maxLng=${bbox.maxLng}&sinceMinutes=120`)
+      .then((data) => setReports(Array.isArray(data) ? data : []))
+      .catch(() => setReports([]));
+  }, [routeData?.pickupCoords, routeData?.dropoffCoords, driverLocation?.lat, driverLocation?.lng]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onReport = (data: unknown) => {
+      const r = data as DriverReportMap;
+      if (r?.id && typeof r.lat === 'number' && typeof r.lng === 'number') {
+        setReports((prev) => [r, ...prev.filter((x) => x.id !== r.id)]);
+      }
+    };
+    socket.on('report', onReport);
+    return () => { socket.off('report', onReport); };
+  }, [socket]);
+
+  const MOVE_AWAY_METERS = 80;
+  useEffect(() => {
+    if (!isDriver || !driverLocation || !routeData?.pickupCoords || !selectedOrderId) return;
+    const sentId = autoStopSentForOrderIdRef.current;
+    if (sentId && orders.some((o) => o.id === sentId && o.leftPickupAt)) {
+      autoStopSentForOrderIdRef.current = null;
+    }
+    const order = orders.find(
+      (o) => o.id === selectedOrderId && o.status === 'ASSIGNED' && o.arrivedAtPickupAt && !o.leftPickupAt,
+    );
+    if (!order) return;
+    const dist = distanceMeters(
+      driverLocation.lat, driverLocation.lng,
+      routeData.pickupCoords.lat, routeData.pickupCoords.lng,
+    );
+    if (dist > MOVE_AWAY_METERS && autoStopSentForOrderIdRef.current !== order.id) {
+      autoStopSentForOrderIdRef.current = order.id;
+      handleStatusChange(order.id, 'IN_PROGRESS', true);
+    }
+  }, [isDriver, orders, driverLocation, routeData?.pickupCoords, selectedOrderId]);
 
   function loadDriverEtasForOrder(orderId: string) {
     if (driverEtas[orderId]) return;
@@ -318,16 +444,53 @@ export default function Dashboard() {
     }
   }
 
-  async function handleStatusChange(orderId: string, status: 'IN_PROGRESS' | 'COMPLETED') {
+  async function handleStatusChange(orderId: string, status: 'IN_PROGRESS' | 'COMPLETED', silent = false) {
     setStatusUpdatingId(orderId);
     try {
       await api.patch(`/orders/${orderId}/status`, { status });
-      toast.success(status === 'COMPLETED' ? t('toast.orderCompleted') : t('toast.rideStarted'));
+      if (!silent) toast.success(status === 'COMPLETED' ? t('toast.orderCompleted') : t('toast.rideStarted'));
+      if (silent) {
+        const data = await api.get<Order[]>('/orders');
+        setOrders(Array.isArray(data) ? data : []);
+      }
     } catch {
-      toast.error(t('toast.statusUpdateFailed'));
+      if (!silent) toast.error(t('toast.statusUpdateFailed'));
     } finally {
       setStatusUpdatingId(null);
     }
+  }
+
+  function refetchRoute() {
+    setRouteRefreshKey((k) => k + 1);
+  }
+
+  async function handleReportSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!driverLocation) return;
+    setReportSubmitting(true);
+    try {
+      await api.post('/reports', { lat: driverLocation.lat, lng: driverLocation.lng, type: reportType, description: reportDescription || undefined });
+      toast.success(t('dashboard.reportSubmitted'));
+      setShowReportModal(false);
+      setReportDescription('');
+    } catch {
+      toast.error(t('dashboard.reportFailed'));
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
+
+  function openInGoogleMaps() {
+    if (!routeData?.pickupCoords || !routeData?.dropoffCoords) return;
+    const origin = driverLocation ? `${driverLocation.lat},${driverLocation.lng}` : `${routeData.pickupCoords.lat},${routeData.pickupCoords.lng}`;
+    const dest = `${routeData.dropoffCoords.lat},${routeData.dropoffCoords.lng}`;
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`, '_blank');
+  }
+
+  function openInWaze() {
+    if (!routeData?.dropoffCoords) return;
+    const dest = `${routeData.dropoffCoords.lat},${routeData.dropoffCoords.lng}`;
+    window.open(`https://waze.com/ul?ll=${dest}&navigate=yes`, '_blank');
   }
 
   async function handleShareLocation() {
@@ -520,7 +683,7 @@ export default function Dashboard() {
         <h1>{isDriver ? t('dashboard.myOrders') : t('dashboard.title')}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           {!isDriver && (
-            <button type="button" className="rd-btn" onClick={() => { downloadCsv(orders, 'orders.csv', [
+            <button type="button" className="rd-btn" onClick={() => { downloadCsv(filteredOrders, 'orders.csv', [
               { key: 'id', label: 'ID' },
               { key: 'status', label: t('dashboard.orderStatus') },
               { key: 'pickupAt', label: t('dashboard.pickupAt') },
@@ -543,8 +706,12 @@ export default function Dashboard() {
       </div>
       {isDriver && routeData && (routeData.driverToPickupSteps?.length || routeData.steps?.length) && (() => {
         const toPickup = orders.some((o) => o.id === selectedOrderId && o.status === 'ASSIGNED');
+        const altRoutes = routeData.alternativeRoutes ?? [];
+        const mainMin = toPickup ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0);
         const steps = toPickup ? (routeData.driverToPickupSteps ?? []) : (routeData.steps ?? []);
-        const durationMin = toPickup ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0);
+        const durationMin = altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
+          ? altRoutes[selectedRouteIndex - 1].durationMinutes
+          : mainMin;
         const eta = new Date(Date.now() + durationMin * 60_000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
         return (
           <div style={{ marginBottom: '0.5rem' }}>
@@ -554,6 +721,30 @@ export default function Dashboard() {
               phaseLabel={toPickup ? t('dashboard.navToPickup') : t('dashboard.navToDropoff')}
               eta={eta}
             />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
+              <button type="button" className="rd-btn" onClick={refetchRoute}>{t('dashboard.recheckEta')}</button>
+              {altRoutes.length > 0 && (
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
+                  {[null, ...altRoutes].map((alt, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`rd-btn ${selectedRouteIndex === i ? 'rd-btn-primary' : ''}`}
+                      onClick={() => setSelectedRouteIndex(i)}
+                    >
+                      {i === 0 ? t('dashboard.routeMain') : `${t('dashboard.routeAlt')} ${i}`} ({alt ? alt.durationMinutes : mainMin} min)
+                    </button>
+                  ))}
+                </span>
+              )}
+              <button type="button" className="rd-btn" onClick={() => setShowReportModal(true)} disabled={!driverLocation}>{t('dashboard.report')}</button>
+              {routeData.dropoffCoords && (
+                <>
+                  <button type="button" className="rd-btn" onClick={openInGoogleMaps}>{t('dashboard.openInGoogleMaps')}</button>
+                  <button type="button" className="rd-btn" onClick={openInWaze}>{t('dashboard.openInWaze')}</button>
+                </>
+              )}
+            </div>
           </div>
         );
       })()}
@@ -681,7 +872,7 @@ export default function Dashboard() {
               </select>
             </div>
           )}
-          {loading ? (
+          {(loading || (orderTab === 'completed' && completedLoading)) ? (
             <p className="rd-text-muted">Loading…</p>
           ) : filteredOrders.length === 0 ? (
             <>
@@ -853,6 +1044,8 @@ export default function Dashboard() {
             pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
             navMode={isDriver && !!routeData && !!driverLocation}
             centerTrigger={mapCenterTrigger}
+            reports={reports}
+            selectedRouteIndex={selectedRouteIndex}
           />
         </div>
         {!isDriver && (
@@ -867,9 +1060,10 @@ export default function Dashboard() {
                 {drivers.map((d) => {
                   const hasLocation = d.lat != null && d.lng != null;
                   const busy = orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
-                  const statusKey = busy ? 'busy' : (hasLocation ? 'locationOn' : 'offline');
-                  const statusClass = busy ? 'rd-badge-warning' : (hasLocation ? 'rd-badge-ok' : '');
-                  const cardMod = busy ? 'dashboard-driver-card--warning' : (hasLocation ? 'dashboard-driver-card--ok' : 'dashboard-driver-card--offline');
+                  const notAvailable = d.role === 'DRIVER' && d.available === false;
+                  const statusKey = notAvailable ? 'unavailable' : (busy ? 'busy' : (hasLocation ? 'locationOn' : 'offline'));
+                  const statusClass = notAvailable ? '' : (busy ? 'rd-badge-warning' : (hasLocation ? 'rd-badge-ok' : ''));
+                  const cardMod = notAvailable ? 'dashboard-driver-card--offline' : (busy ? 'dashboard-driver-card--warning' : (hasLocation ? 'dashboard-driver-card--ok' : 'dashboard-driver-card--offline'));
                   return (
                     <li key={d.id} className={`dashboard-driver-card ${cardMod}`}>
                       <div className="dashboard-driver-card__avatar" aria-hidden />
@@ -922,6 +1116,22 @@ export default function Dashboard() {
         {isDriver && (
           <aside className="dashboard-page__sidebar rd-panel">
             <div className="rd-panel-header">
+              <h2>{t('dashboard.myStatus')}</h2>
+            </div>
+            <label className="dashboard-available-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={user?.available !== false}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  api.patch('/users/me/available', { available: next })
+                    .then(() => setUser(user ? { ...user, available: next } : null))
+                    .catch(() => toast.error(t('toast.statusUpdateFailed')));
+                }}
+              />
+              <span>{user?.available !== false ? t('dashboard.available') : t('dashboard.unavailable')}</span>
+            </label>
+            <div className="rd-panel-header" style={{ marginTop: '0.5rem' }}>
               <h2>{t('dashboard.driverStats')}</h2>
             </div>
             <div className="dashboard-stats-card">
@@ -932,6 +1142,30 @@ export default function Dashboard() {
           </aside>
         )}
       </div>
+      {showReportModal && (
+        <div className="rd-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowReportModal(false)}>
+          <div className="rd-panel" style={{ maxWidth: 400, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.report')}</h3>
+            <p className="rd-muted" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>{t('dashboard.reportAtLocation')}</p>
+            <form onSubmit={handleReportSubmit}>
+              <label>{t('dashboard.reportType')}</label>
+              <select className="rd-input" value={reportType} onChange={(e) => setReportType(e.target.value)}>
+                <option value="POLICE">{t('dashboard.reportPolice')}</option>
+                <option value="TRAFFIC">{t('dashboard.reportTraffic')}</option>
+                <option value="WORK_ZONE">{t('dashboard.reportWorkZone')}</option>
+                <option value="CAR_CRASH">{t('dashboard.reportCrash')}</option>
+                <option value="OTHER">{t('dashboard.reportOther')}</option>
+              </select>
+              <label>{t('dashboard.reportDescription')}</label>
+              <input type="text" className="rd-input" value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} placeholder={t('dashboard.reportDescriptionOptional')} />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <button type="submit" className="rd-btn rd-btn-primary" disabled={reportSubmitting}>{reportSubmitting ? '…' : t('dashboard.submit')}</button>
+                <button type="button" className="rd-btn" onClick={() => setShowReportModal(false)}>{t('dashboard.cancel')}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

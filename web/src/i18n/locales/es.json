@@ -18,7 +18,14 @@
     "forgotPasswordSent": "Si existe una cuenta con este usuario, contacta a tu administrador para restablecer la contraseña.",
     "forgotPasswordHint": "Ingresa tu usuario. Un administrador puede restablecer tu contraseña.",
     "forgotPasswordSubmit": "Solicitar restablecimiento",
-    "registerFailed": "Error al registrarse"
+    "registerFailed": "Error al registrarse",
+    "setNewPassword": "Establecer nueva contraseña",
+    "setNewPasswordHint": "Introduzca y confirme la nueva contraseña. El enlace es válido 24 horas.",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "resetLinkInvalid": "Enlace no válido o caducado",
+    "resetPasswordDone": "Contraseña restablecida. Puede iniciar sesión con la nueva contraseña.",
+    "setNewPasswordSubmit": "Establecer contraseña"
   },
   "about": {
     "title": "Acerca de",
@@ -50,6 +57,8 @@
     "sessions": "Monitor de sesiones",
     "costControl": "Control de costos",
     "whiteLabel": "White Label",
+    "audit": "Auditoría",
+    "health": "Estado del sistema",
     "about": "Acerca de"
   },
   "dashboard": {
@@ -168,7 +177,18 @@
   "analytics": {
     "title": "Analíticas",
     "heatmap": "Mapa de calor",
-    "filters": "Filtros"
+    "filters": "Filtros",
+    "from": "Desde",
+    "to": "Hasta",
+    "apply": "Aplicar",
+    "loading": "Cargando…",
+    "ordersCreated": "Pedidos creados",
+    "ordersCompleted": "Pedidos completados",
+    "scheduled": "Programados",
+    "assigned": "Asignados",
+    "inProgress": "En curso",
+    "heatmapHint": "Actividad por día y hora (crear/completar pedido).",
+    "noData": "Sin actividad en este periodo."
   },
   "roles": {
     "title": "Roles y permisos",
@@ -181,14 +201,34 @@
     "actions": "Acciones",
     "resetPassword": "Restablecer contraseña",
     "resetPasswordPrompt": "Nueva contraseña para {{nickname}} (mín. 6 caracteres)",
-    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres"
+    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres",
+    "resetLink": "Enlace de restablecimiento",
+    "resetLinkTitle": "Generar enlace de un solo uso para este usuario",
+    "resetLinkCopied": "Enlace (copiado al portapapeles)"
   },
   "sessions": {
     "title": "Monitor de sesiones",
     "online": "En línea",
     "device": "Dispositivo",
     "ip": "IP",
-    "lastActive": "Última actividad"
+    "lastActive": "Última actividad",
+    "actions": "Acciones",
+    "endSession": "Terminar sesión",
+    "endSessionConfirm": "¿Terminar esta sesión? El usuario cerrará sesión.",
+    "tabSessions": "Sesiones activas",
+    "tabAccounts": "Cuentas registradas",
+    "phone": "Teléfono",
+    "user": "Usuario",
+    "role": "Rol",
+    "status": "Estado",
+    "active": "Activo",
+    "offline": "Desconectado",
+    "filterRole": "Rol",
+    "filterStatus": "Estado",
+    "searchPlaceholder": "Buscar por nombre o teléfono…",
+    "noAccounts": "No hay cuentas registradas",
+    "allRoles": "Todos los roles",
+    "allStatuses": "Todos"
   },
   "costControl": {
     "title": "Control de costos",
@@ -198,18 +238,48 @@
     "tts": "TTS",
     "usage": "Uso (llamadas API)",
     "loading": "Cargando…",
-    "loadError": "No se pudo cargar los datos de uso."
+    "loadError": "No se pudo cargar los datos de uso.",
+    "limit": "límite",
+    "limitExceeded": "Se ha superado uno o más límites de uso."
   },
   "whiteLabel": {
     "title": "White Label",
     "logo": "Logo",
     "colors": "Colores",
     "domains": "Dominios",
-    "languages": "Idiomas"
+    "languages": "Idiomas",
+    "logoUrl": "URL del logo",
+    "primaryColor": "Color principal",
+    "domain": "Dominio",
+    "locales": "Idiomas (separados por comas)",
+    "save": "Guardar",
+    "saved": "Configuración guardada",
+    "loadError": "No se pudo cargar la configuración"
+  },
+  "audit": {
+    "title": "Auditoría",
+    "subtitle": "Filtrar y ver entradas del registro de auditoría.",
+    "userId": "ID de usuario",
+    "action": "Acción",
+    "resource": "Recurso",
+    "from": "Desde",
+    "to": "Hasta",
+    "limit": "Límite",
+    "time": "Hora",
+    "user": "Usuario",
+    "payload": "Datos",
+    "noData": "Sin entradas"
+  },
+  "health": {
+    "title": "Estado del sistema",
+    "subtitle": "Estado de los servicios y última comprobación.",
+    "lastCheck": "Última comprobación",
+    "services": "Servicios"
   },
   "status": {
     "ok": "OK",
     "warning": "Advertencia",
     "critical": "Crítico"
-  }
+  },
+  "pagination": { "prev": "Anterior", "next": "Siguiente", "page": "Página {{current}} de {{total}}" }
 }

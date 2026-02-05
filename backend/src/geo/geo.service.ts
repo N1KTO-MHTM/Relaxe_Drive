@@ -77,21 +77,43 @@ export class GeoService {
   ): Promise<RouteResult> {
     this.costTracker.increment('maps');
     try {
-      return await this.circuit.run(() =>
-        withRetry(() => this.fetchRoute(pickup, dropoff), { retries: 3, backoffMs: 500 }),
+      const r = await this.circuit.run(() =>
+        withRetry(() => this.fetchRoute(pickup, dropoff, false), { retries: 3, backoffMs: 500 }),
       );
+      return Array.isArray(r) ? r[0] : r;
     } catch (e) {
       console.warn('[GeoService] OSRM getRoute failed:', e);
       return { distanceKm: 0, durationMinutes: 0, polyline: '' };
     }
   }
 
+  /** Request multiple route alternatives (when OSRM server supports it). Returns at least one. */
+  async getRouteAlternatives(
+    pickup: { lat: number; lng: number },
+    dropoff: { lat: number; lng: number },
+    maxAlternatives = 3,
+  ): Promise<RouteResult[]> {
+    this.costTracker.increment('maps');
+    try {
+      const result = await this.circuit.run(() =>
+        withRetry(() => this.fetchRoute(pickup, dropoff, true, maxAlternatives), { retries: 3, backoffMs: 500 }),
+      );
+      return Array.isArray(result) ? result : [result];
+    } catch (e) {
+      console.warn('[GeoService] OSRM getRouteAlternatives failed:', e);
+      return [{ distanceKm: 0, durationMinutes: 0, polyline: '' }];
+    }
+  }
+
   private async fetchRoute(
     pickup: { lat: number; lng: number },
     dropoff: { lat: number; lng: number },
-  ): Promise<RouteResult> {
+    alternatives: boolean,
+    maxAlternatives = 3,
+  ): Promise<RouteResult | RouteResult[]> {
     const coords = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
-    const url = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=polyline&steps=true`;
+    const altParam = alternatives ? `&alternatives=true&number=${Math.min(maxAlternatives, 3)}` : '';
+    const url = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=polyline&steps=true${altParam}`;
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
     });
@@ -118,29 +140,35 @@ export class GeoService {
     if (data.code !== 'Ok') {
       throw new Error(data.code || 'OSRM no route');
     }
-    const route = data.routes?.[0];
-    const distanceM = route?.distance ?? 0;
-    const durationS = route?.duration ?? 0;
-    const steps: RouteStep[] = [];
-    for (const leg of route?.legs ?? []) {
-      for (const s of leg.steps ?? []) {
-        const maneuver = s.maneuver;
-        const type = osrmManeuverToType(maneuver?.type);
-        const instruction = maneuver?.type === 'arrive' ? 'Arrive at destination' : maneuver?.type === 'depart' ? 'Head to destination' : (maneuver?.modifier || maneuver?.type || 'Continue');
-        steps.push({
-          type,
-          instruction,
-          distanceM: s.distance ?? 0,
-          durationS: s.duration ?? 0,
-        });
+    const routes = data.routes ?? [];
+    const toResult = (route: (typeof routes)[0]): RouteResult => {
+      const distanceM = route?.distance ?? 0;
+      const durationS = route?.duration ?? 0;
+      const steps: RouteStep[] = [];
+      for (const leg of route?.legs ?? []) {
+        for (const s of leg.steps ?? []) {
+          const maneuver = s.maneuver;
+          const type = osrmManeuverToType(maneuver?.type);
+          const instruction = maneuver?.type === 'arrive' ? 'Arrive at destination' : maneuver?.type === 'depart' ? 'Head to destination' : (maneuver?.modifier || maneuver?.type || 'Continue');
+          steps.push({
+            type,
+            instruction,
+            distanceM: s.distance ?? 0,
+            durationS: s.duration ?? 0,
+          });
+        }
       }
-    }
-    return {
-      distanceKm: Math.round((distanceM / 1000) * 100) / 100,
-      durationMinutes: Math.round((durationS / 60) * 10) / 10,
-      polyline: route?.geometry ?? '',
-      steps: steps.length > 0 ? steps : undefined,
+      return {
+        distanceKm: Math.round((distanceM / 1000) * 100) / 100,
+        durationMinutes: Math.round((durationS / 60) * 10) / 10,
+        polyline: route?.geometry ?? '',
+        steps: steps.length > 0 ? steps : undefined,
+      };
     };
+    if (alternatives && routes.length > 1) {
+      return routes.map(toResult);
+    }
+    return toResult(routes[0]);
   }
 
   async getEta(

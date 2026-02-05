@@ -8,6 +8,7 @@ interface User {
   nickname: string;
   role: Role;
   locale: string;
+  available?: boolean; // driver: available for assignments
 }
 
 interface AuthState {

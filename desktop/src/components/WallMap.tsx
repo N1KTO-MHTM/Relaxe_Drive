@@ -1,10 +1,11 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { api } from '../api/client';
 
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY (USA)
 const DEFAULT_ZOOM = 10;
+const REPORTS_SINCE_MINUTES = 120;
 
 interface Driver {
   id: string;
@@ -13,6 +14,15 @@ interface Driver {
   lat?: number | null;
   lng?: number | null;
   role: string;
+}
+
+interface DriverReport {
+  id: string;
+  lat: number;
+  lng: number;
+  type: string;
+  description: string | null;
+  createdAt: string;
 }
 
 const defaultIcon = L.icon({
@@ -24,12 +34,21 @@ const defaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = defaultIcon;
 
+const reportIcon = L.divIcon({
+  className: 'wall-map-report-marker',
+  html: '<span style="width:14px;height:14px;border-radius:50%;background:#e67e22;border:2px solid #fff;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.4)"></span>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
 export default function WallMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const reportMarkersRef = useRef<L.Marker[]>([]);
   const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [reports, setReports] = useState<DriverReport[]>([]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -42,6 +61,8 @@ export default function WallMap() {
     return () => {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
+      reportMarkersRef.current.forEach((m) => m.remove());
+      reportMarkersRef.current = [];
       map.remove();
       mapRef.current = null;
     };
@@ -53,6 +74,36 @@ export default function WallMap() {
       setDrivers(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []);
     }).catch(() => setDrivers([])).finally(() => setLoading(false));
   }, []);
+
+  const fetchReports = useCallback((bounds: L.LatLngBounds | null) => {
+    const map = mapRef.current;
+    if (!map || !bounds) return;
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const minLat = Math.min(ne.lat, sw.lat);
+    const maxLat = Math.max(ne.lat, sw.lat);
+    const minLng = Math.min(ne.lng, sw.lng);
+    const maxLng = Math.max(ne.lng, sw.lng);
+    const params = new URLSearchParams({
+      minLat: String(minLat),
+      maxLat: String(maxLat),
+      minLng: String(minLng),
+      maxLng: String(maxLng),
+      sinceMinutes: String(REPORTS_SINCE_MINUTES),
+    });
+    api.get<DriverReport[]>(`/reports?${params}`).then((data) => {
+      setReports(Array.isArray(data) ? data : []);
+    }).catch(() => setReports([]));
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    fetchReports(map.getBounds());
+    const onMoveEnd = () => fetchReports(map.getBounds());
+    map.on('moveend', onMoveEnd);
+    return () => { map.off('moveend', onMoveEnd); };
+  }, [fetchReports]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -69,6 +120,20 @@ export default function WallMap() {
     });
   }, [drivers]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    reportMarkersRef.current.forEach((m) => m.remove());
+    reportMarkersRef.current = [];
+    reports.forEach((r) => {
+      const marker = L.marker([r.lat, r.lng], { icon: reportIcon }).addTo(map);
+      const desc = r.description ? ` — ${String(r.description).replace(/</g, '&lt;')}` : '';
+      const time = new Date(r.createdAt).toLocaleString();
+      marker.bindPopup(`<strong>${String(r.type).replace(/</g, '&lt;')}</strong>${desc}<br/><small>${time}</small>`);
+      reportMarkersRef.current.push(marker);
+    });
+  }, [reports]);
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 400 }}>
       {loading && (
@@ -78,7 +143,7 @@ export default function WallMap() {
       )}
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 400 }} />
       <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: 8, background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.75rem', color: 'var(--rd-text-muted)' }}>
-        Live map — drivers with shared location. Click marker for name and phone.
+        Live map — drivers (blue); reports (orange). Click marker for details.
       </div>
     </div>
   );

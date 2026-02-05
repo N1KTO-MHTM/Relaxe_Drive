@@ -2,6 +2,8 @@ import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus } from '@n
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -39,6 +41,24 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body('nickname') nickname: string) {
     return this.authService.forgotPassword(nickname);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body('token') token: string, @Body('newPassword') newPassword: string) {
+    return this.authService.resetPasswordWithToken(token, newPassword);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Post('admin/generate-reset-token')
+  @HttpCode(HttpStatus.OK)
+  async generateResetToken(@Body('userId') userId: string, @Req() req: { user: { id: string } }) {
+    const token = this.authService.createPasswordResetToken(userId);
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const link = `${baseUrl.replace(/\/$/, '')}/forgot-password?token=${encodeURIComponent(token)}`;
+    return { token, link };
   }
 
   @Public()

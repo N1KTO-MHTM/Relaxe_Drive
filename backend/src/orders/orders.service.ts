@@ -2,12 +2,15 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { PassengersService } from '../passengers/passengers.service';
 
-/** Wait billing: first 5 min free; total wait 20 min = $5, 30 min = $10, 60 min = $20. */
+/** Wait billing: first 5 min free. Then: 20 min = $5, 30 min = $10, 1 h = $20, 1h20 = $25, 1h30 = $30, 2 h = $40. */
 export function getWaitChargeCentsFromTotalMinutes(totalMinutes: number): number {
   if (totalMinutes < 20) return 0;
-  if (totalMinutes < 30) return 500;  // $5
-  if (totalMinutes < 60) return 1000; // $10
-  return 2000; // $20
+  if (totalMinutes < 30) return 500;   // $5
+  if (totalMinutes < 60) return 1000;  // $10
+  if (totalMinutes < 80) return 2000;  // $20 (1 hour)
+  if (totalMinutes < 90) return 2500;  // $25 (1h 20m)
+  if (totalMinutes < 120) return 3000; // $30 (1h 30m)
+  return 4000; // $40 (2 hours)
 }
 
 /** From arrivedAt to leftAt: total minutes waited. Charge by total (20 min = $5, 30 = $10, 60 = $20). */

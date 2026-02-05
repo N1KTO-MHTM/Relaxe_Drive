@@ -21,6 +21,7 @@ model User {
   locale        String    @default("en")
   lat           Float?    // последнее местоположение водителя (для карты)
   lng           Float?
+  available     Boolean   @default(true)  // водитель: доступен для заказов (false = не назначать)
   blocked       Boolean   @default(false) // заблокирован админом
   bannedUntil   DateTime? @map("banned_until") // временный бан до даты
   banReason     String?   @map("ban_reason")
@@ -102,6 +103,16 @@ model TranslationRecord {
   targetText String  @map("target_text")
   userId    String?  @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
+}
+
+model DriverReport {
+  id          String   @id @default(cuid())
+  lat         Float    @map("lat")
+  lng         Float    @map("lng")
+  type        String   @map("type")   // POLICE | TRAFFIC | WORK_ZONE | CAR_CRASH | OTHER
+  description String? @map("description")
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 }
 
 model WhiteLabelConfig {

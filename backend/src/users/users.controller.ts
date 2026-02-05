@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuditService } from '../audit/audit.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -19,7 +19,13 @@ export class UsersController {
   async me(@Request() req: { user: { id: string } }) {
     const user = await this.usersService.findById(req.user.id);
     if (!user) return null;
-    return { id: user.id, nickname: user.nickname, role: user.role, locale: user.locale };
+    return {
+      id: user.id,
+      nickname: user.nickname,
+      role: user.role,
+      locale: user.locale,
+      ...(user.role === 'DRIVER' && { available: user.available ?? true }),
+    };
   }
 
   @Get()
@@ -43,6 +49,13 @@ export class UsersController {
   @Roles('DRIVER')
   updateMyLocation(@Request() req: { user: { id: string } }, @Body() body: { lat: number; lng: number }) {
     return this.usersService.updateLocation(req.user.id, body.lat, body.lng);
+  }
+
+  @Patch('me/available')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  updateMyAvailable(@Request() req: { user: { id: string } }, @Body() body: { available: boolean }) {
+    return this.usersService.updateAvailable(req.user.id, body.available);
   }
 
   @Patch(':id/role')
@@ -115,6 +128,13 @@ export class UsersController {
     return updated;
   }
 
+  @Get('with-session-status')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getUsersWithSessionStatus() {
+    return this.usersService.findAllWithSessionStatus();
+  }
+
   @Get('sessions')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'DISPATCHER')
@@ -125,5 +145,17 @@ export class UsersController {
       const message = err instanceof Error ? err.message : 'Sessions unavailable';
       throw new HttpException(message, HttpStatus.SERVICE_UNAVAILABLE);
     }
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async revokeSession(
+    @Param('sessionId') sessionId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    await this.usersService.revokeSession(sessionId);
+    await this.audit.log(req.user.id, 'session.revoke', 'session', { sessionId });
+    return { revoked: true };
   }
 }

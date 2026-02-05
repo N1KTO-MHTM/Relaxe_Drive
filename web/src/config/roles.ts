@@ -13,6 +13,8 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/sessions',
     '/cost-control',
     '/white-label',
+    '/audit',
+    '/health',
     '/about',
   ],
   DISPATCHER: [
@@ -22,6 +24,7 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/drivers',
     '/translation',
     '/sessions',
+    '/audit',
     '/about',
   ],
   /** Driver: no Passengers, no Drivers — only dashboard, translation, about. */
@@ -47,6 +50,8 @@ export function getAllowedNavItems(role: Role | null): { path: string; key: stri
     { path: '/sessions', key: 'sessions' },
     { path: '/cost-control', key: 'costControl' },
     { path: '/white-label', key: 'whiteLabel' },
+    { path: '/audit', key: 'audit' },
+    { path: '/health', key: 'health' },
     { path: '/about', key: 'about' },
   ];
   if (!role) return [];

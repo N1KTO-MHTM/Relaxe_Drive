@@ -31,6 +31,34 @@ export class PassengersService {
     });
   }
 
+  async update(
+    id: string,
+    data: {
+      phone?: string;
+      name?: string;
+      pickupAddr?: string;
+      dropoffAddr?: string;
+      pickupType?: string;
+      dropoffType?: string;
+    },
+  ) {
+    return this.prisma.passenger.update({
+      where: { id },
+      data: {
+        ...(data.phone != null && { phone: data.phone.trim() }),
+        ...(data.name != null && { name: data.name || null }),
+        ...(data.pickupAddr != null && { pickupAddr: data.pickupAddr || null }),
+        ...(data.dropoffAddr != null && { dropoffAddr: data.dropoffAddr || null }),
+        ...(data.pickupType != null && { pickupType: data.pickupType || null }),
+        ...(data.dropoffType != null && { dropoffType: data.dropoffType || null }),
+      },
+    });
+  }
+
+  async delete(id: string) {
+    return this.prisma.passenger.delete({ where: { id } });
+  }
+
   /** Link a driver (user) to a passenger record by phone: find or create passenger, set userId. If phone is already linked to a driver, do not add/overwrite. */
   async linkDriverToPassenger(phone: string, userId: string) {
     const normalized = phone.trim();

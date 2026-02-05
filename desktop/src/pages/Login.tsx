@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/auth';
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function Login() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [nickname, setNickname] = useState('');
@@ -42,8 +42,23 @@ export default function Login() {
     }
   }
 
+  const LANGS = [{ code: 'en', label: 'EN' }, { code: 'ru', label: 'RU' }, { code: 'ka', label: 'KA' }, { code: 'es', label: 'ES' }];
+
   return (
-    <div className="auth-layout" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="auth-layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+        {LANGS.map(({ code, label }) => (
+          <button
+            key={code}
+            type="button"
+            className="rd-btn"
+            style={{ padding: '0.35rem 0.6rem', fontSize: '0.875rem', background: i18n.language === code ? 'var(--rd-primary, #2563eb)' : undefined, color: i18n.language === code ? '#fff' : undefined }}
+            onClick={() => i18n.changeLanguage(code)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="rd-panel" style={{ maxWidth: 400, width: '100%' }}>
         <h1>{t('auth.login')}</h1>
         {error && <p className="status-critical">{error}</p>}

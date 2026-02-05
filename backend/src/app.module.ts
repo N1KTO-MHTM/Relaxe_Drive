@@ -20,6 +20,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PassengersModule } from './passengers/passengers.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   controllers: [AppController],
@@ -43,6 +44,7 @@ import { PassengersModule } from './passengers/passengers.module';
     WhiteLabelModule,
     WebSocketModule,
     HealthModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

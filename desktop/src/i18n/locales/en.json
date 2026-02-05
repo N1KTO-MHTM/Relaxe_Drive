@@ -14,9 +14,13 @@
     "ctrlOrders": "Orders",
     "ctrlDrivers": "Drivers",
     "ctrlSessions": "Sessions",
+    "ctrlAccounts": "Registered accounts",
     "noOrders": "No orders",
     "noDrivers": "No drivers",
     "noSessions": "No sessions",
+    "noAccounts": "No registered accounts",
+    "active": "Active",
+    "offline": "Offline",
     "assignedTitle": "Order assigned",
     "calendar": "Calendar"
   },

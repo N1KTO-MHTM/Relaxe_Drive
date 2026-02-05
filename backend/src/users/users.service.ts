@@ -55,13 +55,38 @@ export class UsersService {
     return this.prisma.session.deleteMany({ where: { id: sessionId } });
   }
 
+  /** Active sessions: one row per user (latest session only), so online users are not duplicated. */
   async getActiveSessions(userId?: string) {
     const where = userId ? { userId } : {};
-    return this.prisma.session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where,
-      include: { user: { select: { nickname: true, role: true } } },
+      include: { user: { select: { nickname: true, role: true, phone: true } } },
       orderBy: { lastActiveAt: 'desc' },
     });
+    const byUser = new Map<string, (typeof sessions)[0]>();
+    for (const s of sessions) {
+      if (!byUser.has(s.userId)) byUser.set(s.userId, s);
+    }
+    return Array.from(byUser.values());
+  }
+
+  /** All registered users with active-session status (for admin logs). */
+  async findAllWithSessionStatus() {
+    const users = await this.prisma.user.findMany({
+      orderBy: { nickname: 'asc' },
+      include: { sessions: { orderBy: { lastActiveAt: 'desc' }, take: 1 } },
+    });
+    return users.map(({ sessions, id, nickname, phone, role, createdAt }) => ({
+      id,
+      nickname,
+      phone,
+      role,
+      createdAt,
+      hasActiveSession: sessions.length > 0,
+      lastActiveAt: sessions[0]?.lastActiveAt ?? null,
+      device: sessions[0]?.device ?? null,
+      ip: sessions[0]?.ip ?? null,
+    }));
   }
 
   async findAll() {
@@ -75,12 +100,21 @@ export class UsersService {
         locale: true,
         lat: true,
         lng: true,
+        available: true,
         blocked: true,
         bannedUntil: true,
         banReason: true,
         createdAt: true,
       },
       orderBy: { nickname: 'asc' },
+    });
+  }
+
+  async updateAvailable(userId: string, available: boolean) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { available },
+      select: { id: true, available: true },
     });
   }
 

@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
 
 type CtrlSubTab = 'orders' | 'drivers' | 'sessions';
+type SessionSubTab = 'sessions' | 'accounts';
 
 interface Order {
   id: string;
@@ -29,6 +30,19 @@ interface Session {
   ip?: string | null;
   lastActiveAt: string;
   createdAt: string;
+  user?: { nickname: string; role: string; phone?: string | null };
+}
+
+interface AccountRow {
+  id: string;
+  nickname: string;
+  phone: string | null;
+  role: string;
+  createdAt: string;
+  hasActiveSession: boolean;
+  lastActiveAt: string | null;
+  device: string | null;
+  ip: string | null;
 }
 
 /** Control Mode with sub-tabs: Orders, Drivers, Sessions. */
@@ -36,14 +50,17 @@ export default function ControlMode() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const [tab, setTab] = useState<CtrlSubTab>('orders');
+  const [sessionSubTab, setSessionSubTab] = useState<SessionSubTab>('sessions');
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<User[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const canSeeDrivers = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const canSeeSessions = canSeeDrivers;
+  const isAdmin = user?.role === 'ADMIN';
   const notifiedOrderIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -75,7 +92,7 @@ export default function ControlMode() {
       }).finally(() => setLoading(false));
     }
     if (tab === 'drivers' && !canSeeDrivers) setLoading(false);
-    if (tab === 'sessions' && canSeeSessions) {
+    if (tab === 'sessions' && canSeeSessions && sessionSubTab === 'sessions') {
       api.get<Session[]>('/users/sessions').then((data) => {
         setSessions(Array.isArray(data) ? data : []);
       }).catch((e) => {
@@ -83,8 +100,17 @@ export default function ControlMode() {
         setError(e instanceof Error ? e.message : 'Failed');
       }).finally(() => setLoading(false));
     }
+    if (tab === 'sessions' && isAdmin && sessionSubTab === 'accounts') {
+      api.get<AccountRow[]>('/users/with-session-status').then((data) => {
+        setAccounts(Array.isArray(data) ? data : []);
+      }).catch((e) => {
+        setAccounts([]);
+        setError(e instanceof Error ? e.message : 'Failed');
+      }).finally(() => setLoading(false));
+    }
     if (tab === 'sessions' && !canSeeSessions) setLoading(false);
-  }, [tab, canSeeDrivers, canSeeSessions, user?.id, user?.role, t]);
+    if (tab === 'sessions' && canSeeSessions && sessionSubTab === 'accounts' && !isAdmin) setLoading(false);
+  }, [tab, sessionSubTab, canSeeDrivers, canSeeSessions, isAdmin, user?.id, user?.role, t]);
 
   useEffect(() => {
     if (user?.role !== 'DRIVER' || !window.electronAPI?.showNotification) return;
@@ -173,32 +199,83 @@ export default function ControlMode() {
             )}
             {tab === 'sessions' && canSeeSessions && (
               <>
-                {loading && <p className="logs-mode__muted">Loading…</p>}
-                {error && <p className="logs-mode__error">{error}</p>}
-                {!loading && !error && sessions.length === 0 && <p className="logs-mode__muted">{t('modes.noSessions')}</p>}
-                {!loading && sessions.length > 0 && (
-                  <div className="logs-mode__table-wrap">
-                    <table className="logs-mode__table">
-                      <thead>
-                        <tr>
-                          <th>User ID</th>
-                          <th>Device</th>
-                          <th>IP</th>
-                          <th>Last active</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sessions.map((s) => (
-                          <tr key={s.id}>
-                            <td>{s.userId}</td>
-                            <td>{s.device || '—'}</td>
-                            <td>{s.ip || '—'}</td>
-                            <td>{new Date(s.lastActiveAt).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {isAdmin && (
+                  <div className="mode-subtabs" style={{ marginBottom: '0.75rem' }}>
+                    <button type="button" className={`rd-btn ${sessionSubTab === 'sessions' ? 'rd-btn-primary' : ''}`} onClick={() => setSessionSubTab('sessions')}>
+                      {t('modes.ctrlSessions')}
+                    </button>
+                    <button type="button" className={`rd-btn ${sessionSubTab === 'accounts' ? 'rd-btn-primary' : ''}`} onClick={() => setSessionSubTab('accounts')}>
+                      {t('modes.ctrlAccounts')}
+                    </button>
                   </div>
+                )}
+                {sessionSubTab === 'sessions' && (
+                  <>
+                    {loading && <p className="logs-mode__muted">Loading…</p>}
+                    {error && <p className="logs-mode__error">{error}</p>}
+                    {!loading && !error && sessions.length === 0 && <p className="logs-mode__muted">{t('modes.noSessions')}</p>}
+                    {!loading && sessions.length > 0 && (
+                      <div className="logs-mode__table-wrap">
+                        <table className="logs-mode__table">
+                          <thead>
+                            <tr>
+                              <th>{t('logs.user')}</th>
+                              <th>{t('logs.device')}</th>
+                              <th>IP</th>
+                              <th>{t('logs.time')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sessions.map((s) => (
+                              <tr key={s.id}>
+                                <td>{s.user?.nickname ?? s.userId}</td>
+                                <td>{s.device || '—'}</td>
+                                <td>{s.ip || '—'}</td>
+                                <td>{new Date(s.lastActiveAt).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+                {sessionSubTab === 'accounts' && isAdmin && (
+                  <>
+                    {loading && <p className="logs-mode__muted">Loading…</p>}
+                    {error && <p className="logs-mode__error">{error}</p>}
+                    {!loading && !error && accounts.length === 0 && <p className="logs-mode__muted">{t('modes.noAccounts')}</p>}
+                    {!loading && accounts.length > 0 && (
+                      <div className="logs-mode__table-wrap">
+                        <table className="logs-mode__table">
+                          <thead>
+                            <tr>
+                              <th>{t('logs.user')}</th>
+                              <th>{t('logs.phone')}</th>
+                              <th>{t('admin.role')}</th>
+                              <th>{t('admin.status')}</th>
+                              <th>{t('logs.device')}</th>
+                              <th>IP</th>
+                              <th>{t('logs.time')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {accounts.map((a) => (
+                              <tr key={a.id}>
+                                <td>{a.nickname}</td>
+                                <td>{a.phone ?? '—'}</td>
+                                <td>{a.role}</td>
+                                <td>{a.hasActiveSession ? t('modes.active') : t('modes.offline')}</td>
+                                <td>{a.device ?? '—'}</td>
+                                <td>{a.ip ?? '—'}</td>
+                                <td>{a.lastActiveAt ? new Date(a.lastActiveAt).toLocaleString() : '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}

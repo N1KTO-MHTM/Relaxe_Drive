@@ -47,7 +47,7 @@ export class OrdersController {
       this.geo.geocode(order.dropoffAddress),
     ]);
     const drivers = await this.usersService.findAll();
-    const driverList = drivers.filter((u) => u.role === 'DRIVER' && u.lat != null && u.lng != null && Number.isFinite(u.lat) && Number.isFinite(u.lng));
+    const driverList = drivers.filter((u) => u.role === 'DRIVER' && u.available !== false && u.lat != null && u.lng != null && Number.isFinite(u.lat) && Number.isFinite(u.lng));
     const results: Array<{
       id: string;
       nickname: string;
@@ -86,6 +86,7 @@ export class OrdersController {
     @Param('id') orderId: string,
     @Query('fromLat') fromLat?: string,
     @Query('fromLng') fromLng?: string,
+    @Query('alternatives') alternatives?: string,
   ) {
     const order = await this.ordersService.findById(orderId);
     if (!order) return { pickupCoords: null, dropoffCoords: null, polyline: '', durationMinutes: 0, distanceKm: 0 };
@@ -96,7 +97,13 @@ export class OrdersController {
     if (!pickupCoords || !dropoffCoords) {
       return { pickupCoords, dropoffCoords, polyline: '', durationMinutes: 0, distanceKm: 0 };
     }
-    const pickupToDropoff = await this.geo.getRoute(pickupCoords, dropoffCoords);
+    const wantAlternatives = alternatives === 'true' || alternatives === '1';
+    const [pickupToDropoff, altRoutes] = wantAlternatives
+      ? await Promise.all([
+          this.geo.getRoute(pickupCoords, dropoffCoords),
+          this.geo.getRouteAlternatives(pickupCoords, dropoffCoords, 3),
+        ])
+      : [await this.geo.getRoute(pickupCoords, dropoffCoords), null];
     const out: {
       pickupCoords: typeof pickupCoords;
       dropoffCoords: typeof dropoffCoords;
@@ -107,6 +114,7 @@ export class OrdersController {
       driverToPickupPolyline?: string;
       driverToPickupMinutes?: number;
       driverToPickupSteps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }>;
+      alternativeRoutes?: Array<{ polyline: string; durationMinutes: number; distanceKm: number }>;
     } = {
       pickupCoords,
       dropoffCoords,
@@ -115,6 +123,9 @@ export class OrdersController {
       distanceKm: pickupToDropoff.distanceKm,
       steps: pickupToDropoff.steps,
     };
+    if (altRoutes && altRoutes.length > 1) {
+      out.alternativeRoutes = altRoutes.map((r) => ({ polyline: r.polyline, durationMinutes: r.durationMinutes, distanceKm: r.distanceKm }));
+    }
     const fromLatN = fromLat != null && fromLat !== '' ? parseFloat(fromLat) : NaN;
     const fromLngN = fromLng != null && fromLng !== '' ? parseFloat(fromLng) : NaN;
     if (Number.isFinite(fromLatN) && Number.isFinite(fromLngN) && pickupCoords) {

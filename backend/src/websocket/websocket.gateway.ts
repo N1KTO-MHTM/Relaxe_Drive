@@ -37,4 +37,9 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
   emitUserUpdated(userId: string) {
     this.server?.emit('user.updated', { userId });
   }
+
+  /** New driver report (police, traffic, work zone, crash, etc.) so all drivers see it on the map */
+  broadcastReport(payload: unknown) {
+    this.server?.emit('report', payload);
+  }
 }

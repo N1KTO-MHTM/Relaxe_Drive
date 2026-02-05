@@ -16,7 +16,11 @@
     "ctrlSessions": "Sesiones",
     "noOrders": "Sin órdenes",
     "noDrivers": "Sin conductores",
-    "noSessions": "Sin sesiones"
+    "noSessions": "Sin sesiones",
+    "ctrlAccounts": "Cuentas registradas",
+    "noAccounts": "Sin cuentas registradas",
+    "active": "Activo",
+    "offline": "Desconectado"
   },
   "health": {
     "title": "Panel de estado del sistema",

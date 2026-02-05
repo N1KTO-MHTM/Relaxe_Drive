@@ -103,4 +103,31 @@ export class AuthService {
     await this.audit.log(null, 'auth.forgot_password_request', 'user', { nickname });
     return { ok: true, message: 'If this user exists, contact your administrator to reset the password.' };
   }
+
+  /** One-time password reset token (admin generates for user). Valid 24h. */
+  createPasswordResetToken(userId: string) {
+    return this.jwtService.sign(
+      { sub: userId, type: 'password_reset' as const },
+      { expiresIn: this.config.get('JWT_RESET_TTL', '24h') },
+    );
+  }
+
+  /** Reset password using token from admin-generated link. */
+  async resetPasswordWithToken(token: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new UnauthorizedException('Password must be at least 6 characters');
+    }
+    try {
+      const payload = this.jwtService.verify<{ sub: string; type: string }>(token);
+      if (payload.type !== 'password_reset') throw new UnauthorizedException('Invalid token');
+      const user = await this.usersService.findById(payload.sub);
+      if (!user) throw new UnauthorizedException('Invalid token');
+      await this.usersService.setPassword(payload.sub, newPassword);
+      await this.audit.log(payload.sub, 'auth.password_reset_via_token', 'user', {});
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof UnauthorizedException) throw e;
+      throw new UnauthorizedException('Invalid or expired reset link');
+    }
+  }
 }

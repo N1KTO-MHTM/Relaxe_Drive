@@ -18,7 +18,14 @@
     "forgotPasswordSent": "თუ ასეთი ნიკნეიმის ანგარიში არსებობს, მიმართეთ ადმინისტრატორს პაროლის გასაუქმებლად.",
     "forgotPasswordHint": "შეიყვანეთ ნიკნეიმი. ადმინისტრატორს შეუძლია პაროლის გასაუქმება.",
     "forgotPasswordSubmit": "პაროლის გასაუქმების მოთხოვნა",
-    "registerFailed": "რეგისტრაცია ვერ მოხდა"
+    "registerFailed": "რეგისტრაცია ვერ მოხდა",
+    "setNewPassword": "ახალი პაროლის დაყენება",
+    "setNewPasswordHint": "შეიყვანეთ და დაადასტურეთ ახალი პაროლი. ბმული მოქმედებს 24 საათი.",
+    "confirmPassword": "პაროლის დადასტურება",
+    "passwordMismatch": "პაროლები არ ემთხვევა",
+    "resetLinkInvalid": "არასწორი ან ვადაგასული ბმული",
+    "resetPasswordDone": "პაროლი გასაუქმებულია. შეგიძლიათ შეხვიდეთ ახალი პაროლით.",
+    "setNewPasswordSubmit": "პაროლის დაყენება"
   },
   "about": {
     "title": "აპლიკაციის შესახებ",
@@ -50,6 +57,8 @@
     "sessions": "სესიები",
     "costControl": "ხარჯების კონტროლი",
     "whiteLabel": "White Label",
+    "audit": "აუდიტი",
+    "health": "სისტემის მდგომარეობა",
     "about": "აპლიკაციის შესახებ"
   },
   "dashboard": {
@@ -132,10 +141,13 @@
   "drivers": { "title": "მძღოლები", "subtitle": "ყველა მძღოლი. რუკაზე სანახავად გადადით პანელზე.", "showOnMap": "რუკაზე", "nickname": "მძღოლი", "phone": "ტელეფონი", "status": "სტატუსი", "noDrivers": "მძღოლები არ არის", "onMap": "რუკაზე", "offline": "ოფლაინ", "blocked": "დაბლოკილი", "banned": "დაბანილი" },
   "passengers": { "title": "მგზავრები", "phone": "ტელეფონი", "name": "სახელი", "type": "ტიპი", "driver": "მძღოლი", "pickup": "პიკაპი", "dropoff": "დასაშვები", "addresses": "მისამართები", "history": "ისტორია" },
   "translation": { "title": "თარგმანის ცენტრი", "voiceToText": "ხმა → ტექსტი", "autoLanguage": "ავტო ენა", "history": "ისტორია" },
-  "analytics": { "title": "ანალიტიკა", "heatmap": "სითბოს რუკა", "filters": "ფილტრები" },
-  "roles": { "title": "როლები და უფლებები", "admin": "ადმინი", "dispatcher": "დისპეტჩერი", "driver": "მძღოლი", "usersList": "მომხმარებლები და როლები", "changeRole": "როლის შეცვლა", "saved": "შენახული", "actions": "მოქმედებები", "resetPassword": "პაროლის გასაუქმება", "resetPasswordPrompt": "ახალი პაროლი {{nickname}}-ისთვის (მინ. 6 სიმბოლო)", "passwordMinLength": "პაროლი მინიმუმ 6 სიმბოლო" },
-  "sessions": { "title": "სესიების მონიტორინგი", "online": "ონლაინ", "device": "მოწყობილობა", "ip": "IP", "lastActive": "აქტივობა" },
-  "costControl": { "title": "ხარჯების კონტროლი", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS", "usage": "გამოყენება (API გამოძახებები)", "loading": "იტვირთება…", "loadError": "მონაცემების ჩატვირთვა ვერ მოხერხდა." },
-  "whiteLabel": { "title": "White Label", "logo": "ლოგო", "colors": "ფერები", "domains": "დომენები", "languages": "ენები" },
-  "status": { "ok": "OK", "warning": "ყურადღება", "critical": "კრიტიკული" }
+  "analytics": { "title": "ანალიტიკა", "heatmap": "სითბოს რუკა", "filters": "ფილტრები", "from": "დან", "to": "მდე", "apply": "გამოყენება", "loading": "იტვირთება…", "ordersCreated": "შეკვეთა შექმნილი", "ordersCompleted": "შეკვეთა შესრულებული", "scheduled": "დაგეგმილი", "assigned": "მინიჭებული", "inProgress": "პროცესში", "heatmapHint": "აქტივობა დღისა და საათის მიხედვით.", "noData": "ამ პერიოდში აქტივობა არ არის." },
+  "roles": { "title": "როლები და უფლებები", "admin": "ადმინი", "dispatcher": "დისპეტჩერი", "driver": "მძღოლი", "usersList": "მომხმარებლები და როლები", "changeRole": "როლის შეცვლა", "saved": "შენახული", "actions": "მოქმედებები", "resetPassword": "პაროლის გასაუქმება", "resetPasswordPrompt": "ახალი პაროლი {{nickname}}-ისთვის (მინ. 6 სიმბოლო)", "passwordMinLength": "პაროლი მინიმუმ 6 სიმბოლო", "resetLink": "გასაუქმების ბმული", "resetLinkTitle": "შექმნა ერთჯერადი ბმული ამ მომხმარებლისთვის", "resetLinkCopied": "ბმული (კოპირებულია)" },
+  "sessions": { "title": "სესიების მონიტორინგი", "online": "ონლაინ", "device": "მოწყობილობა", "ip": "IP", "lastActive": "აქტივობა", "actions": "მოქმედებები", "endSession": "სესიის დასრულება", "endSessionConfirm": "დასრულდეს ეს სესია? მომხმარებელი გამოვა.", "tabSessions": "აქტიური სესიები", "tabAccounts": "რეგისტრირებული ანგარიშები", "phone": "ტელეფონი", "user": "მომხმარებელი", "role": "როლი", "status": "სტატუსი", "active": "აქტიური", "offline": "ოფლაინ", "filterRole": "როლი", "filterStatus": "სტატუსი", "searchPlaceholder": "ძებნა სახელით ან ტელეფონით…", "noAccounts": "რეგისტრირებული ანგარიშები არ არის", "allRoles": "ყველა როლი", "allStatuses": "ყველა" },
+  "costControl": { "title": "ხარჯების კონტროლი", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS", "usage": "გამოყენება (API გამოძახებები)", "loading": "იტვირთება…", "loadError": "მონაცემების ჩატვირთვა ვერ მოხერხდა.", "limit": "ლიმიტი", "limitExceeded": "ერთი ან მეტი გამოყენების ლიმიტი გადაიჭარბა." },
+  "whiteLabel": { "title": "White Label", "logo": "ლოგო", "colors": "ფერები", "domains": "დომენები", "languages": "ენები", "logoUrl": "ლოგოს URL", "primaryColor": "ძირითადი ფერი", "domain": "დომენი", "locales": "ლოკალები (მძიმით)", "save": "შენახვა", "saved": "პარამეტრები შენახულია", "loadError": "პარამეტრების ჩატვირთვა ვერ მოხერხდა." },
+  "audit": { "title": "აუდიტი", "subtitle": "ფილტრი და სისტემის აუდიტ ჩანაწერების ნახვა.", "userId": "მომხმარებლის ID", "action": "მოქმედება", "resource": "რესურსი", "from": "დან", "to": "მდე", "limit": "ლიმიტი", "time": "დრო", "user": "მომხმარებელი", "payload": "მონაცემები", "noData": "ჩანაწერები არ არის" },
+  "health": { "title": "სისტემის მდგომარეობა", "subtitle": "სერვისების სტატუსი და ბოლო შემოწმება.", "lastCheck": "შემოწმება", "services": "სერვისები" },
+  "status": { "ok": "OK", "warning": "ყურადღება", "critical": "კრიტიკული" },
+  "pagination": { "prev": "წინა", "next": "შემდეგი", "page": "გვ. {{current}} / {{total}}" }
 }

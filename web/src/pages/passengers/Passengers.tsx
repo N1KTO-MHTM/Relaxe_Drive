@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
+import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import type { PassengerRow } from '../../types';
 import './Passengers.css';
 
@@ -44,6 +45,9 @@ export default function Passengers() {
   const [formPickupType, setFormPickupType] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingClient, setEditingClient] = useState<PassengerRow | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const filteredList = searchQuery.trim()
     ? list.filter(
@@ -52,6 +56,15 @@ export default function Passengers() {
           (p.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : list;
+
+  const paginatedList = useMemo(
+    () => paginate(filteredList, page, DEFAULT_PAGE_SIZE),
+    [filteredList, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +114,44 @@ export default function Passengers() {
   function placeLabel(type: string | null): string {
     if (!type) return '';
     return t(PLACE_KEYS[type] ?? 'passengers.placeOther');
+  }
+
+  async function handleEdit(e: React.FormEvent, id: string) {
+    e.preventDefault();
+    if (!editingClient) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.patch(`/passengers/${id}`, {
+        phone: editingClient.phone?.trim() || undefined,
+        name: editingClient.name?.trim() || undefined,
+        pickupAddr: editingClient.pickupAddr?.trim() || undefined,
+        pickupType: editingClient.pickupType || undefined,
+      });
+      setEditingClient(null);
+      toast.success(t('passengers.saved'));
+      const data = await api.get<PassengerRow[]>('/passengers');
+      setList(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(parseApiError(e));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm(t('passengers.deleteConfirm'))) return;
+    setDeletingId(id);
+    setError(null);
+    try {
+      await api.delete(`/passengers/${id}`);
+      toast.success(t('passengers.deleted'));
+      setList((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      setError(parseApiError(e));
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -172,44 +223,77 @@ export default function Passengers() {
                 <th>{t('passengers.type')}</th>
                 <th>{t('passengers.pickup')}</th>
                 <th style={{ width: 100 }}>{t('nav.newOrder')}</th>
+                <th style={{ width: 120 }}>{t('roles.actions')}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredList.map((p) => (
+              {paginatedList.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.phone ?? '—'}</td>
-                  <td>{p.name ?? '—'}</td>
-                  <td>{p.userId ? <span className="rd-badge rd-badge-ok">{t('passengers.driver')}</span> : '—'}</td>
-                  <td>
-                    {p.pickupAddr ?? '—'}
-                    {p.pickupType && p.pickupType !== 'home' && (
-                      <span className="rd-text-muted"> ({placeLabel(p.pickupType)})</span>
-                    )}
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="rd-btn rd-btn-primary"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}
-                      onClick={() => navigate('/dashboard', {
-                        state: {
-                          openForm: true,
-                          passengerPrefill: {
-                            phone: p.phone ?? '',
-                            name: p.name ?? '',
-                            pickupAddr: p.pickupAddr ?? '',
-                            pickupType: p.pickupType ?? '',
-                          },
-                        },
-                      })}
-                    >
-                      + {t('nav.newOrder')}
-                    </button>
-                  </td>
+                  {editingClient?.id === p.id ? (
+                    <>
+                      <td colSpan={6}>
+                        <form onSubmit={(e) => handleEdit(e, p.id)} className="passengers-form" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
+                          <label style={{ width: '100%' }}>{t('passengers.editClient')}</label>
+                          <input type="text" className="rd-input" placeholder={t('passengers.phone')} value={editingClient.phone ?? ''} onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })} />
+                          <input type="text" className="rd-input" placeholder={t('passengers.name')} value={editingClient.name ?? ''} onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })} />
+                          <input type="text" className="rd-input" placeholder={t('passengers.pickup')} value={editingClient.pickupAddr ?? ''} onChange={(e) => setEditingClient({ ...editingClient, pickupAddr: e.target.value })} />
+                          <select className="rd-input" value={editingClient.pickupType ?? ''} onChange={(e) => setEditingClient({ ...editingClient, pickupType: e.target.value })}>
+                            <option value="">—</option>
+                            <option value="home">{t('passengers.placeHome')}</option>
+                            <option value="synagogue">{t('passengers.placeSynagogue')}</option>
+                            <option value="school">{t('passengers.placeSchool')}</option>
+                            <option value="hospital">{t('passengers.placeHospital')}</option>
+                            <option value="store">{t('passengers.placeStore')}</option>
+                            <option value="office">{t('passengers.placeOffice')}</option>
+                            <option value="other">{t('passengers.placeOther')}</option>
+                          </select>
+                          <button type="submit" className="rd-btn rd-btn-primary" disabled={submitting}>{submitting ? '…' : t('passengers.save')}</button>
+                          <button type="button" className="rd-btn" onClick={() => setEditingClient(null)}>{t('dashboard.cancel')}</button>
+                        </form>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{p.phone ?? '—'}</td>
+                      <td>{p.name ?? '—'}</td>
+                      <td>{p.userId ? <span className="rd-badge rd-badge-ok">{t('passengers.driver')}</span> : '—'}</td>
+                      <td>
+                        {p.pickupAddr ?? '—'}
+                        {p.pickupType && p.pickupType !== 'home' && (
+                          <span className="rd-text-muted"> ({placeLabel(p.pickupType)})</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="rd-btn rd-btn-primary"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}
+                          onClick={() => navigate('/dashboard', {
+                            state: {
+                              openForm: true,
+                              passengerPrefill: {
+                                phone: p.phone ?? '',
+                                name: p.name ?? '',
+                                pickupAddr: p.pickupAddr ?? '',
+                                pickupType: p.pickupType ?? '',
+                              },
+                            },
+                          })}
+                        >
+                          + {t('nav.newOrder')}
+                        </button>
+                      </td>
+                      <td>
+                        <button type="button" className="rd-btn" style={{ marginRight: '0.25rem' }} onClick={() => setEditingClient({ ...p })}>{t('passengers.edit')}</button>
+                        <button type="button" className="rd-btn" disabled={deletingId === p.id} onClick={() => handleDelete(p.id)}>{deletingId === p.id ? '…' : t('passengers.delete')}</button>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+          <Pagination page={page} totalItems={filteredList.length} onPageChange={setPage} />
         </div>
       )}
       </div>

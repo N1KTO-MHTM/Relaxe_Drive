@@ -21,6 +21,7 @@ model User {
   locale        String    @default("en")
   lat           Float?    @db.DoublePrecision
   lng           Float?    @db.DoublePrecision
+  available     Boolean   @default(true)
   blocked       Boolean   @default(false)
   bannedUntil   DateTime? @map("banned_until")
   banReason     String?   @map("ban_reason")
@@ -102,6 +103,16 @@ model TranslationRecord {
   targetText String   @map("target_text")
   userId     String?  @map("user_id")
   createdAt  DateTime @default(now()) @map("created_at")
+}
+
+model DriverReport {
+  id          String   @id @default(cuid())
+  lat         Float    @map("lat")
+  lng         Float    @map("lng")
+  type        String   @map("type")
+  description String?  @map("description")
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 }
 
 model WhiteLabelConfig {

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { downloadCsv } from '../../utils/exportCsv';
+import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import './Drivers.css';
 
 /** Driver phones only for DISPATCHER and ADMIN. */
@@ -29,6 +30,7 @@ export default function Drivers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
   const showPhone = canSeeDriverPhones(user?.role);
 
   const filteredList = searchQuery.trim()
@@ -37,7 +39,16 @@ export default function Drivers() {
           (d.nickname ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : list;
+      : list;
+
+  const paginatedList = useMemo(
+    () => paginate(filteredList, page, DEFAULT_PAGE_SIZE),
+    [filteredList, page],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +109,7 @@ export default function Drivers() {
               </tr>
             </thead>
             <tbody>
-                {filteredList.map((d) => {
+                {paginatedList.map((d) => {
                   const hasLocation = d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng);
                   const statusKey = d.blocked ? 'blocked' : d.bannedUntil && new Date(d.bannedUntil) > new Date() ? 'banned' : hasLocation ? 'onMap' : 'offline';
                   return (
@@ -115,6 +126,7 @@ export default function Drivers() {
                 })}
               </tbody>
             </table>
+            <Pagination page={page} totalItems={filteredList.length} onPageChange={setPage} />
           </div>
         )}
       </div>
