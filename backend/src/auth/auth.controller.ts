@@ -14,8 +14,9 @@ export class AuthController {
     @Body('nickname') nickname: string,
     @Body('password') password: string,
     @Body('role') role?: string,
+    @Body('phone') phone?: string,
   ) {
-    return this.authService.register(nickname, password, role);
+    return this.authService.register(nickname, password, role, phone);
   }
 
   @Public()
@@ -25,10 +26,12 @@ export class AuthController {
     @Body('nickname') nickname: string,
     @Body('password') password: string,
     @Body('device') device?: string,
-    @Req() req?: { ip?: string },
+    @Body('rememberDevice') rememberDevice?: boolean,
+    @Req() req?: { ip?: string; headers?: { 'user-agent'?: string } },
   ) {
     const ip = req?.ip;
-    return this.authService.login(nickname, password, device, ip);
+    const deviceStr = device ?? req?.headers?.['user-agent'] ?? undefined;
+    return this.authService.login(nickname, password, deviceStr, ip, !!rememberDevice);
   }
 
   @Public()

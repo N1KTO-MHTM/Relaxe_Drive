@@ -52,10 +52,14 @@
   transition: color var(--rd-transition), background var(--rd-transition);
 }
 
-.dashboard-layout__nav a:hover,
-.dashboard-layout__nav a.active {
+.dashboard-layout__nav a:hover {
   color: var(--rd-text);
   background: rgba(255, 255, 255, 0.06);
+}
+.dashboard-layout__nav a.active {
+  color: var(--rd-accent);
+  background: rgba(88, 166, 255, 0.12);
+  border: 1px solid rgba(88, 166, 255, 0.25);
 }
 
 .dashboard-layout__right {
@@ -65,11 +69,22 @@
   gap: var(--rd-space-md);
 }
 
+.dashboard-layout__new-order {
+  text-decoration: none;
+  color: inherit;
+}
+
 .lang-select {
   width: auto;
   min-width: 60px;
 }
 
+.user-role-badge {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.9;
+}
 .user-email {
   font-size: 0.8125rem;
   color: var(--rd-text-muted);

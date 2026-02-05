@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import fs from 'fs';
 
@@ -49,7 +50,12 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  if (process.env.NODE_ENV === 'production' && !process.env.ELECTRON_DEV) {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
@@ -62,4 +68,16 @@ ipcMain.handle('set-cached-data', async (_, key: string, value: unknown) => {
   const data = await readCache();
   data[key] = value;
   await writeCache(data);
+});
+
+ipcMain.handle('show-notification', (_, title: string, body: string) => {
+  if (Notification.isSupported()) {
+    new Notification({ title, body }).show();
+  }
+});
+
+ipcMain.handle('open-external', (_, url: string) => {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    shell.openExternal(url);
+  }
 });

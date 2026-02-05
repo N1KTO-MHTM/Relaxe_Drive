@@ -29,3 +29,23 @@
 .about-creator strong {
   color: var(--rd-accent);
 }
+
+.about-access {
+  margin-top: var(--rd-space-lg);
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-panel);
+  border-radius: var(--rd-radius);
+  border: 1px solid var(--rd-border);
+}
+
+.about-access h2 {
+  margin: 0 0 var(--rd-space-sm);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.about-detail {
+  margin-top: var(--rd-space-sm);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}

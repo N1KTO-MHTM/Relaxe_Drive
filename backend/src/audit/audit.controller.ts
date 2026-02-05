@@ -6,7 +6,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 
 @Controller('audit')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'DISPATCHER')
 export class AuditController {
   constructor(private audit: AuditService) {}
 

@@ -1,9 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { logger } from './common/logger';
+import { AllExceptionsFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -25,7 +28,10 @@ async function bootstrap() {
   });
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`RelaxDrive API listening on port ${port}`);
+  logger.info('API listening', 'Bootstrap', { port });
 }
 
-bootstrap().catch(console.error);
+bootstrap().catch((err) => {
+  logger.error('Bootstrap failed', 'Bootstrap', { err: String(err) });
+  process.exit(1);
+});

@@ -8,6 +8,7 @@ export default function AuthLayout() {
     { code: 'en', label: 'EN' },
     { code: 'ru', label: 'RU' },
     { code: 'ka', label: 'KA' },
+    { code: 'es', label: 'ES' },
   ];
 
   return (

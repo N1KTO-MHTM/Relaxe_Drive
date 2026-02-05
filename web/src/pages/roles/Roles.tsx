@@ -64,7 +64,8 @@ export default function Roles() {
   }
 
   return (
-    <div className="rd-panel">
+    <div className="rd-page">
+      <div className="rd-panel">
       <div className="rd-panel-header">
         <h1>{t('roles.title')}</h1>
       </div>
@@ -73,19 +74,20 @@ export default function Roles() {
       {loading ? (
         <p className="rd-text-muted">Loading…</p>
       ) : (
-        <table className="roles-table" style={{ width: '100%', marginTop: '1rem', borderCollapse: 'collapse' }}>
+        <div className="rd-table-wrapper">
+        <table className="rd-table" style={{ width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('auth.nickname')}</th>
-              <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('roles.admin')} / {t('roles.dispatcher')} / {t('roles.driver')}</th>
-              <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('roles.actions')}</th>
+              <th>{t('auth.nickname')}</th>
+              <th>{t('roles.admin')} / {t('roles.dispatcher')} / {t('roles.driver')}</th>
+              <th>{t('roles.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
-                <td style={{ padding: '0.5rem' }}>{u.nickname}</td>
-                <td style={{ padding: '0.5rem' }}>
+                <td>{u.nickname}</td>
+                <td>
                   <select
                     className="rd-input"
                     value={u.role}
@@ -97,7 +99,7 @@ export default function Roles() {
                     ))}
                   </select>
                 </td>
-                <td style={{ padding: '0.5rem' }}>
+                <td>
                   <button
                     type="button"
                     className="rd-btn"
@@ -112,7 +114,9 @@ export default function Roles() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
+      </div>
     </div>
   );
 }

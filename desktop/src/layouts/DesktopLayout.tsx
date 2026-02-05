@@ -1,15 +1,28 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 import { useAuthStore } from '../store/auth';
+import { getAllowedDesktopNavItems, canAccessDesktopPath } from '../config/roles';
 
-const LANGS = [{ code: 'en', label: 'EN' }, { code: 'ru', label: 'RU' }, { code: 'ka', label: 'KA' }] as const;
+const LANGS = [{ code: 'en', label: 'EN' }, { code: 'ru', label: 'RU' }, { code: 'ka', label: 'KA' }, { code: 'es', label: 'ES' }] as const;
 
 type DesktopLayoutProps = { children: React.ReactNode; fullHeight?: boolean };
 
 export default function DesktopLayout({ children, fullHeight }: DesktopLayoutProps) {
   const { t, i18n } = useTranslation();
+  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const location = useLocation();
+  const navItems = getAllowedDesktopNavItems(user?.role ?? null);
+
+  useEffect(() => {
+    if (!user?.role) return;
+    if (!canAccessDesktopPath(user.role, location.pathname)) {
+      const allowed = getAllowedDesktopNavItems(user.role);
+      if (allowed.length) navigate(allowed[0].path, { replace: true });
+    }
+  }, [user?.role, location.pathname, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -20,21 +33,15 @@ export default function DesktopLayout({ children, fullHeight }: DesktopLayoutPro
     <div className={`desktop-layout ${fullHeight ? 'desktop-layout--full' : ''}`}>
       <header className="rd-desktop-nav">
         <nav className="rd-desktop-nav__tabs">
-          <NavLink to="/control" className={({ isActive }) => `rd-desktop-nav__tab ${isActive ? 'rd-desktop-nav__tab--active' : ''}`}>
-            {t('modes.control')}
-          </NavLink>
-          <NavLink to="/wall" className={({ isActive }) => `rd-desktop-nav__tab ${isActive ? 'rd-desktop-nav__tab--active' : ''}`}>
-            {t('modes.wall')}
-          </NavLink>
-          <NavLink to="/health" className={({ isActive }) => `rd-desktop-nav__tab ${isActive ? 'rd-desktop-nav__tab--active' : ''}`}>
-            {t('modes.health')}
-          </NavLink>
-          <NavLink to="/logs" className={({ isActive }) => `rd-desktop-nav__tab ${isActive ? 'rd-desktop-nav__tab--active' : ''}`}>
-            {t('modes.logs')}
-          </NavLink>
-          <NavLink to="/about" className={({ isActive }) => `rd-desktop-nav__tab ${isActive ? 'rd-desktop-nav__tab--active' : ''}`}>
-            {t('about.title')}
-          </NavLink>
+          {navItems.map(({ path, key }) => (
+            <NavLink
+              key={path}
+              to={path}
+              className={({ isActive }) => `rd-desktop-nav__tab ${isActive ? 'rd-desktop-nav__tab--active' : ''}`}
+            >
+              {t(key)}
+            </NavLink>
+          ))}
         </nav>
         <div className="rd-desktop-nav__lang">
           {LANGS.map(({ code, label }) => (

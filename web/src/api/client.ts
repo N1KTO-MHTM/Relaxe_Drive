@@ -1,6 +1,12 @@
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
+function isDebug(): boolean {
+  return import.meta.env.DEV || typeof localStorage !== 'undefined' && localStorage.getItem('relaxdrive_debug') === '1';
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  if (isDebug()) console.debug('[RelaxDrive API]', method, path);
   const token = localStorage.getItem('relaxdrive-access-token');
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -34,6 +40,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }
+  if (isDebug()) console.debug('[RelaxDrive API]', method, path, res.status);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     let message = res.statusText;

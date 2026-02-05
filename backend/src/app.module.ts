@@ -19,6 +19,7 @@ import { WhiteLabelModule } from './white-label/white-label.module';
 import { WebSocketModule } from './websocket/websocket.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PassengersModule } from './passengers/passengers.module';
 
 @Module({
   controllers: [AppController],
@@ -30,6 +31,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     UsersModule,
     OrdersModule,
+    PassengersModule,
     DriversModule,
     GeoModule,
     AiModule,

@@ -12,22 +12,28 @@ export default function Login() {
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     try {
+      const device = 'RelaxDrive Desktop';
       const res = await fetch(`${API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname, password, device: 'desktop' }),
+        body: JSON.stringify({ nickname, password, device, rememberDevice }),
       });
       if (!res.ok) {
         const msg = await res.text().catch(() => '');
         throw new Error(msg || 'Invalid credentials');
       }
       const data = await res.json();
+      if (data.user?.role === 'DRIVER') {
+        setError(t('auth.driversUseWeb') ?? 'Drivers should use the web app. Desktop is for dispatchers and admins.');
+        return;
+      }
       setAuth(data.accessToken, data.refreshToken, data.user);
       navigate('/control', { replace: true });
     } catch (err) {
@@ -54,6 +60,10 @@ export default function Login() {
               <span>{t('auth.showPassword')}</span>
             </label>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+            <input type="checkbox" checked={rememberDevice} onChange={(e) => setRememberDevice(e.target.checked)} />
+            <span>{t('auth.rememberDevice')}</span>
+          </label>
           <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }}>{t('auth.login')}</button>
           <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
             <Link to="/forgot-password">{t('auth.forgotPassword')}</Link>

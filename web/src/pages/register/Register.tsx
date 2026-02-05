@@ -7,6 +7,7 @@ export default function Register() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [nickname, setNickname] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -15,7 +16,7 @@ export default function Register() {
     e.preventDefault();
     setError('');
     try {
-      await api.post('/auth/register', { nickname, password, role: 'DISPATCHER' });
+      await api.post('/auth/register', { nickname, phone: phone.trim() || undefined, password, role: 'DISPATCHER' });
       navigate('/login', { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
@@ -27,9 +28,9 @@ export default function Register() {
   return (
     <form onSubmit={handleSubmit}>
       <h1>{t('auth.register')}</h1>
-      {error && <p className="status-critical">{error}</p>}
+      {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
       <div style={{ marginBottom: '1rem' }}>
-        <label>{t('auth.nickname')}</label>
+        <label className="rd-label">{t('auth.nickname')}</label>
         <input
           type="text"
           className="rd-input"
@@ -40,7 +41,18 @@ export default function Register() {
         />
       </div>
       <div style={{ marginBottom: '1rem' }}>
-        <label>{t('auth.password')}</label>
+        <label className="rd-label">{t('auth.phone')}</label>
+        <input
+          type="tel"
+          className="rd-input"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="+7 999 123-45-67"
+        />
+      </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label className="rd-label">{t('auth.password')}</label>
         <input
           type={showPassword ? 'text' : 'password'}
           className="rd-input"

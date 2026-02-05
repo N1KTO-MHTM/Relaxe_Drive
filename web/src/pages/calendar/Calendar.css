@@ -27,9 +27,22 @@
 
 .calendar-day {
   border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius);
+  border-radius: var(--rd-radius-md);
   padding: var(--rd-space-md);
   background: var(--rd-bg-elevated, rgba(255,255,255,0.03));
+  transition: border-color var(--rd-transition), box-shadow var(--rd-transition);
+}
+.calendar-day:hover {
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.calendar-day--selected {
+  border-color: var(--rd-accent, #58a6ff);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.25);
+}
+.calendar-day-create {
+  margin-top: var(--rd-space-sm);
+  width: 100%;
 }
 
 .calendar-day-title {
@@ -45,9 +58,12 @@
 }
 
 .calendar-order-card {
-  padding: var(--rd-space-sm);
+  padding: var(--rd-space-sm) var(--rd-space-md);
   margin-bottom: var(--rd-space-sm);
   font-size: 0.8125rem;
+  border-radius: var(--rd-radius-sm);
+  border: 1px solid var(--rd-border);
+  background: var(--rd-bg-panel, rgba(0,0,0,0.2));
 }
 
 .calendar-order-card .rd-badge { margin-right: 0.5rem; }

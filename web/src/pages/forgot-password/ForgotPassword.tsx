@@ -35,12 +35,12 @@ export default function ForgotPassword() {
   return (
     <form onSubmit={handleSubmit}>
       <h1>{t('auth.forgotPassword')}</h1>
-      {error && <p className="status-critical">{error}</p>}
+      {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
       <p style={{ color: 'var(--rd-text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
         {t('auth.forgotPasswordHint')}
       </p>
       <div style={{ marginBottom: '1rem' }}>
-        <label>{t('auth.nickname')}</label>
+        <label className="rd-label">{t('auth.nickname')}</label>
         <input
           type="text"
           className="rd-input"

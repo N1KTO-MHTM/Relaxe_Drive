@@ -1,20 +1,23 @@
 # RelaxDrive — Control Center Platform
 
-Профессиональная диспетчерская платформа уровня Control Center: единый backend, Web UI, Desktop Control Center и приложение водителя (PWA/mobile).
+Диспетчерская платформа: единый backend, Web Dashboard, Desktop Control Center. Управление заказами, водителями, пассажирами в реальном времени.
 
-## Структура репозитория
+---
 
-- **`backend/`** — NestJS API (REST + WebSocket), JWT, RBAC, заказы, гео, AI ETA, алерты, переводы, аналитика, аудит, cost control, white label.
-- **`web/`** — React + Vite: Dispatcher Dashboard, календарь, пассажиры, Translation Center, аналитика, роли, сессии, cost control, white label. i18n: EN, RU, KA.
-- **`desktop/`** — Electron Control Center: Control Mode, Live Wall, System Health, Logs & Audit. Local cache, auto-reconnect, graceful degradation.
-- **`docs/`** — спецификация проекта ([SPEC.md](docs/SPEC.md)), UI layouts, design system, деплой, roadmap.
-- **`ARCHITECTURE.md`** — архитектура системы, data flow, permission matrix.
+## Структура проекта
+
+| Папка | Описание |
+|-------|----------|
+| **backend/** | NestJS API (REST + WebSocket), JWT, роли, заказы, гео, пассажиры, аудит |
+| **web/** | React + Vite: Dashboard, календарь, клиенты, перевод, аналитика, роли, сессии |
+| **desktop/** | Electron: Control, Live Wall, System Health, Logs & Audit, Клиенты, Админ |
+| **docs/** | Доп. материалы (скриншоты и т.п.) |
+
+---
 
 ## Быстрый старт
 
-### Backend
-
-Локально можно использовать **SQLite** (без установки PostgreSQL):
+### Backend (локально)
 
 ```bash
 cd backend
@@ -25,37 +28,10 @@ npm run prisma:seed
 npm run start:dev
 ```
 
-(Миграции в репозитории — для PostgreSQL на [Render](https://render.com).)
+По умолчанию используется SQLite. Для продакшена задайте `DATABASE_URL` на PostgreSQL.
 
-**Хостинг на Render с нуля:** [docs/DEPLOY-RENDER.md](docs/DEPLOY-RENDER.md) — пошагово: PostgreSQL, Web Service, переменные, деплой и создание админа.
-
-API: `http://localhost:3000`. Health: `GET /health`.  
-Для продакшена в `.env` можно указать `DATABASE_URL` на PostgreSQL.
-
-### Вход под админом (админка)
-
-Вход выполняется по **никнейму** и паролю (не по email).
-
-1. **Создать админа один раз** (из папки `backend`):
-   ```bash
-   npm run prisma:seed
-   ```
-   По умолчанию создаётся пользователь:
-   - **Никнейм:** `Admin`
-   - **Пароль:** `Luka1Soso`  
-   Свой логин/пароль: `ADMIN_NICKNAME=... ADMIN_PASSWORD=... npm run prisma:seed`.
-
-2. **Залогиниться:**
-   - **Web:** открыть `http://localhost:5173` → «Sign in» → ввести никнейм `Admin` и пароль `Luka1Soso`.
-   - **Desktop:** запустить приложение → экран входа → те же никнейм и пароль.
-
-После входа админ видит все разделы: Dashboard, Calendar, Passengers, Translation, Analytics, Roles, Session Monitor, Cost Control, White Label (в Web); в Desktop — Control Mode, Live Wall, System Health, Logs & Audit.
-
-**Альтернатива без seed:** создать админа через API:
-   ```bash
-   curl -X POST http://localhost:3000/auth/register -H "Content-Type: application/json" -d "{\"nickname\":\"Admin\",\"password\":\"Luka1Soso\",\"role\":\"ADMIN\"}"
-   ```
-   Затем войти на сайте или в Desktop с этими данными.
+**Вход:** после seed создаётся пользователь **Admin** / **Luka1Soso**. Свой логин/пароль:  
+`ADMIN_NICKNAME=... ADMIN_PASSWORD=... npm run prisma:seed`
 
 ### Web
 
@@ -66,38 +42,97 @@ npm install
 npm run dev
 ```
 
-Открыть `http://localhost:5173`. Прокси к API: `/api` → backend.
+Открыть http://localhost:5173. API по умолчанию: `/api` → backend.
 
 ### Desktop
 
 ```bash
 cd desktop
 npm install
-# Запустить backend и web (или только backend для API)
 npm run dev
 ```
 
-Предполагается, что Vite для desktop собран или запущен на порту 5174; при необходимости поправить `electron/main.js` (loadURL порт).
+В папке `desktop` создайте `.env` для прод API:
+
+```env
+VITE_API_URL=https://relaxdrive-api.onrender.com
+VITE_WS_URL=https://relaxdrive-api.onrender.com
+```
+
+Без `.env` приложение обращается к `http://localhost:3000`.
+
+**Сборка exe (Windows):** `npm run build:win` → `desktop/dist-electron/RelaxDrive-Desktop.exe`
+
+---
+
+## Роли и доступ
+
+| Роль | Web | Desktop |
+|------|-----|---------|
+| **Admin** | Всё: Dashboard, календарь, клиенты, перевод, аналитика, роли, сессии, контроль затрат, white label, About | Всё: Control, Live Wall, System Health, Logs & Audit, Клиенты, Админ, About |
+| **Dispatcher** | Dashboard, календарь, клиенты, перевод, аналитика, сессии, About | Соответствующие режимы по правам |
+| **Driver** | Dashboard (мои заказы, карта, геолокация), перевод, About | Dashboard-режим, About |
+
+Смена ролей: только Admin в разделе «Роли». После смены роли на другом устройстве обновится по WebSocket или при следующем входе.
+
+---
+
+## Деплой на Render
+
+1. **Репозиторий на GitHub**  
+   Создайте репозиторий (без README/.gitignore). Из папки проекта:
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial: RelaxDrive"
+   git branch -M main
+   git remote add origin https://github.com/ВАШ_ЛОГИН/relaxdrive.git
+   git push -u origin main
+   ```
+   При запросе пароля используйте [Personal Access Token](https://github.com/settings/tokens) (права **repo**).
+
+2. **Render**  
+   - [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint** (или вручную PostgreSQL + Web Service).  
+   - Подключите репозиторий. В корне есть **render.yaml**: БД + сервис **relaxdrive-api** (Root Directory: `backend`).  
+   - Переменные: `DATABASE_URL` (Internal URL из PostgreSQL), `JWT_SECRET` (длинная случайная строка), `CORS_ORIGINS` (URL фронта или `*` для теста).
+
+3. **Создать админа**  
+   После успешного деплоя API: в карточке сервиса → **Shell** → выполнить:
+   ```bash
+   npm run prisma:seed
+   ```
+   Либо с компьютера: в `backend` задать `DATABASE_URL` на External URL из Render → `cp prisma/schema.postgres.prisma prisma/schema.prisma` → `npx prisma migrate deploy` → `npm run prisma:seed`.
+
+4. **Фронт (Static Site)**  
+   **New** → **Static Site** → тот же репо. Root: `web`, Build: `npm install && npm run build`, Publish: `dist`. В API в `CORS_ORIGINS` добавьте URL этого сайта.
+
+**Обновление после изменений:** запушьте в репо → Render пересоберёт сервисы. Либо **Manual Deploy** в карточке сервиса. После деплоя веб-сайта обновите страницу с **Ctrl+Shift+R**.
+
+---
+
+## Сборка и обновление (web + desktop)
+
+- **Web:** `cd web` → `npm run build` → артефакты в `web/dist`.  
+- **Backend:** `cd backend` → `npm run build`.  
+- **Desktop:** `cd desktop` → `npm run build:win` → exe в `desktop/dist-electron/RelaxDrive-Desktop.exe`.
+
+Раздайте exe пользователям или загрузите в GitHub Releases.
+
+---
+
+## Не входит в админку / типичные проблемы
+
+- **Не входится Admin:** проверьте, что seed выполнен на прод-БД (Shell на Render: `npm run prisma:seed`). Вводите **Admin** / **Luka1Soso** без лишних пробелов.  
+- **Сайт не обновляется:** жёсткое обновление **Ctrl+Shift+R**; проверьте Logs деплоя relaxdrive-web.  
+- **Ошибка деплоя API:** смотрите Logs в Render; частые причины: не задан `DATABASE_URL`, нужен Node 18+ (в настройках сервиса укажите Node 20).
+
+---
 
 ## Технологии
 
-- **Backend**: NestJS, Prisma (PostgreSQL), JWT, Socket.IO, Redis (опционально).
-- **Web**: React 18, Vite, React Router, Zustand, i18next, Socket.IO client.
-- **Desktop**: Electron, тот же React-стек.
-- **Дизайн**: RelaxDrive Style — тёмный UI, чёрный/белый/красный/жёлтый/зелёный, glass-панели. См. `docs/UI-LAYOUTS.md` и `web/src/styles/variables.css`.
+- **Backend:** NestJS, Prisma (SQLite/PostgreSQL), JWT, Socket.IO  
+- **Web:** React 18, Vite, React Router, Zustand, i18next, Leaflet  
+- **Desktop:** Electron, тот же React-стек  
+- **Стиль:** тёмная тема, панели, карточки (см. `web/src/styles/variables.css`)
 
-## Роли
-
-- **Admin**: полный доступ, роли, permission matrix, system health, cost control, white label.
-- **Dispatcher**: карта, заказы, назначения, календарь, переводы, аналитика в рамках прав.
-- **Driver**: принять/отклонить заказ, геолокация, навигация, auto-reconnect (реализуется в driver app).
-
-Рейтинги водителей не используются; скрытые технические метрики — только для AI-логики.
-
-## Документация
-
-- **ARCHITECTURE.md** — высокоуровневая архитектура, компоненты, потоки данных.
-- **docs/ABOUT.md** — что делает программа для диспетчеров и админов (EN + RU).
-- **docs/ЧТО-ОСТАЛОСЬ.md** — что уже сделано и что осталось доделать.
-- **docs/DESKTOP.md** — как запустить Desktop Control Center и чем он управляет.
-- **docs/UI-LAYOUTS.md** — макеты экранов и дизайн-система RelaxDrive.
+Вся актуальная информация и инструкции собраны в этом README. Дополнительные материалы — в папке `docs/` (при необходимости).

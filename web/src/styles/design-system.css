@@ -71,6 +71,16 @@ body {
   filter: brightness(1.1);
 }
 
+.rd-btn-success {
+  background: var(--rd-ok);
+  border-color: var(--rd-ok);
+  color: #fff;
+}
+
+.rd-btn-success:hover {
+  filter: brightness(1.08);
+}
+
 .rd-btn-danger {
   background: transparent;
   border-color: var(--rd-critical);
@@ -106,16 +116,60 @@ body {
   border-color: var(--rd-accent);
 }
 
+/* Form labels — same style across Login, Register, Dashboard, Passengers */
+.rd-label,
+.rd-panel label,
+form label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--rd-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+/* Links — accent color to match primary actions */
+a {
+  color: var(--rd-accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
 /* Map container — center of dashboard */
 .rd-map-container {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 400px;
+  min-height: 480px;
   background: var(--rd-bg-elevated);
   border-radius: var(--rd-radius-lg);
   border: 1px solid var(--rd-border);
   overflow: hidden;
+}
+
+.rd-map-container .leaflet-container {
+  height: 100%;
+  min-height: 480px;
+}
+
+/* Nav bar — turn-by-turn strip */
+.nav-bar {
+  background: var(--rd-bg-panel);
+  backdrop-filter: blur(var(--rd-blur));
+  -webkit-backdrop-filter: blur(var(--rd-blur));
+  border-bottom: 1px solid var(--rd-border);
+  padding: var(--rd-space-md) var(--rd-space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-lg);
+  flex-wrap: wrap;
+}
+.nav-bar__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  color: var(--rd-accent);
 }
 
 /* Status badge */
@@ -128,9 +182,31 @@ body {
   border-radius: 4px;
 }
 
-.rd-badge-ok { background: rgba(34, 197, 94, 0.2); color: var(--rd-ok); }
-.rd-badge-warning { background: rgba(234, 179, 8, 0.2); color: var(--rd-warning); }
-.rd-badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--rd-critical); }
+.rd-badge-ok { background: rgba(40, 167, 69, 0.25); color: var(--rd-ok); }
+.rd-badge-warning { background: rgba(255, 193, 7, 0.25); color: var(--rd-warning); }
+.rd-badge-critical { background: rgba(239, 68, 68, 0.25); color: var(--rd-critical); }
+.rd-badge-assigned { background: rgba(255, 193, 7, 0.25); color: var(--rd-warning); }
+.rd-badge-pending { background: rgba(79, 114, 158, 0.3); color: #8ec5e8; }
+
+/* WS status pill (green dot + text) */
+.rd-ws-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  background: var(--rd-surface);
+  border: 1px solid var(--rd-border);
+}
+.rd-ws-pill .rd-ws-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rd-text-dim);
+}
+.rd-ws-pill.connected .rd-ws-dot { background: var(--rd-ok); box-shadow: 0 0 8px var(--rd-ok); }
+.rd-ws-pill.connected { border-color: rgba(40, 167, 69, 0.3); }
 
 /* Animations — subtle, no overload */
 .rd-fade-in {
@@ -141,3 +217,68 @@ body {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Section title (e.g. Active Orders) */
+.rd-section-title {
+  margin: var(--rd-space-md) 0 var(--rd-space-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--rd-text);
+}
+
+/* Tables — same style across Passengers, Roles, etc. */
+.rd-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: var(--rd-space-md) 0;
+}
+.rd-table {
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.rd-table th,
+.rd-table td {
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--rd-border);
+}
+.rd-table th {
+  font-weight: 600;
+  color: var(--rd-text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.rd-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Page wrapper — consistent max-width and spacing for content pages */
+.rd-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-left: var(--rd-space-md);
+  padding-right: var(--rd-space-md);
+}
+
+@media (max-width: 640px) {
+  .rd-page {
+    padding-left: var(--rd-space-sm);
+    padding-right: var(--rd-space-sm);
+  }
+  .rd-table { min-width: 360px; }
+}
+
+/* Form and panel titles — match screenshot typography */
+.rd-panel h1,
+.auth-layout__center h1,
+.rd-page h1 {
+  margin: 0 0 var(--rd-space-md);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--rd-text);
+}
+.rd-panel h2 { margin: 0 0 var(--rd-space-sm); font-size: 1.0625rem; font-weight: 600; color: var(--rd-text); }
+.rd-panel h3 { margin: 0 0 var(--rd-space-xs); font-size: 1rem; font-weight: 600; color: var(--rd-text); }

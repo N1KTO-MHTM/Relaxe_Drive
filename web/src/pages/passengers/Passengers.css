@@ -1,0 +1,33 @@
+.passengers-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-sm);
+  margin: var(--rd-space-md) 0;
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-panel);
+  border-radius: var(--rd-radius);
+  border: 1px solid var(--rd-border);
+}
+
+.passengers-form-row {
+  display: flex;
+  gap: var(--rd-space-sm);
+  align-items: center;
+}
+
+.passengers-form-row .rd-input {
+  flex: 1 1 auto;
+}
+
+.passengers-form-select {
+  min-width: 120px;
+}
+
+.passengers-subtitle {
+  margin: 0 0 var(--rd-space-md);
+  font-size: 0.875rem;
+}
+
+.passengers-error {
+  margin-bottom: var(--rd-space-sm);
+}

@@ -12,20 +12,24 @@ export default function Login() {
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     try {
+      const device = typeof navigator !== 'undefined' ? `Web (${navigator.userAgent.slice(0, 80)}${navigator.userAgent.length > 80 ? '…' : ''})` : 'Web';
       const data = await api.post<{
         accessToken: string;
         refreshToken: string;
         user: { id: string; nickname: string; role: string; locale: string };
-      }>('/auth/login', { nickname, password });
-      localStorage.setItem('relaxdrive-access-token', data.accessToken);
-      localStorage.setItem('relaxdrive-refresh-token', data.refreshToken);
+      }>('/auth/login', { nickname, password, device, rememberDevice });
       setAuth(data.accessToken, data.refreshToken, { ...data.user, role: data.user.role as Role });
+      if (data.user?.locale) {
+        const i18nModule = await import('../../i18n');
+        i18nModule.default.changeLanguage(data.user.locale);
+      }
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
@@ -37,16 +41,17 @@ export default function Login() {
   return (
     <form onSubmit={handleSubmit}>
       <h1>{t('auth.login')}</h1>
+      <p className="rd-text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>{t('auth.staffOnly')}</p>
       {error && (
-        <p className="login-error status-critical">
+        <p className="rd-text-critical" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           {error}
-          <button type="button" className="rd-btn rd-btn-link" onClick={() => setError('')} style={{ marginLeft: '0.5rem' }}>
+          <button type="button" className="rd-btn rd-btn-link" onClick={() => setError('')}>
             {t('auth.retry')}
           </button>
         </p>
       )}
       <div style={{ marginBottom: '1rem' }}>
-        <label>{t('auth.nickname')}</label>
+        <label className="rd-label">{t('auth.nickname')}</label>
         <input
           type="text"
           className="rd-input"
@@ -57,7 +62,7 @@ export default function Login() {
         />
       </div>
       <div className="login-password-wrap" style={{ marginBottom: '1rem' }}>
-        <label>{t('auth.password')}</label>
+        <label className="rd-label">{t('auth.password')}</label>
         <div className="login-password-row">
           <input
             type={showPassword ? 'text' : 'password'}
@@ -78,6 +83,10 @@ export default function Login() {
           </label>
         </div>
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+        <input type="checkbox" checked={rememberDevice} onChange={(e) => setRememberDevice(e.target.checked)} />
+        <span>{t('auth.rememberDevice')}</span>
+      </label>
       <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }}>
         {t('auth.login')}
       </button>

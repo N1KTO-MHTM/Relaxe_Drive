@@ -1,11 +1,12 @@
 import type { Role } from '../store/auth';
 
-/** Paths that each role can access. Driver can use Translation. */
+/** Paths that each role can access. Drivers and Clients tabs only for DISPATCHER and ADMIN; DRIVER cannot see them. */
 export const ROLE_PATHS: Record<Role, string[]> = {
   ADMIN: [
     '/dashboard',
     '/calendar',
     '/passengers',
+    '/drivers',
     '/translation',
     '/analytics',
     '/roles',
@@ -18,11 +19,12 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/dashboard',
     '/calendar',
     '/passengers',
+    '/drivers',
     '/translation',
-    '/analytics',
     '/sessions',
     '/about',
   ],
+  /** Driver: no Passengers, no Drivers — only dashboard, translation, about. */
   DRIVER: ['/dashboard', '/translation', '/about'],
 };
 
@@ -38,6 +40,7 @@ export function getAllowedNavItems(role: Role | null): { path: string; key: stri
     { path: '/dashboard', key: 'dashboard' },
     { path: '/calendar', key: 'calendar' },
     { path: '/passengers', key: 'passengers' },
+    { path: '/drivers', key: 'drivers' },
     { path: '/translation', key: 'translation' },
     { path: '/analytics', key: 'analytics' },
     { path: '/roles', key: 'roles' },

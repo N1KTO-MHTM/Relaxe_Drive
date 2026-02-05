@@ -14,10 +14,16 @@ model User {
   id            String    @id @default(cuid())
   nickname      String    @unique
   email         String?   @unique
+  phone         String?
   passwordHash  String    @map("password_hash")
   role          String
   tenantId      String?   @map("tenant_id")
   locale        String    @default("en")
+  lat           Float?    @db.DoublePrecision
+  lng           Float?    @db.DoublePrecision
+  blocked       Boolean   @default(false)
+  bannedUntil   DateTime? @map("banned_until")
+  banReason     String?   @map("ban_reason")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   sessions      Session[]
@@ -36,31 +42,44 @@ model Session {
 }
 
 model Order {
-  id             String   @id @default(cuid())
-  status         String   @default("DRAFT")
-  pickupAt       DateTime @map("pickup_at")
-  pickupAddress  String   @map("pickup_address")
-  dropoffAddress String   @map("dropoff_address")
-  passengerId    String?  @map("passenger_id")
-  driverId       String?  @map("driver_id")
-  createdById    String   @map("created_by_id")
-  createdBy      User     @relation("OrderCreator", fields: [createdById], references: [id])
-  bufferMinutes  Int      @default(15) @map("buffer_minutes")
-  etaMinutes    Int?     @map("eta_minutes")
-  aiEtaMinutes  Int?     @map("ai_eta_minutes")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id                       String    @id @default(cuid())
+  status                   String    @default("DRAFT")
+  tripType                 String    @default("ONE_WAY") @map("trip_type")
+  pickupAt                 DateTime  @map("pickup_at")
+  pickupAddress            String    @map("pickup_address")
+  middleAddress           String?   @map("middle_address")
+  dropoffAddress           String    @map("dropoff_address")
+  pickupType               String?   @map("pickup_type")
+  dropoffType              String?   @map("dropoff_type")
+  passengerId              String?   @map("passenger_id")
+  driverId                 String?  @map("driver_id")
+  createdById              String    @map("created_by_id")
+  createdBy                User     @relation("OrderCreator", fields: [createdById], references: [id])
+  bufferMinutes            Int       @default(15) @map("buffer_minutes")
+  etaMinutes               Int?     @map("eta_minutes")
+  aiEtaMinutes             Int?     @map("ai_eta_minutes")
+  startedAt                DateTime? @map("started_at")
+  arrivedAtPickupAt        DateTime? @map("arrived_at_pickup_at")
+  leftPickupAt             DateTime? @map("left_pickup_at")
+  waitChargeAtPickupCents  Int?      @map("wait_charge_at_pickup_cents")
+  arrivedAtMiddleAt       DateTime? @map("arrived_at_middle_at")
+  leftMiddleAt            DateTime? @map("left_middle_at")
+  waitChargeAtMiddleCents Int?       @map("wait_charge_at_middle_cents")
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
 }
 
 model Passenger {
-  id          String   @id @default(cuid())
-  phone       String
-  name        String?
-  pickupAddr  String?  @map("pickup_addr")
-  dropoffAddr String?  @map("dropoff_addr")
-  tenantId    String?  @map("tenant_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  phone        String
+  name         String?
+  pickupAddr   String?  @map("pickup_addr")
+  dropoffAddr  String?  @map("dropoff_addr")
+  pickupType   String?  @map("pickup_type")
+  dropoffType  String?  @map("dropoff_type")
+  tenantId     String?  @map("tenant_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 }
 
 model AuditLog {

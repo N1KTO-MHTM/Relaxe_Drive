@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/auth';
 import { api } from '../../api/client';
 import './Calendar.css';
 
@@ -30,10 +32,13 @@ function endOfDay(d: Date): Date {
 
 export default function Calendar() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
   const [view, setView] = useState<'day' | 'week'>('week');
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
 
   const from = startOfDay(new Date(selectedDate));
   const to = view === 'day' ? endOfDay(from) : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -72,7 +77,8 @@ export default function Calendar() {
   }
 
   return (
-    <div className="calendar-page rd-panel">
+    <div className="rd-page">
+      <div className="calendar-page rd-panel">
       <div className="rd-panel-header calendar-header">
         <h1>{t('calendar.title')}</h1>
         <div className="calendar-controls">
@@ -104,7 +110,15 @@ export default function Calendar() {
       ) : (
         <div className="calendar-grid">
           {weekDays.map((dayKey) => (
-            <div key={dayKey} className="calendar-day">
+            <div
+              key={dayKey}
+              className={`calendar-day ${selectedDate === dayKey ? 'calendar-day--selected' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedDate(dayKey)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(dayKey); } }}
+              aria-pressed={selectedDate === dayKey}
+            >
               <h3 className="calendar-day-title">{new Date(dayKey + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
               <ul className="calendar-day-orders">
                 {(ordersByDay[dayKey] || [])
@@ -117,10 +131,20 @@ export default function Calendar() {
                     </li>
                   ))}
               </ul>
+              {canCreateOrder && (
+                <button
+                  type="button"
+                  className="rd-btn rd-btn-primary calendar-day-create"
+                  onClick={(e) => { e.stopPropagation(); navigate('/dashboard', { state: { createOrderDate: dayKey } }); }}
+                >
+                  {t('calendar.createOrderForDay')}
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import ForgotPassword from './pages/forgot-password/ForgotPassword';
 import Dashboard from './pages/dashboard/Dashboard';
 import Calendar from './pages/calendar/Calendar';
 import Passengers from './pages/passengers/Passengers';
+import Drivers from './pages/drivers/Drivers';
 import Translation from './pages/translation/Translation';
 import Analytics from './pages/analytics/Analytics';
 import Roles from './pages/roles/Roles';
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/passengers" element={<Passengers />} />
+        <Route path="/drivers" element={<Drivers />} />
         <Route path="/translation" element={<Translation />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/roles" element={<Roles />} />

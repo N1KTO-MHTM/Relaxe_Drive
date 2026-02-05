@@ -32,4 +32,9 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
   broadcastEta(payload: unknown) {
     this.server?.emit('eta', payload);
   }
+
+  /** Notify clients that a user was updated (e.g. role change) so they refetch current user */
+  emitUserUpdated(userId: string) {
+    this.server?.emit('user.updated', { userId });
+  }
 }

@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
 
-/** Auto follow-ups: stopped movement, ETA rise, off-route, connection lost. Emit via WebSocket. */
+/** Emit dashboard alerts via WebSocket (order assigned, etc.). */
 @Injectable()
 export class AlertsService {
-  async emitAlert(type: string, payload: Record<string, unknown>) {
-    // Injected WebSocket gateway will broadcast to 'alerts' channel
+  constructor(private readonly ws: RelaxDriveWsGateway) {}
+
+  emitAlert(type: string, payload: Record<string, unknown>) {
+    this.ws.broadcastAlerts({ type, ...payload, at: new Date().toISOString() });
   }
 }

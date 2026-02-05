@@ -7,6 +7,9 @@
     "backend": "npm run start:dev --prefix backend",
     "web": "npm run dev --prefix web",
     "desktop": "npm run dev --prefix desktop",
-    "install:all": "npm install && npm install --prefix backend && npm install --prefix web && npm install --prefix desktop"
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix web && npm install --prefix desktop",
+    "build:all": "npm run build --prefix backend && npm run build --prefix web",
+    "test": "npm run test --prefix web",
+    "typecheck": "npm run build --prefix web"
   }
 }
