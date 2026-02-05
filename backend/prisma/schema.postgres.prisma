@@ -77,6 +77,7 @@ model Passenger {
   dropoffAddr  String?  @map("dropoff_addr")
   pickupType   String?  @map("pickup_type")
   dropoffType  String?  @map("dropoff_type")
+  userId       String?  @unique @map("user_id")
   tenantId     String?  @map("tenant_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
