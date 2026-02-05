@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '../../store/auth';
+import { useAuthStore, type Role } from '../../store/auth';
 import { api } from '../../api/client';
 import './Login.css';
 
@@ -25,7 +25,7 @@ export default function Login() {
       }>('/auth/login', { nickname, password });
       localStorage.setItem('relaxdrive-access-token', data.accessToken);
       localStorage.setItem('relaxdrive-refresh-token', data.refreshToken);
-      setAuth(data.accessToken, data.refreshToken, data.user);
+      setAuth(data.accessToken, data.refreshToken, { ...data.user, role: data.user.role as Role });
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';

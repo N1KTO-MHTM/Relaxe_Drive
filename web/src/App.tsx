@@ -23,7 +23,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { i18n } = useTranslation();
+  useTranslation();
 
   return (
     <Routes>

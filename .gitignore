@@ -3,6 +3,9 @@ node_modules/
 
 # Build / dist
 dist/
+*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
 backend/dist/
 web/dist/
 desktop/dist/
