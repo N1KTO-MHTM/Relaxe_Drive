@@ -7,7 +7,7 @@
 - **`backend/`** — NestJS API (REST + WebSocket), JWT, RBAC, заказы, гео, AI ETA, алерты, переводы, аналитика, аудит, cost control, white label.
 - **`web/`** — React + Vite: Dispatcher Dashboard, календарь, пассажиры, Translation Center, аналитика, роли, сессии, cost control, white label. i18n: EN, RU, KA.
 - **`desktop/`** — Electron Control Center: Control Mode, Live Wall, System Health, Logs & Audit. Local cache, auto-reconnect, graceful degradation.
-- **`docs/`** — UI layouts, design system.
+- **`docs/`** — спецификация проекта ([SPEC.md](docs/SPEC.md)), UI layouts, design system, деплой, roadmap.
 - **`ARCHITECTURE.md`** — архитектура системы, data flow, permission matrix.
 
 ## Быстрый старт
@@ -97,4 +97,7 @@ npm run dev
 ## Документация
 
 - **ARCHITECTURE.md** — высокоуровневая архитектура, компоненты, потоки данных.
+- **docs/ABOUT.md** — что делает программа для диспетчеров и админов (EN + RU).
+- **docs/ЧТО-ОСТАЛОСЬ.md** — что уже сделано и что осталось доделать.
+- **docs/DESKTOP.md** — как запустить Desktop Control Center и чем он управляет.
 - **docs/UI-LAYOUTS.md** — макеты экранов и дизайн-система RelaxDrive.

@@ -30,6 +30,39 @@
   font-size: 0.8125rem;
 }
 
+.dashboard-order-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-sm);
+  margin-top: var(--rd-space-md);
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-panel);
+  border-radius: var(--rd-radius-md);
+}
+.dashboard-order-form label { font-size: 0.875rem; }
+.dashboard-orders-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--rd-space-md) 0 0;
+}
+.dashboard-orders-list li {
+  padding: var(--rd-space-sm);
+  margin-bottom: var(--rd-space-sm);
+  border-radius: var(--rd-radius-sm);
+}
+.dashboard-orders-list .rd-badge { margin-right: var(--rd-space-sm); }
+.dashboard-order-item { display: flex; flex-direction: column; gap: 0.25rem; }
+.dashboard-order-assign { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.dashboard-order-assign .rd-input { width: auto; min-width: 140px; }
+.rd-text-critical { color: var(--rd-status-critical); font-size: 0.875rem; }
+.rd-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-sm);
+  flex-wrap: wrap;
+}
+
 @media (max-width: 1200px) {
   .dashboard-page__grid {
     grid-template-columns: 1fr;

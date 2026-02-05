@@ -34,3 +34,12 @@
   width: 100%;
   max-width: 400px;
 }
+
+.auth-layout__version {
+  position: absolute;
+  bottom: var(--rd-space-md);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: var(--rd-text-muted);
+}

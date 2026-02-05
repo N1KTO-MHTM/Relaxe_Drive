@@ -4,6 +4,23 @@ const fs = require('fs');
 
 let mainWindow = null;
 
+function getCachePath() {
+  return path.join(app.getPath('userData'), 'relaxdrive-cache.json');
+}
+
+async function readCache() {
+  try {
+    const raw = await fs.promises.readFile(getCachePath(), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function writeCache(data) {
+  await fs.promises.writeFile(getCachePath(), JSON.stringify(data), 'utf8');
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -37,5 +54,12 @@ app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
-ipcMain.handle('get-cached-data', (_, key) => Promise.resolve(null));
-ipcMain.handle('set-cached-data', (_, key, value) => Promise.resolve());
+ipcMain.handle('get-cached-data', async (_, key) => {
+  const data = await readCache();
+  return data[key] ?? null;
+});
+ipcMain.handle('set-cached-data', async (_, key, value) => {
+  const data = await readCache();
+  data[key] = value;
+  await writeCache(data);
+});

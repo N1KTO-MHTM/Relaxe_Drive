@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
+import DesktopLayout from '../layouts/DesktopLayout';
 
 /** API, WebSocket, Redis, Maps, Translation, AI, Queues, Latency. */
 export default function SystemHealthMode() {
@@ -16,26 +16,22 @@ export default function SystemHealthMode() {
   }, []);
 
   return (
-    <div className="health-mode">
-      <nav className="rd-panel" style={{ padding: '1rem', marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
-        <Link to="/control">{t('modes.control')}</Link>
-        <Link to="/wall">{t('modes.wall')}</Link>
-        <Link to="/health">{t('modes.health')}</Link>
-        <Link to="/logs">{t('modes.logs')}</Link>
-      </nav>
-      <div className="rd-panel">
-        <h1>{t('health.title')}</h1>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-          {['database', 'websocket', 'redis', 'maps', 'ai'].map((key) => (
-            <div key={key} className="rd-panel" style={{ padding: '1rem' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--rd-text-muted)' }}>{t('health.' + key)}</div>
-              <span className={`rd-badge rd-badge-${health[key] === 'ok' ? 'ok' : 'critical'}`}>
-                {health[key] || 'unknown'}
-              </span>
-            </div>
-          ))}
+    <DesktopLayout>
+      <div className="health-mode">
+        <div className="rd-panel">
+          <h1>{t('health.title')}</h1>
+          <div className="health-mode__grid">
+            {['database', 'websocket', 'redis', 'maps', 'ai'].map((key) => (
+              <div key={key} className="rd-panel health-mode__card">
+                <div className="health-mode__label">{t('health.' + key)}</div>
+                <span className={`rd-badge rd-badge-${health[key] === 'ok' ? 'ok' : 'critical'}`}>
+                  {health[key] || 'unknown'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </DesktopLayout>
   );
 }

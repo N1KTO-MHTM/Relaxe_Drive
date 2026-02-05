@@ -11,11 +11,13 @@
     "forgotPassword": "დაგავიწყდათ პაროლი?",
     "invalidCredentials": "არასწორი ნიკნეიმი ან პაროლი",
     "serverError": "სერვერი მიუწვდომელია.",
+    "retry": "ხელახლა",
     "forgotPasswordSent": "თუ ასეთი ნიკნეიმის ანგარიში არსებობს, მიმართეთ ადმინისტრატორს პაროლის გასაუქმებლად.",
     "forgotPasswordHint": "შეიყვანეთ ნიკნეიმი. ადმინისტრატორს შეუძლია პაროლის გასაუქმება.",
     "forgotPasswordSubmit": "პაროლის გასაუქმების მოთხოვნა",
     "registerFailed": "რეგისტრაცია ვერ მოხდა"
   },
+  "about": { "title": "აპლიკაციის შესახებ", "app": "აპლიკაცია", "version": "ვერსია", "creator": "შემქმნელი", "description": "RelaxDrive — დისპეტჩერული პლატფორმა. ვებ, Desktop Control Center, შეკვეთები და მძღოლები რეალურ დროში." },
   "nav": {
     "dashboard": "პანელი",
     "calendar": "კალენდარი",
@@ -25,7 +27,8 @@
     "roles": "როლები და უფლებები",
     "sessions": "სესიები",
     "costControl": "ხარჯების კონტროლი",
-    "whiteLabel": "White Label"
+    "whiteLabel": "White Label",
+    "about": "აპლიკაციის შესახებ"
   },
   "dashboard": {
     "title": "დისპეტჩერის პანელი",
@@ -34,13 +37,24 @@
     "drivers": "მძღოლები",
     "alerts": "შეტყობინებები",
     "eta": "ETA",
-    "aiEta": "AI ETA"
+    "aiEta": "AI ETA",
+    "newOrder": "ახალი შეკვეთა",
+    "pickupAt": "პიკაპის დრო",
+    "pickupAddress": "პიკაპის მისამართი",
+    "dropoffAddress": "დასაშვები მისამართი",
+    "createOrder": "შეკვეთის შექმნა",
+    "noOrders": "აქტიური შეკვეთები არ არის",
+    "orderStatus": "სტატუსი",
+    "assignDriver": "მძღოლის მინიჭება",
+    "assigned": "მინიჭებული",
+    "start": "დაწყება",
+    "complete": "დასრულება"
   },
   "calendar": { "title": "კალენდარი", "day": "დღე", "week": "კვირა", "preOrder": "წინასწარ (6 დღემდე)", "conflict": "კონფლიქტი" },
   "passengers": { "title": "მგზავრები", "phone": "ტელეფონი", "addresses": "მისამართები", "history": "ისტორია" },
   "translation": { "title": "თარგმანის ცენტრი", "voiceToText": "ხმა → ტექსტი", "autoLanguage": "ავტო ენა", "history": "ისტორია" },
   "analytics": { "title": "ანალიტიკა", "heatmap": "სითბოს რუკა", "filters": "ფილტრები" },
-  "roles": { "title": "როლები და უფლებები", "admin": "ადმინი", "dispatcher": "დისპეტჩერი", "driver": "მძღოლი" },
+  "roles": { "title": "როლები და უფლებები", "admin": "ადმინი", "dispatcher": "დისპეტჩერი", "driver": "მძღოლი", "usersList": "მომხმარებლები და როლები", "changeRole": "როლის შეცვლა", "saved": "შენახული", "actions": "მოქმედებები", "resetPassword": "პაროლის გასაუქმება", "resetPasswordPrompt": "ახალი პაროლი {{nickname}}-ისთვის (მინ. 6 სიმბოლო)", "passwordMinLength": "პაროლი მინიმუმ 6 სიმბოლო" },
   "sessions": { "title": "სესიების მონიტორინგი", "online": "ონლაინ", "device": "მოწყობილობა", "ip": "IP", "lastActive": "აქტივობა" },
   "costControl": { "title": "ხარჯების კონტროლი", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS" },
   "whiteLabel": { "title": "White Label", "logo": "ლოგო", "colors": "ფერები", "domains": "დომენები", "languages": "ენები" },

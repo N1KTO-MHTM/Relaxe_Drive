@@ -3,6 +3,7 @@
   "modes": { "control": "Режим управления", "wall": "Стена", "health": "Состояние системы", "logs": "Логи и аудит" },
   "health": { "title": "Состояние системы", "api": "API", "websocket": "WebSocket", "redis": "Redis", "database": "БД", "maps": "Карты", "translation": "Перевод", "ai": "AI", "queues": "Очереди", "latency": "Задержка" },
   "logs": { "title": "Логи и аудит", "filter": "Фильтр", "export": "Экспорт" },
+  "about": { "title": "О приложении", "app": "Приложение", "version": "Версия", "creator": "Создатель", "description": "RelaxDrive — диспетчерская платформа. Веб, Desktop Control Center, заказы и водители в реальном времени." },
   "auth": {
     "login": "Вход",
     "nickname": "Никнейм",
@@ -14,6 +15,7 @@
     "serverError": "Сервер недоступен.",
     "forgotPasswordSent": "Обратитесь к администратору для сброса пароля.",
     "forgotPasswordHint": "Введите никнейм. Администратор может сбросить пароль.",
-    "forgotPasswordSubmit": "Запросить сброс"
+    "forgotPasswordSubmit": "Запросить сброс",
+    "logout": "Выйти"
   }
 }

@@ -54,4 +54,28 @@ export class UsersService {
       orderBy: { lastActiveAt: 'desc' },
     });
   }
+
+  async findAll() {
+    return this.prisma.user.findMany({
+      select: { id: true, nickname: true, email: true, role: true, locale: true, createdAt: true },
+      orderBy: { nickname: 'asc' },
+    });
+  }
+
+  async updateRole(userId: string, role: Role) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
+      select: { id: true, nickname: true, role: true },
+    });
+  }
+
+  async setPassword(userId: string, newPassword: string) {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+      select: { id: true, nickname: true },
+    });
+  }
 }

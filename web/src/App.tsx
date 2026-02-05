@@ -15,6 +15,7 @@ import Roles from './pages/roles/Roles';
 import SessionMonitor from './pages/session-monitor/SessionMonitor';
 import CostControl from './pages/cost-control/CostControl';
 import WhiteLabel from './pages/white-label/WhiteLabel';
+import About from './pages/about/About';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/sessions" element={<SessionMonitor />} />
         <Route path="/cost-control" element={<CostControl />} />
         <Route path="/white-label" element={<WhiteLabel />} />
+        <Route path="/about" element={<About />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

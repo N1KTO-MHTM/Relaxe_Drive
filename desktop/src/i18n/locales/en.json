@@ -19,6 +19,7 @@
     "latency": "Latency"
   },
   "logs": { "title": "Logs & Audit", "filter": "Filter", "export": "Export" },
+  "about": { "title": "About", "app": "Application", "version": "Version", "creator": "Creator", "description": "RelaxDrive — dispatch control platform. Web, Desktop Control Center, real-time orders and drivers." },
   "auth": {
     "login": "Sign in",
     "nickname": "Nickname",
@@ -30,6 +31,7 @@
     "serverError": "Cannot reach server. Is the backend running?",
     "forgotPasswordSent": "If an account with this nickname exists, contact your administrator to reset the password.",
     "forgotPasswordHint": "Enter your nickname. An administrator can reset your password.",
-    "forgotPasswordSubmit": "Request reset"
+    "forgotPasswordSubmit": "Request reset",
+    "logout": "Log out"
   }
 }

@@ -1,7 +1,25 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import fs from 'fs';
 
 let mainWindow: BrowserWindow | null = null;
+
+function getCachePath() {
+  return path.join(app.getPath('userData'), 'relaxdrive-cache.json');
+}
+
+async function readCache(): Promise<Record<string, unknown>> {
+  try {
+    const raw = await fs.promises.readFile(getCachePath(), 'utf8');
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+async function writeCache(data: Record<string, unknown>) {
+  await fs.promises.writeFile(getCachePath(), JSON.stringify(data), 'utf8');
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -36,5 +54,12 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 
 // Local cache / persistence for graceful degradation
-ipcMain.handle('get-cached-data', (_, key: string) => Promise.resolve(null));
-ipcMain.handle('set-cached-data', (_, key: string, value: unknown) => Promise.resolve());
+ipcMain.handle('get-cached-data', async (_, key: string) => {
+  const data = await readCache();
+  return data[key] ?? null;
+});
+ipcMain.handle('set-cached-data', async (_, key: string, value: unknown) => {
+  const data = await readCache();
+  data[key] = value;
+  await writeCache(data);
+});

@@ -3,6 +3,7 @@ import ControlMode from './modes/ControlMode';
 import LiveWallMode from './modes/LiveWallMode';
 import SystemHealthMode from './modes/SystemHealthMode';
 import LogsAuditMode from './modes/LogsAuditMode';
+import AboutMode from './modes/AboutMode';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import { useAuthStore } from './store/auth';
@@ -47,6 +48,14 @@ export default function App() {
         element={
           <PrivateRoute>
             <LogsAuditMode />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/about"
+        element={
+          <PrivateRoute>
+            <AboutMode />
           </PrivateRoute>
         }
       />

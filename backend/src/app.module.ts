@@ -14,6 +14,7 @@ import { TranslationModule } from './translation/translation.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AuditModule } from './audit/audit.module';
 import { CostControlModule } from './cost-control/cost-control.module';
+import { CostTrackerModule } from './cost-tracker/cost-tracker.module';
 import { WhiteLabelModule } from './white-label/white-label.module';
 import { WebSocketModule } from './websocket/websocket.module';
 import { HealthModule } from './health/health.module';
@@ -25,6 +26,7 @@ import { PrismaModule } from './prisma/prisma.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     PrismaModule,
+    CostTrackerModule,
     AuthModule,
     UsersModule,
     OrdersModule,

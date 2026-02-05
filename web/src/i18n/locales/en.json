@@ -11,11 +11,13 @@
     "forgotPassword": "Forgot password?",
     "invalidCredentials": "Invalid nickname or password",
     "serverError": "Cannot reach server. Is the backend running?",
+    "retry": "Retry",
     "forgotPasswordSent": "If an account with this nickname exists, contact your administrator to reset the password.",
     "forgotPasswordHint": "Enter your nickname. An administrator can reset your password.",
     "forgotPasswordSubmit": "Request reset",
     "registerFailed": "Registration failed"
   },
+  "about": { "title": "About", "app": "Application", "version": "Version", "creator": "Creator", "description": "RelaxDrive — dispatch control platform. Web, Desktop Control Center, real-time orders and drivers." },
   "nav": {
     "dashboard": "Dashboard",
     "calendar": "Calendar",
@@ -25,7 +27,8 @@
     "roles": "Roles & Permissions",
     "sessions": "Session Monitor",
     "costControl": "Cost Control",
-    "whiteLabel": "White Label"
+    "whiteLabel": "White Label",
+    "about": "About"
   },
   "dashboard": {
     "title": "Dispatcher Dashboard",
@@ -34,13 +37,24 @@
     "drivers": "Drivers",
     "alerts": "Alerts",
     "eta": "ETA",
-    "aiEta": "AI ETA"
+    "aiEta": "AI ETA",
+    "newOrder": "New order",
+    "pickupAt": "Pickup time",
+    "pickupAddress": "Pickup address",
+    "dropoffAddress": "Dropoff address",
+    "createOrder": "Create order",
+    "noOrders": "No active orders",
+    "orderStatus": "Status",
+    "assignDriver": "Assign driver",
+    "assigned": "Assigned",
+    "start": "Start",
+    "complete": "Complete"
   },
   "calendar": { "title": "Calendar", "day": "Day", "week": "Week", "preOrder": "Pre-order (up to 6 days)", "conflict": "Conflict" },
   "passengers": { "title": "Passengers", "phone": "Phone", "addresses": "Addresses", "history": "Trip history" },
   "translation": { "title": "Translation Center", "voiceToText": "Voice → Text", "autoLanguage": "Auto language detection", "history": "History" },
   "analytics": { "title": "Analytics", "heatmap": "Heatmap", "filters": "Filters" },
-  "roles": { "title": "Roles & Permissions", "admin": "Admin", "dispatcher": "Dispatcher", "driver": "Driver" },
+  "roles": { "title": "Roles & Permissions", "admin": "Admin", "dispatcher": "Dispatcher", "driver": "Driver", "usersList": "Users and roles", "changeRole": "Change role", "saved": "Saved", "actions": "Actions", "resetPassword": "Reset password", "resetPasswordPrompt": "New password for {{nickname}} (min 6 characters)", "passwordMinLength": "Password must be at least 6 characters" },
   "sessions": { "title": "Session Monitor", "online": "Online", "device": "Device", "ip": "IP", "lastActive": "Last active" },
   "costControl": { "title": "Cost Control", "maps": "Maps", "translation": "Translation", "ai": "AI", "tts": "TTS" },
   "whiteLabel": { "title": "White Label", "logo": "Logo", "colors": "Colors", "domains": "Domains", "languages": "Languages" },

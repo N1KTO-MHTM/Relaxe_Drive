@@ -1,0 +1,54 @@
+.calendar-page {
+  max-width: 1200px;
+}
+
+.calendar-header {
+  flex-wrap: wrap;
+  gap: var(--rd-space-md);
+}
+
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+}
+
+.calendar-date-input {
+  width: auto;
+  min-width: 140px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--rd-space-lg);
+  margin-top: var(--rd-space-lg);
+}
+
+.calendar-day {
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-elevated, rgba(255,255,255,0.03));
+}
+
+.calendar-day-title {
+  font-size: 0.875rem;
+  margin: 0 0 var(--rd-space-sm);
+  color: var(--rd-text-muted);
+}
+
+.calendar-day-orders {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.calendar-order-card {
+  padding: var(--rd-space-sm);
+  margin-bottom: var(--rd-space-sm);
+  font-size: 0.8125rem;
+}
+
+.calendar-order-card .rd-badge { margin-right: 0.5rem; }
+.calendar-order-card time { font-weight: 500; }

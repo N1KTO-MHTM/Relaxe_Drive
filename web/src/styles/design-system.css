@@ -77,6 +77,13 @@ body {
   color: var(--rd-critical);
 }
 
+.rd-btn-link {
+  background: transparent;
+  border-color: transparent;
+  color: var(--rd-accent);
+}
+.rd-btn-link:hover { text-decoration: underline; }
+
 /* Inputs */
 .rd-input {
   width: 100%;

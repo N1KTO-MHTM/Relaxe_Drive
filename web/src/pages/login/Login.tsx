@@ -30,14 +30,21 @@ export default function Login() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       const isNetwork = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed');
-      setError(isNetwork ? t('auth.serverError') : t('auth.invalidCredentials'));
+      setError(isNetwork ? t('auth.serverError') : (msg || t('auth.invalidCredentials')));
     }
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <h1>{t('auth.login')}</h1>
-      {error && <p className="status-critical">{error}</p>}
+      {error && (
+        <p className="login-error status-critical">
+          {error}
+          <button type="button" className="rd-btn rd-btn-link" onClick={() => setError('')} style={{ marginLeft: '0.5rem' }}>
+            {t('auth.retry')}
+          </button>
+        </p>
+      )}
       <div style={{ marginBottom: '1rem' }}>
         <label>{t('auth.nickname')}</label>
         <input

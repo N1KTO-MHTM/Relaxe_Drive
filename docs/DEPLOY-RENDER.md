@@ -107,6 +107,35 @@
 
 ---
 
+### Не могу войти (Admin / Luka1Soso)
+
+Если при входе на https://relaxdrive-web.onrender.com появляется «Invalid nickname or password» или «Cannot reach server»:
+
+1. **Проверь, что seed выполнен на прод-БД.**  
+   В Render открой сервис **relaxdrive-api** → **Shell** и выполни:
+   ```bash
+   npm run prisma:seed
+   ```
+   В выводе должно быть: `Admin: Admin`, `Dispatcher: Disp1, Driver: Driver1, password: Luka1Soso`. Если видишь ошибку (например, нет связи с БД) — исправь её по логам.
+
+2. **Убери переопределение пароля в Render.** В Render открой **relaxdrive-api** → **Environment**. Если есть переменная **ADMIN_PASSWORD** или **SEED_PASSWORD** — удали её или выставь **ADMIN_PASSWORD** = `Luka1Soso`. Сохрани и сделай **Manual Deploy**, затем в **Shell** снова выполни `npm run prisma:seed`. Иначе пароль админа в БД может не совпадать с тем, что ты вводишь.
+
+3. **Вводи данные без лишних пробелов.**  
+   - **Никнейм:** `Admin` (с большой A).  
+   - **Пароль:** `Luka1Soso` (L — большая, цифра 1, остальное как написано).
+
+4. **Проверь, что веб ходит на твой API.**  
+   Открой https://relaxdrive-api.onrender.com/health в браузере. Должен вернуться JSON. Если страница не открывается — API не запущен или «засыпает» (на free-плане после простоя бывает задержка при первом запросе — подожди 30–60 сек и повтори вход).
+
+5. **Проверь, куда уходит запрос при входе.** В браузере открой https://relaxdrive-web.onrender.com → F12 → вкладка **Network (Сеть)** → нажми **Вход** с логином Admin и паролем. Найди запрос к `auth/login`:
+   - **URL запроса** должен быть `https://relaxdrive-api.onrender.com/auth/login`. Если там другой домен (например relaxdrive-web) или путь `/api/auth/login` — веб-сборка не подхватила `VITE_API_URL`: пересобери **relaxdrive-web** (Manual Deploy) и попробуй снова.
+   - **Ответ 401** — API отвечает, но логин/пароль не подходят. Ещё раз выполни seed в Shell и вводи **Admin** / **Luka1Soso** без пробелов.
+   - **Ошибка CORS или 0 / Failed to fetch** — запрос не доходит до API (сервер спит, сеть или CORS). Открой в новой вкладке https://relaxdrive-api.onrender.com/health — подожди до минуты, затем обнови страницу входа и повтори попытку.
+
+6. **Если всё равно не входит** — проверь в Render у **relaxdrive-api** вкладку **Logs**: при попытке входа не должно быть 500 или ошибок БД. Если ошибки есть — пришли текст из Logs.
+
+---
+
 ### Шаг 5. Проверка API
 
 - URL сервиса будет вида: `https://relaxdrive-api.onrender.com` (или как в карточке сервиса).

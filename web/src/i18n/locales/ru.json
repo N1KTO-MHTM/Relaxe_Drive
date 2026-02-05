@@ -11,11 +11,13 @@
     "forgotPassword": "Забыли пароль?",
     "invalidCredentials": "Неверный никнейм или пароль",
     "serverError": "Сервер недоступен. Запущен ли backend?",
+    "retry": "Повторить",
     "forgotPasswordSent": "Если аккаунт с таким никнеймом есть, обратитесь к администратору для сброса пароля.",
     "forgotPasswordHint": "Введите никнейм. Администратор может сбросить пароль.",
     "forgotPasswordSubmit": "Запросить сброс",
     "registerFailed": "Ошибка регистрации"
   },
+  "about": { "title": "О приложении", "app": "Приложение", "version": "Версия", "creator": "Создатель", "description": "RelaxDrive — диспетчерская платформа. Веб, Desktop Control Center, заказы и водители в реальном времени." },
   "nav": {
     "dashboard": "Панель",
     "calendar": "Календарь",
@@ -25,7 +27,8 @@
     "roles": "Роли и права",
     "sessions": "Сессии",
     "costControl": "Контроль затрат",
-    "whiteLabel": "White Label"
+    "whiteLabel": "White Label",
+    "about": "О приложении"
   },
   "dashboard": {
     "title": "Панель диспетчера",
@@ -34,13 +37,24 @@
     "drivers": "Водители",
     "alerts": "Оповещения",
     "eta": "ETA",
-    "aiEta": "AI ETA"
+    "aiEta": "AI ETA",
+    "newOrder": "Новый заказ",
+    "pickupAt": "Время подачи",
+    "pickupAddress": "Адрес подачи",
+    "dropoffAddress": "Адрес назначения",
+    "createOrder": "Создать заказ",
+    "noOrders": "Нет активных заказов",
+    "orderStatus": "Статус",
+    "assignDriver": "Назначить водителя",
+    "assigned": "Назначен",
+    "start": "В путь",
+    "complete": "Завершить"
   },
   "calendar": { "title": "Календарь", "day": "День", "week": "Неделя", "preOrder": "Предзаказ (до 6 дней)", "conflict": "Конфликт" },
   "passengers": { "title": "Пассажиры", "phone": "Телефон", "addresses": "Адреса", "history": "История поездок" },
   "translation": { "title": "Центр переводов", "voiceToText": "Голос → Текст", "autoLanguage": "Авто язык", "history": "История" },
   "analytics": { "title": "Аналитика", "heatmap": "Тепловая карта", "filters": "Фильтры" },
-  "roles": { "title": "Роли и права", "admin": "Админ", "dispatcher": "Диспетчер", "driver": "Водитель" },
+  "roles": { "title": "Роли и права", "admin": "Админ", "dispatcher": "Диспетчер", "driver": "Водитель", "usersList": "Пользователи и роли", "changeRole": "Изменить роль", "saved": "Сохранено", "actions": "Действия", "resetPassword": "Сбросить пароль", "resetPasswordPrompt": "Новый пароль для {{nickname}} (мин. 6 символов)", "passwordMinLength": "Пароль не менее 6 символов" },
   "sessions": { "title": "Монитор сессий", "online": "Онлайн", "device": "Устройство", "ip": "IP", "lastActive": "Активность" },
   "costControl": { "title": "Контроль затрат", "maps": "Карты", "translation": "Перевод", "ai": "AI", "tts": "TTS" },
   "whiteLabel": { "title": "White Label", "logo": "Логотип", "colors": "Цвета", "domains": "Домены", "languages": "Языки" },

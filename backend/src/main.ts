@@ -11,8 +11,16 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean) ?? [
+    'http://localhost:5173',
+    'http://localhost:3000',
+  ];
   app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') ?? ['http://localhost:5173', 'http://localhost:3000'],
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (corsOrigins.includes(origin) || origin === 'null') return cb(null, true);
+      return cb(null, false);
+    },
     credentials: true,
   });
   const port = process.env.PORT ?? 3000;

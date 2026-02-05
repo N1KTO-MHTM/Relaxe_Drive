@@ -1,5 +1,7 @@
 # RelaxDrive — System Architecture
 
+**Каноническая спецификация продукта (роли, модули, дизайн, требования):** [docs/SPEC.md](docs/SPEC.md).
+
 ## 1. Executive Summary
 
 RelaxDrive — профессиональная диспетчерская платформа уровня Control Center. Единый backend обслуживает **Web UI**, **Desktop Control Center** (Electron) и **Driver App** (mobile/PWA). Архитектура рассчитана на 24/7 работу, real-time, отказоустойчивость, масштабирование и премиальный UX.

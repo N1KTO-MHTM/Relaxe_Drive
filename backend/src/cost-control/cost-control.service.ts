@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { CostTrackerService } from '../cost-tracker/cost-tracker.service';
 
 /** Cost tracking: maps, translation, AI, TTS. Limits and alerts for admin. */
 @Injectable()
 export class CostControlService {
-  async getCosts(tenantId?: string) {
-    return { maps: 0, translation: 0, ai: 0, tts: 0 };
+  constructor(private readonly tracker: CostTrackerService) {}
+
+  async getCosts(_tenantId?: string) {
+    return this.tracker.getSnapshot();
   }
 }
