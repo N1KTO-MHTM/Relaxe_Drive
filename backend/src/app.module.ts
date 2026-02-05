@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OrdersModule } from './orders/orders.module';
@@ -19,6 +20,7 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
+  controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
