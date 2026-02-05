@@ -34,7 +34,6 @@ services:
   - type: web
     name: relaxdrive-web
     runtime: static
-    region: frankfurt
     rootDir: web
     buildCommand: npm install && npm run build
     staticPublishPath: dist
