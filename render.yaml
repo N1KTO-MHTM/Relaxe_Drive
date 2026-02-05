@@ -13,7 +13,7 @@ services:
 
     buildCommand: |
       cp prisma/schema.postgres.prisma prisma/schema.prisma
-      npm install
+      npm install --include=dev
       npx prisma generate
       npm run build
 

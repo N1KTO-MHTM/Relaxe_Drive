@@ -149,5 +149,6 @@
 
 **Частые причины:**
 - **DATABASE_URL не задан при сборке** — миграции перенесены в `startCommand`, перезапусти деплой после обновления `render.yaml`.
+- **Exit 127 (command not found)** — при `NODE_ENV=production` Render не ставит devDependencies; в `render.yaml` в build стоит `npm install --include=dev`, чтобы Prisma и Nest CLI были при сборке.
 - **Node слишком старый** — в `backend/package.json` задано `"engines": { "node": ">=18" }`; в настройках сервиса на Render можно выставить **Node Version** = 20.
 - **Ошибка Prisma/bcrypt** — в логах будет точное сообщение, по нему можно править.
