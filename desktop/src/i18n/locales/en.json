@@ -1,0 +1,35 @@
+{
+  "app": { "name": "RelaxDrive", "tagline": "Control Center" },
+  "modes": {
+    "control": "Control Mode",
+    "wall": "Live Wall",
+    "health": "System Health",
+    "logs": "Logs & Audit"
+  },
+  "health": {
+    "title": "System Health Dashboard",
+    "api": "API",
+    "websocket": "WebSocket",
+    "redis": "Redis",
+    "database": "Database",
+    "maps": "Maps",
+    "translation": "Translation",
+    "ai": "AI",
+    "queues": "Queues",
+    "latency": "Latency"
+  },
+  "logs": { "title": "Logs & Audit", "filter": "Filter", "export": "Export" },
+  "auth": {
+    "login": "Sign in",
+    "nickname": "Nickname",
+    "email": "Email",
+    "password": "Password",
+    "showPassword": "Show password",
+    "forgotPassword": "Forgot password?",
+    "invalidCredentials": "Invalid nickname or password",
+    "serverError": "Cannot reach server. Is the backend running?",
+    "forgotPasswordSent": "If an account with this nickname exists, contact your administrator to reset the password.",
+    "forgotPasswordHint": "Enter your nickname. An administrator can reset your password.",
+    "forgotPasswordSubmit": "Request reset"
+  }
+}

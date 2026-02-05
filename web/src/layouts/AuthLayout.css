@@ -1,0 +1,36 @@
+.auth-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rd-space-lg);
+  position: relative;
+}
+
+.auth-layout__lang {
+  position: absolute;
+  top: var(--rd-space-lg);
+  right: var(--rd-space-lg);
+  display: flex;
+  gap: var(--rd-space-xs);
+}
+
+.auth-layout__lang button {
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  background: transparent;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  color: var(--rd-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.auth-layout__lang button.active {
+  border-color: var(--rd-accent);
+  color: var(--rd-text);
+}
+
+.auth-layout__center {
+  width: 100%;
+  max-width: 400px;
+}

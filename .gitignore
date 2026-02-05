@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build / dist
+dist/
+backend/dist/
+web/dist/
+desktop/dist/
+desktop/dist-electron/
+
+# Env (секреты не пушить)
+.env
+.env.local
+.env.*.local
+backend/.env
+web/.env
+desktop/.env
+
+# SQLite (локальная БД)
+*.db
+*.db-journal
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# IDE / OS
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# Electron
+desktop/out/

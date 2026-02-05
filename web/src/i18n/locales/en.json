@@ -1,0 +1,48 @@
+{
+  "app": { "name": "RelaxDrive", "tagline": "Control Center" },
+  "auth": {
+    "login": "Sign in",
+    "register": "Register",
+    "nickname": "Nickname",
+    "email": "Email",
+    "password": "Password",
+    "logout": "Log out",
+    "showPassword": "Show password",
+    "forgotPassword": "Forgot password?",
+    "invalidCredentials": "Invalid nickname or password",
+    "serverError": "Cannot reach server. Is the backend running?",
+    "forgotPasswordSent": "If an account with this nickname exists, contact your administrator to reset the password.",
+    "forgotPasswordHint": "Enter your nickname. An administrator can reset your password.",
+    "forgotPasswordSubmit": "Request reset",
+    "registerFailed": "Registration failed"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "calendar": "Calendar",
+    "passengers": "Passengers",
+    "translation": "Translation",
+    "analytics": "Analytics",
+    "roles": "Roles & Permissions",
+    "sessions": "Session Monitor",
+    "costControl": "Cost Control",
+    "whiteLabel": "White Label"
+  },
+  "dashboard": {
+    "title": "Dispatcher Dashboard",
+    "map": "Live Map",
+    "orders": "Orders",
+    "drivers": "Drivers",
+    "alerts": "Alerts",
+    "eta": "ETA",
+    "aiEta": "AI ETA"
+  },
+  "calendar": { "title": "Calendar", "day": "Day", "week": "Week", "preOrder": "Pre-order (up to 6 days)", "conflict": "Conflict" },
+  "passengers": { "title": "Passengers", "phone": "Phone", "addresses": "Addresses", "history": "Trip history" },
+  "translation": { "title": "Translation Center", "voiceToText": "Voice → Text", "autoLanguage": "Auto language detection", "history": "History" },
+  "analytics": { "title": "Analytics", "heatmap": "Heatmap", "filters": "Filters" },
+  "roles": { "title": "Roles & Permissions", "admin": "Admin", "dispatcher": "Dispatcher", "driver": "Driver" },
+  "sessions": { "title": "Session Monitor", "online": "Online", "device": "Device", "ip": "IP", "lastActive": "Last active" },
+  "costControl": { "title": "Cost Control", "maps": "Maps", "translation": "Translation", "ai": "AI", "tts": "TTS" },
+  "whiteLabel": { "title": "White Label", "logo": "Logo", "colors": "Colors", "domains": "Domains", "languages": "Languages" },
+  "status": { "ok": "OK", "warning": "Warning", "critical": "Critical" }
+}

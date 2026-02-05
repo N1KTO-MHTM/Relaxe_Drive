@@ -1,0 +1,48 @@
+{
+  "app": { "name": "RelaxDrive", "tagline": "Центр управления" },
+  "auth": {
+    "login": "Вход",
+    "register": "Регистрация",
+    "nickname": "Никнейм",
+    "email": "Email",
+    "password": "Пароль",
+    "logout": "Выйти",
+    "showPassword": "Показать пароль",
+    "forgotPassword": "Забыли пароль?",
+    "invalidCredentials": "Неверный никнейм или пароль",
+    "serverError": "Сервер недоступен. Запущен ли backend?",
+    "forgotPasswordSent": "Если аккаунт с таким никнеймом есть, обратитесь к администратору для сброса пароля.",
+    "forgotPasswordHint": "Введите никнейм. Администратор может сбросить пароль.",
+    "forgotPasswordSubmit": "Запросить сброс",
+    "registerFailed": "Ошибка регистрации"
+  },
+  "nav": {
+    "dashboard": "Панель",
+    "calendar": "Календарь",
+    "passengers": "Пассажиры",
+    "translation": "Перевод",
+    "analytics": "Аналитика",
+    "roles": "Роли и права",
+    "sessions": "Сессии",
+    "costControl": "Контроль затрат",
+    "whiteLabel": "White Label"
+  },
+  "dashboard": {
+    "title": "Панель диспетчера",
+    "map": "Карта",
+    "orders": "Заказы",
+    "drivers": "Водители",
+    "alerts": "Оповещения",
+    "eta": "ETA",
+    "aiEta": "AI ETA"
+  },
+  "calendar": { "title": "Календарь", "day": "День", "week": "Неделя", "preOrder": "Предзаказ (до 6 дней)", "conflict": "Конфликт" },
+  "passengers": { "title": "Пассажиры", "phone": "Телефон", "addresses": "Адреса", "history": "История поездок" },
+  "translation": { "title": "Центр переводов", "voiceToText": "Голос → Текст", "autoLanguage": "Авто язык", "history": "История" },
+  "analytics": { "title": "Аналитика", "heatmap": "Тепловая карта", "filters": "Фильтры" },
+  "roles": { "title": "Роли и права", "admin": "Админ", "dispatcher": "Диспетчер", "driver": "Водитель" },
+  "sessions": { "title": "Монитор сессий", "online": "Онлайн", "device": "Устройство", "ip": "IP", "lastActive": "Активность" },
+  "costControl": { "title": "Контроль затрат", "maps": "Карты", "translation": "Перевод", "ai": "AI", "tts": "TTS" },
+  "whiteLabel": { "title": "White Label", "logo": "Логотип", "colors": "Цвета", "domains": "Домены", "languages": "Языки" },
+  "status": { "ok": "OK", "warning": "Внимание", "critical": "Критично" }
+}

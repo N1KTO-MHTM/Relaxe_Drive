@@ -1,0 +1,48 @@
+{
+  "app": { "name": "RelaxDrive", "tagline": "საკონტროლო ცენტრი" },
+  "auth": {
+    "login": "შესვლა",
+    "register": "რეგისტრაცია",
+    "nickname": "ნიკნეიმი",
+    "email": "Email",
+    "password": "პაროლი",
+    "logout": "გასვლა",
+    "showPassword": "პაროლის ჩვენება",
+    "forgotPassword": "დაგავიწყდათ პაროლი?",
+    "invalidCredentials": "არასწორი ნიკნეიმი ან პაროლი",
+    "serverError": "სერვერი მიუწვდომელია.",
+    "forgotPasswordSent": "თუ ასეთი ნიკნეიმის ანგარიში არსებობს, მიმართეთ ადმინისტრატორს პაროლის გასაუქმებლად.",
+    "forgotPasswordHint": "შეიყვანეთ ნიკნეიმი. ადმინისტრატორს შეუძლია პაროლის გასაუქმება.",
+    "forgotPasswordSubmit": "პაროლის გასაუქმების მოთხოვნა",
+    "registerFailed": "რეგისტრაცია ვერ მოხდა"
+  },
+  "nav": {
+    "dashboard": "პანელი",
+    "calendar": "კალენდარი",
+    "passengers": "მგზავრები",
+    "translation": "თარგმანი",
+    "analytics": "ანალიტიკა",
+    "roles": "როლები და უფლებები",
+    "sessions": "სესიები",
+    "costControl": "ხარჯების კონტროლი",
+    "whiteLabel": "White Label"
+  },
+  "dashboard": {
+    "title": "დისპეტჩერის პანელი",
+    "map": "რუკა",
+    "orders": "შეკვეთები",
+    "drivers": "მძღოლები",
+    "alerts": "შეტყობინებები",
+    "eta": "ETA",
+    "aiEta": "AI ETA"
+  },
+  "calendar": { "title": "კალენდარი", "day": "დღე", "week": "კვირა", "preOrder": "წინასწარ (6 დღემდე)", "conflict": "კონფლიქტი" },
+  "passengers": { "title": "მგზავრები", "phone": "ტელეფონი", "addresses": "მისამართები", "history": "ისტორია" },
+  "translation": { "title": "თარგმანის ცენტრი", "voiceToText": "ხმა → ტექსტი", "autoLanguage": "ავტო ენა", "history": "ისტორია" },
+  "analytics": { "title": "ანალიტიკა", "heatmap": "სითბოს რუკა", "filters": "ფილტრები" },
+  "roles": { "title": "როლები და უფლებები", "admin": "ადმინი", "dispatcher": "დისპეტჩერი", "driver": "მძღოლი" },
+  "sessions": { "title": "სესიების მონიტორინგი", "online": "ონლაინ", "device": "მოწყობილობა", "ip": "IP", "lastActive": "აქტივობა" },
+  "costControl": { "title": "ხარჯების კონტროლი", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS" },
+  "whiteLabel": { "title": "White Label", "logo": "ლოგო", "colors": "ფერები", "domains": "დომენები", "languages": "ენები" },
+  "status": { "ok": "OK", "warning": "ყურადღება", "critical": "კრიტიკული" }
+}

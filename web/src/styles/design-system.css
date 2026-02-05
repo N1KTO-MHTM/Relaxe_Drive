@@ -1,0 +1,136 @@
+/* RelaxDrive — Premium dark Control Center UI */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: var(--rd-bg);
+  color: var(--rd-text);
+  font-family: var(--rd-font-sans);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Glass panel — primary container */
+.rd-panel {
+  background: var(--rd-glass);
+  backdrop-filter: blur(var(--rd-blur));
+  -webkit-backdrop-filter: blur(var(--rd-blur));
+  border: 1px solid var(--rd-glass-border);
+  border-radius: var(--rd-radius-lg);
+  padding: var(--rd-space-lg);
+}
+
+.rd-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--rd-space-md);
+  padding-bottom: var(--rd-space-sm);
+  border-bottom: 1px solid var(--rd-border);
+}
+
+/* Buttons */
+.rd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--rd-space-sm);
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  font-family: var(--rd-font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  cursor: pointer;
+  transition: background var(--rd-transition), border-color var(--rd-transition);
+}
+
+.rd-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--rd-border-strong);
+}
+
+.rd-btn-primary {
+  background: var(--rd-accent);
+  border-color: var(--rd-accent);
+  color: #fff;
+}
+
+.rd-btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.rd-btn-danger {
+  background: transparent;
+  border-color: var(--rd-critical);
+  color: var(--rd-critical);
+}
+
+/* Inputs */
+.rd-input {
+  width: 100%;
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  font-family: var(--rd-font-sans);
+  font-size: 0.875rem;
+  background: var(--rd-surface);
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  color: var(--rd-text);
+  transition: border-color var(--rd-transition);
+}
+
+.rd-input::placeholder {
+  color: var(--rd-text-dim);
+}
+
+.rd-input:focus {
+  outline: none;
+  border-color: var(--rd-accent);
+}
+
+/* Map container — center of dashboard */
+.rd-map-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: var(--rd-bg-elevated);
+  border-radius: var(--rd-radius-lg);
+  border: 1px solid var(--rd-border);
+  overflow: hidden;
+}
+
+/* Status badge */
+.rd-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.rd-badge-ok { background: rgba(34, 197, 94, 0.2); color: var(--rd-ok); }
+.rd-badge-warning { background: rgba(234, 179, 8, 0.2); color: var(--rd-warning); }
+.rd-badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--rd-critical); }
+
+/* Animations — subtle, no overload */
+.rd-fade-in {
+  animation: rdFadeIn 0.25s ease;
+}
+
+@keyframes rdFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

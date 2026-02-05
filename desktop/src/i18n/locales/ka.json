@@ -1,0 +1,19 @@
+{
+  "app": { "name": "RelaxDrive", "tagline": "საკონტროლო ცენტრი" },
+  "modes": { "control": "საკონტროლო რეჟიმი", "wall": "სცენა", "health": "სისტემის მდგომარეობა", "logs": "ლოგები და აუდიტი" },
+  "health": { "title": "სისტემის მდგომარეობა", "api": "API", "websocket": "WebSocket", "redis": "Redis", "database": "მონაცემთა ბაზა", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "queues": "წყობები", "latency": "ჩავარდნა" },
+  "logs": { "title": "ლოგები და აუდიტი", "filter": "ფილტრი", "export": "ექსპორტი" },
+  "auth": {
+    "login": "შესვლა",
+    "nickname": "ნიკნეიმი",
+    "email": "Email",
+    "password": "პაროლი",
+    "showPassword": "პაროლის ჩვენება",
+    "forgotPassword": "დაგავიწყდათ პაროლი?",
+    "invalidCredentials": "არასწორი ნიკნეიმი ან პაროლი",
+    "serverError": "სერვერი მიუწვდომელია.",
+    "forgotPasswordSent": "მიმართეთ ადმინისტრატორს პაროლის გასაუქმებლად.",
+    "forgotPasswordHint": "შეიყვანეთ ნიკნეიმი.",
+    "forgotPasswordSubmit": "პაროლის გასაუქმების მოთხოვნა"
+  }
+}

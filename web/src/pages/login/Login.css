@@ -1,0 +1,29 @@
+.login-password-wrap label:first-child {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.login-password-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.login-password-row .rd-input {
+  flex: 1;
+}
+
+.login-show-password {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--rd-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.login-show-password input {
+  width: auto;
+  margin: 0;
+}

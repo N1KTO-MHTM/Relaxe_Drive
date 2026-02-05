@@ -1,0 +1,19 @@
+{
+  "app": { "name": "RelaxDrive", "tagline": "Центр управления" },
+  "modes": { "control": "Режим управления", "wall": "Стена", "health": "Состояние системы", "logs": "Логи и аудит" },
+  "health": { "title": "Состояние системы", "api": "API", "websocket": "WebSocket", "redis": "Redis", "database": "БД", "maps": "Карты", "translation": "Перевод", "ai": "AI", "queues": "Очереди", "latency": "Задержка" },
+  "logs": { "title": "Логи и аудит", "filter": "Фильтр", "export": "Экспорт" },
+  "auth": {
+    "login": "Вход",
+    "nickname": "Никнейм",
+    "email": "Email",
+    "password": "Пароль",
+    "showPassword": "Показать пароль",
+    "forgotPassword": "Забыли пароль?",
+    "invalidCredentials": "Неверный никнейм или пароль",
+    "serverError": "Сервер недоступен.",
+    "forgotPasswordSent": "Обратитесь к администратору для сброса пароля.",
+    "forgotPasswordHint": "Введите никнейм. Администратор может сбросить пароль.",
+    "forgotPasswordSubmit": "Запросить сброс"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "relaxdrive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RelaxDrive — Control Center Platform",
+  "scripts": {
+    "backend": "npm run start:dev --prefix backend",
+    "web": "npm run dev --prefix web",
+    "desktop": "npm run dev --prefix desktop",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix web && npm install --prefix desktop"
+  }
+}

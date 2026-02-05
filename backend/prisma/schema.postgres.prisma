@@ -1,0 +1,96 @@
+// RelaxDrive — Prisma schema for PostgreSQL (Render, production)
+// Use this on Render: copy to schema.prisma before build, or set in Render build command.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  nickname      String    @unique
+  email         String?   @unique
+  passwordHash  String    @map("password_hash")
+  role          String
+  tenantId      String?   @map("tenant_id")
+  locale        String    @default("en")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  sessions      Session[]
+  auditLogs     AuditLog[]
+  ordersCreated Order[]   @relation("OrderCreator")
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device      String?
+  ip          String?
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  status         String   @default("DRAFT")
+  pickupAt       DateTime @map("pickup_at")
+  pickupAddress  String   @map("pickup_address")
+  dropoffAddress String   @map("dropoff_address")
+  passengerId    String?  @map("passenger_id")
+  driverId       String?  @map("driver_id")
+  createdById    String   @map("created_by_id")
+  createdBy      User     @relation("OrderCreator", fields: [createdById], references: [id])
+  bufferMinutes  Int      @default(15) @map("buffer_minutes")
+  etaMinutes    Int?     @map("eta_minutes")
+  aiEtaMinutes  Int?     @map("ai_eta_minutes")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+}
+
+model Passenger {
+  id          String   @id @default(cuid())
+  phone       String
+  name        String?
+  pickupAddr  String?  @map("pickup_addr")
+  dropoffAddr String?  @map("dropoff_addr")
+  tenantId    String?  @map("tenant_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  resource  String
+  payload   String?
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model TranslationRecord {
+  id         String   @id @default(cuid())
+  sourceLang String   @map("source_lang")
+  targetLang String   @map("target_lang")
+  sourceText String   @map("source_text")
+  targetText String   @map("target_text")
+  userId     String?  @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+}
+
+model WhiteLabelConfig {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique @map("tenant_id")
+  logoUrl      String?  @map("logo_url")
+  primaryColor String?  @map("primary_color")
+  domain       String?
+  locales      String   @default("en,ru,ka")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+}

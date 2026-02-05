@@ -1,0 +1,45 @@
+/* RelaxDrive Style — Design tokens */
+:root {
+  /* Primary palette: black = control, white = clarity */
+  --rd-bg: #0a0a0b;
+  --rd-bg-elevated: #121214;
+  --rd-bg-panel: rgba(18, 18, 20, 0.85);
+  --rd-surface: #1a1a1d;
+  --rd-border: rgba(255, 255, 255, 0.08);
+  --rd-border-strong: rgba(255, 255, 255, 0.15);
+
+  /* Text */
+  --rd-text: #ffffff;
+  --rd-text-muted: rgba(255, 255, 255, 0.65);
+  --rd-text-dim: rgba(255, 255, 255, 0.45);
+
+  /* Semantic colors: color = meaning */
+  --rd-ok: #22c55e;
+  --rd-warning: #eab308;
+  --rd-critical: #ef4444;
+  --rd-accent: #3b82f6;
+
+  /* Glass */
+  --rd-glass: rgba(18, 18, 20, 0.75);
+  --rd-glass-border: rgba(255, 255, 255, 0.06);
+  --rd-blur: 12px;
+
+  /* Spacing */
+  --rd-space-xs: 4px;
+  --rd-space-sm: 8px;
+  --rd-space-md: 16px;
+  --rd-space-lg: 24px;
+  --rd-space-xl: 32px;
+  --rd-radius: 8px;
+  --rd-radius-lg: 12px;
+
+  /* Typography */
+  --rd-font-sans: 'Outfit', system-ui, sans-serif;
+  --rd-font-mono: 'JetBrains Mono', monospace;
+  --rd-transition: 0.2s ease;
+}
+
+/* Status helpers */
+.status-ok { color: var(--rd-ok); }
+.status-warning { color: var(--rd-warning); }
+.status-critical { color: var(--rd-critical); }
