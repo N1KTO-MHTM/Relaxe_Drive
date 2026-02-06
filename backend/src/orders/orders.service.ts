@@ -107,6 +107,14 @@ export class OrdersService {
     });
   }
 
+  /** Set pickupAt (e.g. driver arrive time from ETA after assign). */
+  async updatePickupAt(orderId: string, pickupAt: Date) {
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { pickupAt },
+    });
+  }
+
   /** Set manual-assignment flag (dispatcher marked; no auto-suggest). */
   async setManualAssignment(orderId: string, manualAssignment: boolean) {
     return this.prisma.order.update({

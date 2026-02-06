@@ -22,6 +22,7 @@ const WhiteLabel = lazy(() => import('./pages/white-label/WhiteLabel'));
 const Audit = lazy(() => import('./pages/audit/Audit'));
 const Health = lazy(() => import('./pages/health/Health'));
 const About = lazy(() => import('./pages/about/About'));
+const LiveWall = lazy(() => import('./pages/live-wall/LiveWall'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -48,6 +49,7 @@ export default function App() {
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/wall" element={<LiveWall />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/passengers" element={<Passengers />} />
         <Route path="/drivers" element={<Drivers />} />

@@ -87,6 +87,48 @@ export class GeoService {
     }
   }
 
+  /** Route through multiple points in order: A → B → C → … (e.g. pickup → stop1 → stop2 → dropoff). */
+  async getRouteMulti(points: Array<{ lat: number; lng: number }>): Promise<RouteResult> {
+    if (points.length < 2) return { distanceKm: 0, durationMinutes: 0, polyline: '' };
+    this.costTracker.increment('maps');
+    try {
+      const coords = points.map((p) => `${p.lng},${p.lat}`).join(';');
+      const url = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=polyline&steps=true`;
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+      if (!res.ok) {
+        const err = await res.text();
+        console.warn('[GeoService] OSRM getRouteMulti error:', res.status, err);
+        return { distanceKm: 0, durationMinutes: 0, polyline: '' };
+      }
+      const data = (await res.json()) as { code?: string; routes?: Array<{ distance?: number; duration?: number; geometry?: string; legs?: Array<{ steps?: Array<{ distance?: number; duration?: number; maneuver?: { type?: string; modifier?: string } }> }> }> };
+      if (data.code !== 'Ok' || !data.routes?.[0]) return { distanceKm: 0, durationMinutes: 0, polyline: '' };
+      const route = data.routes[0];
+      const distanceM = route.distance ?? 0;
+      const durationS = route.duration ?? 0;
+      const steps: RouteStep[] = [];
+      for (const leg of route.legs ?? []) {
+        for (const s of leg.steps ?? []) {
+          const maneuver = s.maneuver;
+          steps.push({
+            type: osrmManeuverToType(maneuver?.type),
+            instruction: maneuver?.type === 'arrive' ? 'Arrive' : maneuver?.type === 'depart' ? 'Head to next' : (maneuver?.modifier || 'Continue'),
+            distanceM: s.distance ?? 0,
+            durationS: s.duration ?? 0,
+          });
+        }
+      }
+      return {
+        distanceKm: Math.round((distanceM / 1000) * 100) / 100,
+        durationMinutes: Math.round((durationS / 60) * 10) / 10,
+        polyline: route.geometry ?? '',
+        steps: steps.length > 0 ? steps : undefined,
+      };
+    } catch (e) {
+      console.warn('[GeoService] OSRM getRouteMulti failed:', e);
+      return { distanceKm: 0, durationMinutes: 0, polyline: '' };
+    }
+  }
+
   /** Request multiple route alternatives (when OSRM server supports it). Returns at least one. */
   async getRouteAlternatives(
     pickup: { lat: number; lng: number },

@@ -4,6 +4,7 @@ import type { Role } from '../store/auth';
 export const ROLE_PATHS: Record<Role, string[]> = {
   ADMIN: [
     '/dashboard',
+    '/wall',
     '/calendar',
     '/passengers',
     '/drivers',
@@ -20,6 +21,7 @@ export const ROLE_PATHS: Record<Role, string[]> = {
   ],
   DISPATCHER: [
     '/dashboard',
+    '/wall',
     '/calendar',
     '/passengers',
     '/drivers',
@@ -43,6 +45,7 @@ export function canAccessPath(role: Role | null, path: string): boolean {
 export function getAllowedNavItems(role: Role | null): { path: string; key: string }[] {
   const fullNav = [
     { path: '/dashboard', key: 'dashboard' },
+    { path: '/wall', key: 'liveWall' },
     { path: '/calendar', key: 'calendar' },
     { path: '/passengers', key: 'passengers' },
     { path: '/drivers', key: 'drivers' },

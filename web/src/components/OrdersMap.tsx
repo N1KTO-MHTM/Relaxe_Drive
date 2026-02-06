@@ -224,13 +224,19 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       fill: false,
       fillOpacity: 0,
     }).addTo(map);
-    rocklandLine.bindPopup('Rockland County');
+    rocklandLine.bindPopup('Rockland County', { closeOnClick: false });
     rocklandBoundaryRef.current = rocklandLine;
     mapRef.current = map;
+    const onPopupExitClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest?.('.orders-map-popup-close')) map.closePopup();
+    };
+    map.getContainer().addEventListener('click', onPopupExitClick);
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
     setTimeout(() => map.invalidateSize(), 100);
     return () => {
+      map.getContainer().removeEventListener('click', onPopupExitClick);
       window.removeEventListener('resize', onResize);
       if (rocklandBoundaryRef.current) {
         map.removeLayer(rocklandBoundaryRef.current);
@@ -273,7 +279,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     }
     if (pickPoint && Number.isFinite(pickPoint.lat) && Number.isFinite(pickPoint.lng)) {
       const m = L.marker([pickPoint.lat, pickPoint.lng]).addTo(map);
-      m.bindPopup('Selected');
+      m.bindPopup('Selected', { closeOnClick: false });
       pickPointMarkerRef.current = m;
     }
     return () => {
@@ -329,7 +335,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           // ignore
         }
       }
-      marker.bindPopup(rows.join('<br/>'));
+      const exitLabel = escapeHtml(t('common.close'));
+      const popupContent = rows.join('<br/>') + `<br/><button type="button" class="orders-map-popup-close rd-btn rd-btn-primary" style="margin-top:0.5rem;cursor:pointer">${exitLabel}</button>`;
+      marker.bindPopup(popupContent, { closeOnClick: false, autoClose: false });
       clusterGroup.addLayer(marker);
     });
     clusterGroup.addTo(map);
@@ -362,9 +370,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       const m = L.marker([f.lat, f.lng], { icon }).addTo(map);
       try {
         const t = new Date(f.pickupAt);
-        m.bindPopup(`Future pickup ${t.toLocaleTimeString()}`);
+        m.bindPopup(`Future pickup ${t.toLocaleTimeString()}`, { closeOnClick: false });
       } catch {
-        m.bindPopup('Future pickup');
+        m.bindPopup('Future pickup', { closeOnClick: false });
       }
       futureMarkersRef.current.push(m);
     });
@@ -374,7 +382,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     };
   }, [futureOrderPickups]);
 
-  // Problem zones heatmap (late pickups + cancels)
+  // Problem zones heatmap (late pickups + cancels); fallback to circles if heatLayer missing
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !problemZones) return;
@@ -382,15 +390,28 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       map.removeLayer(heatLayerRef.current);
       heatLayerRef.current = null;
     }
+    const late = problemZones.late ?? [];
+    const cancelled = problemZones.cancelled ?? [];
     const points: [number, number, number][] = [];
-    problemZones.late.forEach((p) => points.push([p.lat, p.lng, 0.8]));
-    problemZones.cancelled.forEach((p) => points.push([p.lat, p.lng, 0.5]));
+    late.forEach((p) => points.push([p.lat, p.lng, 0.8]));
+    cancelled.forEach((p) => points.push([p.lat, p.lng, 0.5]));
     if (points.length === 0) return;
-    const HeatLayer = (L as unknown as { heatLayer: (latlngs: [number, number, number][], o?: object) => L.Layer }).heatLayer;
+    const winL = typeof window !== 'undefined' ? (window as unknown as { L?: typeof L & { heatLayer?: (latlngs: [number, number, number][], o?: object) => L.Layer } }).L : null;
+    const HeatLayer = winL?.heatLayer ?? (L as unknown as { heatLayer?: (latlngs: [number, number, number][], o?: object) => L.Layer }).heatLayer;
     if (HeatLayer) {
-      const layer = HeatLayer(points, { radius: 28, blur: 20, minOpacity: 0.3 });
+      const layer = HeatLayer(points, { radius: 32, blur: 22, minOpacity: 0.35 });
       layer.addTo(map);
       heatLayerRef.current = layer;
+    } else {
+      const circleGroup = L.layerGroup();
+      late.forEach((p) => {
+        L.circle([p.lat, p.lng], { radius: 400, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.35, weight: 2 }).addTo(circleGroup);
+      });
+      cancelled.forEach((p) => {
+        L.circle([p.lat, p.lng], { radius: 350, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.3, weight: 2 }).addTo(circleGroup);
+      });
+      circleGroup.addTo(map);
+      heatLayerRef.current = circleGroup;
     }
     return () => {
       if (heatLayerRef.current) {
@@ -410,7 +431,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     }
     if (currentUserLocation && Number.isFinite(currentUserLocation.lat) && Number.isFinite(currentUserLocation.lng)) {
       const m = L.marker([currentUserLocation.lat, currentUserLocation.lng], { icon: defaultIcon }).addTo(map);
-      m.bindPopup('You');
+      m.bindPopup('You', { closeOnClick: false });
       currentUserMarkerRef.current = m;
     }
     return () => {
@@ -448,13 +469,13 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         popupRows.push(selectedOrderTooltip.onTime ? 'On time' : 'At risk / Late');
         if (selectedOrderTooltip.driverName) popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
       }
-      m.bindPopup(popupRows.join('<br/>'));
+      m.bindPopup(popupRows.join('<br/>'), { closeOnClick: false });
       orderMarkersRef.current.push(m);
       allLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
     }
     if (dropoffCoords) {
       const m = L.marker([dropoffCoords.lat, dropoffCoords.lng]).addTo(map);
-      m.bindPopup('Dropoff');
+      m.bindPopup('Dropoff', { closeOnClick: false });
       orderMarkersRef.current.push(m);
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
@@ -516,7 +537,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     const map = mapRef.current;
     reports.forEach((r) => {
       const m = L.marker([r.lat, r.lng], { icon: reportIcon(r.type) }).addTo(map);
-      m.bindPopup(`${r.type.replace('_', ' ')}${r.description ? `: ${r.description}` : ''}`);
+      m.bindPopup(`${r.type.replace('_', ' ')}${r.description ? `: ${r.description}` : ''}`, { closeOnClick: false });
       reportMarkersRef.current.push(m);
     });
     return () => {

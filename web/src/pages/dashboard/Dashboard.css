@@ -24,7 +24,89 @@
 }
 
 .dashboard-page--driver .dashboard-page__grid {
-  grid-template-columns: 280px 1fr 260px;
+  grid-template-columns: 1fr 300px;
+  grid-template-areas: "map-area orders-area";
+}
+
+.dashboard-page--driver .dashboard-page__sidebar:first-of-type {
+  grid-area: orders-area;
+}
+
+.dashboard-page--driver .dashboard-page__map {
+  grid-area: map-area;
+  min-height: 60vh;
+}
+
+.dashboard-page--driver.dashboard-page--full-map .dashboard-page__grid {
+  grid-template-columns: 1fr;
+  grid-template-areas: "map-area";
+}
+
+.dashboard-page--driver.dashboard-page--full-map .dashboard-page__sidebar.dashboard-page__sidebar--hidden {
+  display: none;
+}
+
+/* Bolt-style floating trip card for driver (on map) */
+.driver-trip-card {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  background: var(--rd-glass);
+  backdrop-filter: blur(var(--rd-blur));
+  -webkit-backdrop-filter: blur(var(--rd-blur));
+  border: 1px solid var(--rd-glass-border);
+  border-radius: var(--rd-radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 800;
+}
+
+.driver-trip-card__phase {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rd-accent);
+  margin-bottom: 0.25rem;
+}
+
+.driver-trip-card__address {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--rd-text);
+  line-height: 1.35;
+  margin-bottom: 0.35rem;
+}
+
+.driver-trip-card__eta {
+  font-size: 0.875rem;
+  color: var(--rd-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.driver-trip-card__passenger {
+  font-size: 0.8125rem;
+  color: var(--rd-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.driver-trip-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.driver-trip-card__actions .rd-btn {
+  flex-shrink: 0;
+}
+
+.driver-trip-card__navigate {
+  font-weight: 600;
+  padding: 0.5rem 1rem;
 }
 
 .dashboard-page__map {

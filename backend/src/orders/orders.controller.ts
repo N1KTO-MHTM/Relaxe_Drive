@@ -100,20 +100,27 @@ export class OrdersController {
     if (req?.user?.role === 'DRIVER' && order.driverId !== req.user.id) {
       throw new ForbiddenException('You can only view the route for orders assigned to you');
     }
-    const [pickupCoords, dropoffCoords] = await Promise.all([
-      this.geo.geocode(order.pickupAddress),
-      this.geo.geocode(order.dropoffAddress),
-    ]);
+    const pickupCoords = await this.geo.geocode(order.pickupAddress);
+    const dropoffCoords = await this.geo.geocode(order.dropoffAddress);
     if (!pickupCoords || !dropoffCoords) {
-      return { pickupCoords, dropoffCoords, polyline: '', durationMinutes: 0, distanceKm: 0 };
+      return { pickupCoords: pickupCoords ?? null, dropoffCoords: dropoffCoords ?? null, polyline: '', durationMinutes: 0, distanceKm: 0 };
     }
-    const wantAlternatives = alternatives === 'true' || alternatives === '1';
-    const [pickupToDropoff, altRoutes] = wantAlternatives
-      ? await Promise.all([
-          this.geo.getRoute(pickupCoords, dropoffCoords),
-          this.geo.getRouteAlternatives(pickupCoords, dropoffCoords, 3),
-        ])
-      : [await this.geo.getRoute(pickupCoords, dropoffCoords), null];
+    const waypointsRaw = (order as { waypoints?: { address: string }[] }).waypoints;
+    const stopAddresses = Array.isArray(waypointsRaw) ? waypointsRaw.map((w) => w?.address).filter(Boolean) as string[] : [];
+    let pickupToDropoff: { polyline: string; durationMinutes: number; distanceKm: number; steps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }> };
+    if (stopAddresses.length > 0) {
+      const stopCoords: Array<{ lat: number; lng: number }> = [];
+      for (const addr of stopAddresses) {
+        const c = await this.geo.geocode(addr);
+        if (c) stopCoords.push(c);
+      }
+      const allPoints = [pickupCoords, ...stopCoords, dropoffCoords];
+      pickupToDropoff = await this.geo.getRouteMulti(allPoints);
+    } else {
+      pickupToDropoff = await this.geo.getRoute(pickupCoords, dropoffCoords);
+    }
+    const wantAlternatives = (alternatives === 'true' || alternatives === '1') && stopAddresses.length === 0;
+    const altRoutes = wantAlternatives ? await this.geo.getRouteAlternatives(pickupCoords, dropoffCoords, 3) : null;
     const out: {
       pickupCoords: typeof pickupCoords;
       dropoffCoords: typeof dropoffCoords;
@@ -134,7 +141,7 @@ export class OrdersController {
       steps: pickupToDropoff.steps,
     };
     if (altRoutes && altRoutes.length > 1) {
-      out.alternativeRoutes = altRoutes.map((r) => ({ polyline: r.polyline, durationMinutes: r.durationMinutes, distanceKm: r.distanceKm }));
+      out.alternativeRoutes = altRoutes.slice(0, 4).map((r) => ({ polyline: r.polyline, durationMinutes: r.durationMinutes, distanceKm: r.distanceKm }));
     }
     const fromLatN = fromLat != null && fromLat !== '' ? parseFloat(fromLat) : NaN;
     const fromLngN = fromLng != null && fromLng !== '' ? parseFloat(fromLng) : NaN;
@@ -153,7 +160,7 @@ export class OrdersController {
   async create(
     @Request() req: { user: { id: string } },
     @Body() body: {
-      pickupAt: string;
+      pickupAt?: string;
       pickupAddress: string;
       dropoffAddress: string;
       tripType?: 'ONE_WAY' | 'ROUNDTRIP';
@@ -182,7 +189,7 @@ export class OrdersController {
       if (passenger) passengerId = passenger.id;
     }
     const created = await this.ordersService.create({
-      pickupAt: new Date(body.pickupAt),
+      pickupAt: body.pickupAt ? new Date(body.pickupAt) : new Date(),
       pickupAddress: body.pickupAddress,
       dropoffAddress: body.dropoffAddress,
       tripType: body.tripType ?? 'ONE_WAY',
@@ -198,7 +205,7 @@ export class OrdersController {
     });
     await this.audit.log(req.user.id, 'order.create', 'order', {
       orderId: created.id,
-      pickupAt: body.pickupAt,
+      pickupAt: body.pickupAt ?? created.pickupAt?.toISOString(),
       pickupAddress: body.pickupAddress,
       dropoffAddress: body.dropoffAddress,
     });
@@ -217,7 +224,23 @@ export class OrdersController {
     @Body() body: { driverId: string },
     @Request() req: { user: { id: string } },
   ) {
-    const updated = await this.ordersService.assignDriver(orderId, body.driverId);
+    let updated = await this.ordersService.assignDriver(orderId, body.driverId);
+    const driver = await this.usersService.findById(body.driverId);
+    const driverLat = driver?.lat ?? null;
+    const driverLng = driver?.lng ?? null;
+    if (updated.pickupAddress && driverLat != null && driverLng != null && Number.isFinite(driverLat) && Number.isFinite(driverLng)) {
+      try {
+        const pickupCoords = await this.geo.geocode(updated.pickupAddress);
+        if (pickupCoords) {
+          const route = await this.geo.getRoute({ lat: driverLat, lng: driverLng }, pickupCoords);
+          const etaMinutes = Math.max(0, Math.round(route.durationMinutes ?? 0));
+          const driverArriveAt = new Date(Date.now() + etaMinutes * 60 * 1000);
+          updated = await this.ordersService.updatePickupAt(orderId, driverArriveAt);
+        }
+      } catch {
+        // keep pickupAt as-is if ETA fails
+      }
+    }
     await this.audit.log(req.user.id, 'order.assign', 'order', { orderId, driverId: body.driverId });
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
@@ -284,6 +307,7 @@ export class OrdersController {
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
     this.alerts.emitAlert('order.stopped_underway', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return updated;
   }
 
