@@ -74,6 +74,12 @@ export interface RiskyOrderPlanning {
   suggestedDrivers: string[];
 }
 
+export interface OrderPlanningRow {
+  orderId: string;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  suggestedDriverId: string | null;
+}
+
 export interface PlanningResult {
   windowStart: string;
   windowEnd: string;
@@ -81,4 +87,6 @@ export interface PlanningResult {
   driversAvailable: number;
   shortage: boolean;
   riskyOrders: RiskyOrderPlanning[];
+  /** Per-order risk and suggested driver (used for auto-assign). */
+  orderRows?: OrderPlanningRow[];
 }

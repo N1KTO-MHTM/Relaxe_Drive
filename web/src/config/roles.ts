@@ -42,26 +42,28 @@ export function canAccessPath(role: Role | null, path: string): boolean {
   return allowed.includes(path) || path === '/';
 }
 
-export function getAllowedNavItems(role: Role | null): { path: string; key: string }[] {
-  const fullNav = [
-    { path: '/dashboard', key: 'dashboard' },
-    { path: '/wall', key: 'liveWall' },
-    { path: '/calendar', key: 'calendar' },
-    { path: '/passengers', key: 'passengers' },
-    { path: '/drivers', key: 'drivers' },
-    { path: '/pendings', key: 'pendings' },
-    { path: '/translation', key: 'translation' },
-    { path: '/analytics', key: 'analytics' },
-    { path: '/roles', key: 'roles' },
-    { path: '/sessions', key: 'sessions' },
-    { path: '/cost-control', key: 'costControl' },
-    { path: '/white-label', key: 'whiteLabel' },
-    { path: '/audit', key: 'audit' },
-    { path: '/health', key: 'health' },
-    { path: '/about', key: 'about' },
-  ];
+/** Nav items in logical order: Main → People → Tools → Admin → About. */
+const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
+  { path: '/dashboard', key: 'dashboard', group: 'main' },
+  { path: '/wall', key: 'liveWall', group: 'main' },
+  { path: '/calendar', key: 'calendar', group: 'main' },
+  { path: '/passengers', key: 'passengers', group: 'people' },
+  { path: '/drivers', key: 'drivers', group: 'people' },
+  { path: '/pendings', key: 'pendings', group: 'people' },
+  { path: '/translation', key: 'translation', group: 'tools' },
+  { path: '/analytics', key: 'analytics', group: 'tools' },
+  { path: '/roles', key: 'roles', group: 'admin' },
+  { path: '/sessions', key: 'sessions', group: 'admin' },
+  { path: '/cost-control', key: 'costControl', group: 'admin' },
+  { path: '/white-label', key: 'whiteLabel', group: 'admin' },
+  { path: '/audit', key: 'audit', group: 'admin' },
+  { path: '/health', key: 'health', group: 'admin' },
+  { path: '/about', key: 'about', group: 'about' },
+];
+
+export function getAllowedNavItems(role: Role | null): { path: string; key: string; group?: string }[] {
   if (!role) return [];
   const allowedPaths = ROLE_PATHS[role];
   if (!allowedPaths) return [];
-  return fullNav.filter((item) => allowedPaths.includes(item.path));
+  return FULL_NAV_ORDER.filter((item) => allowedPaths.includes(item.path));
 }

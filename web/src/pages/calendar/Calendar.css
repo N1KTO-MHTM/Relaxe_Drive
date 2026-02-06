@@ -51,6 +51,22 @@
   color: var(--rd-text-muted);
 }
 
+.calendar-day--today .calendar-day-title {
+  color: var(--rd-accent);
+  font-weight: 600;
+}
+
+.calendar-day--today {
+  border-color: rgba(88, 166, 255, 0.35);
+  background: rgba(88, 166, 255, 0.06);
+}
+
+.calendar-day-count {
+  font-weight: 500;
+  color: var(--rd-accent);
+  opacity: 0.9;
+}
+
 .calendar-day-orders {
   list-style: none;
   padding: 0;

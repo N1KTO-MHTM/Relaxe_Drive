@@ -115,6 +115,9 @@ export default function Dashboard() {
   const [orderTab, setOrderTab] = useState<'active' | 'completed'>('active');
   const [orderStatusFilter, setOrderStatusFilter] = useState('');
   const [orderSortBy, setOrderSortBy] = useState<'scheduled' | 'arrived' | 'pickedUp' | 'droppedOff'>('scheduled');
+  const [findByIdQuery, setFindByIdQuery] = useState('');
+  const [driverStatusFilter, setDriverStatusFilter] = useState<'all' | 'active' | 'busy' | 'offline'>('all');
+  const [driverCarTypeFilter, setDriverCarTypeFilter] = useState<string>('');
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
@@ -149,6 +152,7 @@ export default function Dashboard() {
   const [driverMapFullScreen, setDriverMapFullScreen] = useState(false);
 
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+  const canAssign = canCreateOrder;
   const isDriver = user?.role === 'DRIVER';
 
   /** Driver's current trip (ASSIGNED or IN_PROGRESS) for Bolt-style card and auto-select */
@@ -182,6 +186,16 @@ export default function Dashboard() {
       ? list.filter((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED')
       : list.filter((o) => o.status === 'COMPLETED' || o.status === 'CANCELLED');
     if (orderStatusFilter) out = out.filter((o) => o.status === orderStatusFilter);
+    const q = findByIdQuery.trim().toLowerCase();
+    if (q) {
+      out = out.filter((o) => {
+        if ((o.id ?? '').toLowerCase().includes(q)) return true;
+        if ((o.passengerId ?? '').toLowerCase().includes(q)) return true;
+        if (o.passenger?.id && o.passenger.id.toLowerCase().includes(q)) return true;
+        if (o.passenger?.phone && o.passenger.phone.toLowerCase().includes(q)) return true;
+        return false;
+      });
+    }
     const getSortTime = (o: Order) => {
       switch (orderSortBy) {
         case 'arrived': return o.arrivedAtPickupAt ? new Date(o.arrivedAtPickupAt).getTime() : new Date(o.pickupAt).getTime();
@@ -191,14 +205,33 @@ export default function Dashboard() {
       }
     };
     return out.sort((a, b) => getSortTime(b) - getSortTime(a));
-  }, [orders, completedOrders, orderTab, orderStatusFilter, orderSortBy]);
+  }, [orders, completedOrders, orderTab, orderStatusFilter, orderSortBy, findByIdQuery]);
+
+  /** Drivers filtered by status (active/busy/offline) and car type for sidebar and map. */
+  const filteredDrivers = useMemo(() => {
+    let list = drivers;
+    if (driverStatusFilter !== 'all') {
+      list = list.filter((d) => {
+        const hasLocation = d.lat != null && d.lng != null;
+        const busy = orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
+        if (driverStatusFilter === 'active') return hasLocation && !busy;
+        if (driverStatusFilter === 'busy') return busy;
+        if (driverStatusFilter === 'offline') return !hasLocation;
+        return true;
+      });
+    }
+    if (driverCarTypeFilter) {
+      list = list.filter((d) => (d as { carType?: string | null }).carType === driverCarTypeFilter);
+    }
+    return list;
+  }, [drivers, orders, driverStatusFilter, driverCarTypeFilter]);
 
   const driversForMap: DriverForMap[] = useMemo(() => {
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : null;
     const preferredCar = selectedOrder?.preferredCarType?.trim().toUpperCase();
     const driverList = preferredCar
-      ? drivers.filter((d) => (d as { carType?: string | null }).carType === preferredCar)
-      : drivers;
+      ? filteredDrivers.filter((d) => (d as { carType?: string | null }).carType === preferredCar)
+      : filteredDrivers;
     return driverList.map((d) => {
       const onTripOrder = orders.find((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
       const onTrip = !!onTripOrder;
@@ -231,7 +264,7 @@ export default function Dashboard() {
         })(),
       };
     });
-  }, [drivers, orders, driverEtas, selectedOrderId, t]);
+  }, [filteredDrivers, orders, driverEtas, selectedOrderId, t]);
 
   const selectedOrderTooltip = useMemo(() => {
     if (!selectedOrderId || !routeData) return undefined;
@@ -244,6 +277,33 @@ export default function Dashboard() {
       driverName: driver?.nickname ?? undefined,
     };
   }, [selectedOrderId, routeData, orders, driverEtas, drivers]);
+
+  /** Per-dispatcher saved map view (center + zoom). Restored on load, saved on move/zoom. */
+  const savedMapView = useMemo(() => {
+    if (!user?.id || isDriver || !canAssign) return null;
+    try {
+      const raw = localStorage.getItem(`relaxdrive_map_${user.id}`);
+      if (!raw) return null;
+      const v = JSON.parse(raw) as { center?: number[]; zoom?: number };
+      if (Array.isArray(v.center) && v.center.length === 2 && typeof v.zoom === 'number') {
+        return { center: [v.center[0], v.center[1]] as [number, number], zoom: v.zoom };
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }, [user?.id, isDriver, canAssign]);
+
+  const handleMapViewChange = useMemo(() => {
+    if (!user?.id || isDriver || !canAssign) return undefined;
+    return (center: [number, number], zoom: number) => {
+      try {
+        localStorage.setItem(`relaxdrive_map_${user.id}`, JSON.stringify({ center, zoom }));
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [user?.id, isDriver, canAssign]);
 
   /** Returns datetime-local value for default pickup (now + 30 min). */
   function getDefaultPickupAtForm(): string {
@@ -266,7 +326,6 @@ export default function Dashboard() {
     { value: 'office', labelKey: 'dashboard.placeOffice' },
     { value: 'other', labelKey: 'dashboard.placeOther' },
   ];
-  const canAssign = canCreateOrder;
   const canChangeStatus = !!user?.role;
 
   function loadOrders() {
@@ -677,6 +736,45 @@ export default function Dashboard() {
       setAssigningId(null);
     }
   }
+
+  /** Auto-assign: when enabled, assign unassigned orders to their suggested driver (from planning or order). */
+  const handleAssignRef = useRef(handleAssign);
+  handleAssignRef.current = handleAssign;
+  const autoAssignedOrderIdsRef = useRef<Set<string>>(new Set());
+  const prevPlanningRef = useRef<PlanningResult | null>(null);
+  useEffect(() => {
+    if (!autoAssignEnabled) {
+      autoAssignedOrderIdsRef.current.clear();
+      prevPlanningRef.current = null;
+      return;
+    }
+    if (!canAssign) return;
+    const toAssign: { orderId: string; driverId: string }[] = [];
+    const planning = planningResult ?? null;
+    if (planning?.orderRows?.length) {
+      if (prevPlanningRef.current !== planning) {
+        prevPlanningRef.current = planning;
+        autoAssignedOrderIdsRef.current.clear();
+      }
+      for (const row of planning.orderRows) {
+        if (!row.suggestedDriverId) continue;
+        const order = orders.find((o) => o.id === row.orderId);
+        if (!order || order.driverId || order.status === 'COMPLETED' || order.status === 'CANCELLED') continue;
+        if (autoAssignedOrderIdsRef.current.has(row.orderId)) continue;
+        toAssign.push({ orderId: row.orderId, driverId: row.suggestedDriverId });
+      }
+    } else {
+      for (const o of orders) {
+        if (o.driverId || !o.suggestedDriverId || o.status === 'COMPLETED' || o.status === 'CANCELLED') continue;
+        if (autoAssignedOrderIdsRef.current.has(o.id)) continue;
+        toAssign.push({ orderId: o.id, driverId: o.suggestedDriverId });
+      }
+    }
+    toAssign.forEach(({ orderId, driverId }) => {
+      autoAssignedOrderIdsRef.current.add(orderId);
+      handleAssignRef.current(orderId, driverId);
+    });
+  }, [autoAssignEnabled, canAssign, planningResult, orders]);
 
   async function handleDelayOrder(orderId: string, delayMinutes: number) {
     setDelayOrderingId(orderId);
@@ -1396,6 +1494,16 @@ export default function Dashboard() {
               <option value="pickedUp">{t('dashboard.sortByPickedUp')}</option>
               <option value="droppedOff">{t('dashboard.sortByDroppedOff')}</option>
             </select>
+            {!isDriver && (
+              <input
+                type="text"
+                className="rd-input"
+                placeholder={t('dashboard.findById')}
+                value={findByIdQuery}
+                onChange={(e) => setFindByIdQuery(e.target.value)}
+                style={{ width: 'auto', minWidth: 140 }}
+              />
+            )}
             <button type="button" className="rd-btn rd-btn-secondary" onClick={refreshAll} disabled={loading || (orderTab === 'completed' && completedLoading)} title={t('dashboard.refreshAllTitle')}>
               {t('dashboard.refreshAll')}
             </button>
@@ -1776,6 +1884,9 @@ export default function Dashboard() {
             selectedOrderTooltip={selectedOrderTooltip}
             futureOrderPickups={canAssign ? futureOrderCoords.filter((f) => f.orderId !== selectedOrderId).map((f) => ({ orderId: f.orderId, lat: f.pickupLat, lng: f.pickupLng, pickupAt: f.pickupAt })) : []}
             problemZones={canAssign && showProblemZones && problemZones ? problemZones : undefined}
+            initialCenter={savedMapView?.center}
+            initialZoom={savedMapView?.zoom}
+            onMapViewChange={handleMapViewChange}
           />
           {isDriver && currentDriverOrder && (
             <div className="driver-trip-card">
@@ -1835,9 +1946,24 @@ export default function Dashboard() {
             </div>
             <p className="rd-text-muted dashboard-drivers-subtitle">{t('dashboard.driversSubtitle')}</p>
             {canAssign && (
-              <ul className="dashboard-drivers-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {drivers.length === 0 && <li className="rd-text-muted" style={{ padding: '0.75rem 0' }}>{t('dashboard.noDrivers')}</li>}
-                {drivers.map((d) => {
+              <>
+                <div className="dashboard-drivers-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <select className="rd-input" value={driverStatusFilter} onChange={(e) => setDriverStatusFilter(e.target.value as 'all' | 'active' | 'busy' | 'offline')} style={{ width: 'auto', minWidth: 100 }}>
+                    <option value="all">{t('dashboard.driverStatusAll')}</option>
+                    <option value="active">{t('dashboard.driverStatusActive')}</option>
+                    <option value="busy">{t('dashboard.driverStatusBusy')}</option>
+                    <option value="offline">{t('dashboard.driverStatusOffline')}</option>
+                  </select>
+                  <select className="rd-input" value={driverCarTypeFilter} onChange={(e) => setDriverCarTypeFilter(e.target.value)} style={{ width: 'auto', minWidth: 100 }}>
+                    <option value="">{t('dashboard.driverCarAll')}</option>
+                    <option value="SEDAN">{t('auth.carType_SEDAN')}</option>
+                    <option value="MINIVAN">{t('auth.carType_MINIVAN')}</option>
+                    <option value="SUV">{t('auth.carType_SUV')}</option>
+                  </select>
+                </div>
+                <ul className="dashboard-drivers-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {filteredDrivers.length === 0 && <li className="rd-text-muted" style={{ padding: '0.75rem 0' }}>{t('dashboard.noDrivers')}</li>}
+                {filteredDrivers.map((d) => {
                   const hasLocation = d.lat != null && d.lng != null;
                   const busy = orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
                   const notAvailable = d.role === 'DRIVER' && d.available === false;
@@ -1867,6 +1993,7 @@ export default function Dashboard() {
                   );
                 })}
               </ul>
+              </>
             )}
             <div className="dashboard-alerts-card">
               <h3 className="dashboard-alerts-card__title">{t('dashboard.alerts')}</h3>

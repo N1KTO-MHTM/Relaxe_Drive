@@ -62,6 +62,7 @@ export default function Drivers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [carTypeTab, setCarTypeTab] = useState<CarTypeTab>('ALL');
+  const [locationFilter, setLocationFilter] = useState<'all' | 'onMap'>('all');
   const [selectedDriver, setSelectedDriver] = useState<DriverRow | null>(null);
   const [detailTab, setDetailTab] = useState<DriverDetailTab>('info');
   const [driverStats, setDriverStats] = useState<DriverStats | null>(null);
@@ -80,8 +81,13 @@ export default function Drivers() {
     return list.filter((d) => d.carType === carTypeTab);
   }, [list, carTypeTab]);
 
+  const listByLocation = useMemo(() => {
+    if (locationFilter !== 'onMap') return listByCarType;
+    return listByCarType.filter((d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng));
+  }, [listByCarType, locationFilter]);
+
   const filteredList = searchQuery.trim()
-    ? listByCarType.filter(
+    ? listByLocation.filter(
         (d) =>
           (d.nickname ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -89,7 +95,7 @@ export default function Drivers() {
           (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : listByCarType;
+    : listByLocation;
 
   const paginatedList = useMemo(
     () => paginate(filteredList, page, DEFAULT_PAGE_SIZE),
@@ -98,7 +104,7 @@ export default function Drivers() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, carTypeTab]);
+  }, [searchQuery, carTypeTab, locationFilter]);
 
   function load() {
     setLoading(true);
@@ -220,6 +226,23 @@ export default function Drivers() {
         {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('drivers.noDrivers')}</p>}
         {!loading && !error && list.length > 0 && (
           <>
+            <div className="drivers-filters-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+              <span className="rd-text-muted" style={{ marginRight: '0.25rem' }}>{t('drivers.show')}:</span>
+              <button
+                type="button"
+                className={`drivers-tab ${locationFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setLocationFilter('all')}
+              >
+                {t('drivers.locationAll')} ({list.length})
+              </button>
+              <button
+                type="button"
+                className={`drivers-tab ${locationFilter === 'onMap' ? 'active' : ''}`}
+                onClick={() => setLocationFilter('onMap')}
+              >
+                {t('drivers.locationOnMap')} ({list.filter((d) => d.lat != null && d.lng != null).length})
+              </button>
+            </div>
             <div className="drivers-tabs">
               <button
                 type="button"

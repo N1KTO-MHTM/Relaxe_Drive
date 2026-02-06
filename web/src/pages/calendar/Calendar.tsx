@@ -36,19 +36,27 @@ function endOfDay(d: Date): Date {
   return x;
 }
 
+/** Today in YYYY-MM-DD; calendar only shows today and future. */
+function getTodayKey(): string {
+  return toDateKey(new Date());
+}
+
 export default function Calendar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const todayKey = getTodayKey();
   const [view, setView] = useState<'day' | 'week'>('week');
-  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => todayKey);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
 
-  const from = startOfDay(new Date(selectedDate));
+  const from = view === 'week'
+    ? startOfDay(new Date(todayKey + 'T00:00:00'))
+    : startOfDay(new Date(selectedDate + 'T00:00:00'));
   const to = view === 'day' ? endOfDay(from) : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   function loadCalendar() {
@@ -59,6 +67,10 @@ export default function Calendar() {
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
   }
+
+  useEffect(() => {
+    if (selectedDate < todayKey) setSelectedDate(todayKey);
+  }, [todayKey]);
 
   useEffect(() => {
     loadCalendar();
@@ -83,10 +95,15 @@ export default function Calendar() {
   }, {});
 
   const weekDays: string[] = [];
-  for (let i = 0; i < (view === 'day' ? 1 : 7); i++) {
-    const d = new Date(from);
-    d.setDate(d.getDate() + i);
-    weekDays.push(toDateKey(d));
+  if (view === 'day') {
+    weekDays.push(selectedDate);
+  } else {
+    const start = new Date(todayKey + 'T12:00:00');
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      weekDays.push(toDateKey(d));
+    }
   }
 
   return (
@@ -108,10 +125,18 @@ export default function Calendar() {
               ))}
             </select>
           )}
+          <button
+            type="button"
+            className="rd-btn rd-btn-secondary"
+            onClick={() => { setSelectedDate(todayKey); setView('day'); }}
+          >
+            {t('calendar.today')}
+          </button>
           <input
             type="date"
             className="rd-input calendar-date-input"
             value={selectedDate}
+            min={todayKey}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
           <button
@@ -152,14 +177,19 @@ export default function Calendar() {
           {weekDays.map((dayKey) => (
             <div
               key={dayKey}
-              className={`calendar-day ${selectedDate === dayKey ? 'calendar-day--selected' : ''}`}
+              className={`calendar-day ${selectedDate === dayKey ? 'calendar-day--selected' : ''} ${dayKey === todayKey ? 'calendar-day--today' : ''}`}
               role="button"
               tabIndex={0}
               onClick={() => setSelectedDate(dayKey)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDate(dayKey); } }}
               aria-pressed={selectedDate === dayKey}
             >
-              <h3 className="calendar-day-title">{new Date(dayKey + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
+              <h3 className="calendar-day-title">
+                {new Date(dayKey + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                {(ordersByDay[dayKey]?.length ?? 0) > 0 && (
+                  <span className="calendar-day-count"> ({ordersByDay[dayKey].length})</span>
+                )}
+              </h3>
               <ul className="calendar-day-orders">
                 {(ordersByDay[dayKey] || [])
                   .sort((a, b) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime())

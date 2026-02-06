@@ -57,16 +57,22 @@ export default function DashboardLayout() {
           </div>
         </div>
         <nav className={`dashboard-layout__nav ${mobileNavOpen ? 'dashboard-layout__nav--open' : ''}`}>
-          {nav.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={location.pathname === item.path ? 'active' : ''}
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
-            </Link>
-          ))}
+          {nav.map((item, index) => {
+            const prevGroup = nav[index - 1]?.group;
+            const showSep = item.group && prevGroup && item.group !== prevGroup;
+            return (
+              <span key={item.path} className="dashboard-layout__nav-item-wrap">
+                {showSep && <span className="dashboard-layout__nav-sep" aria-hidden />}
+                <Link
+                  to={item.path}
+                  className={location.pathname === item.path ? 'active' : ''}
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
+                </Link>
+              </span>
+            );
+          })}
         </nav>
         <div className="dashboard-layout__right">
           {(user?.role === 'ADMIN' || user?.role === 'DISPATCHER') && (

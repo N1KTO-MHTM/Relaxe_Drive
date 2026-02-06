@@ -6,7 +6,7 @@ import L from './leafletWithCluster';
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY
 const DEFAULT_ZOOM = 12;
 
-/** Rockland County, NY — simplified boundary as red line (no circle). Closed polygon. */
+/** Rockland County, NY — simplified boundary. Closed polygon for service area. */
 const ROCKLAND_COUNTY_BOUNDARY: [number, number][] = [
   [41.004, -74.078],  // SW
   [41.004, -73.945],  // S
@@ -94,6 +94,11 @@ interface OrdersMapProps {
   problemZones?: { late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] };
   /** When set, Re-center / centerTrigger will move map to this point (e.g. search by geo or driver location) */
   focusCenter?: { lat: number; lng: number } | null;
+  /** Restore saved map view (e.g. per-dispatcher). Applied only on first init. */
+  initialCenter?: [number, number];
+  initialZoom?: number;
+  /** Called on moveend so parent can persist view (e.g. per-dispatcher map). */
+  onMapViewChange?: (center: [number, number], zoom: number) => void;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -198,7 +203,7 @@ declare global {
   }
 }
 
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -215,20 +220,36 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) return;
-    const map = L.map(containerRef.current!).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    const startCenter = (initialCenter && initialCenter.length === 2 && Number.isFinite(initialCenter[0]) && Number.isFinite(initialCenter[1]))
+      ? initialCenter as [number, number]
+      : DEFAULT_CENTER;
+    const startZoom = typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
+    const map = L.map(containerRef.current!).setView(startCenter, startZoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
     const rocklandLatLngs = ROCKLAND_COUNTY_BOUNDARY.map(([lat, lng]) => L.latLng(lat, lng));
     const rocklandLine = L.polygon(rocklandLatLngs, {
-      color: '#ef4444',
-      weight: 3,
-      fill: false,
-      fillOpacity: 0,
+      color: '#0d9488',
+      weight: 2,
+      opacity: 0.85,
+      dashArray: '8, 6',
+      fill: true,
+      fillColor: '#0d9488',
+      fillOpacity: 0.06,
     }).addTo(map);
     rocklandLine.bindPopup('Rockland County', { closeOnClick: false });
     rocklandBoundaryRef.current = rocklandLine;
     mapRef.current = map;
+    let handleMoveEnd: (() => void) | undefined;
+    if (onMapViewChange) {
+      handleMoveEnd = () => {
+        const c = map.getCenter();
+        onMapViewChange([c.lat, c.lng], map.getZoom());
+      };
+      map.on('moveend', handleMoveEnd);
+      map.on('zoomend', handleMoveEnd);
+    }
     const onPopupExitClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest?.('.orders-map-popup-close')) map.closePopup();
@@ -238,6 +259,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     window.addEventListener('resize', onResize);
     setTimeout(() => map.invalidateSize(), 100);
     return () => {
+      if (handleMoveEnd) {
+        map.off('moveend', handleMoveEnd);
+        map.off('zoomend', handleMoveEnd);
+      }
       map.getContainer().removeEventListener('click', onPopupExitClick);
       window.removeEventListener('resize', onResize);
       if (rocklandBoundaryRef.current) {
