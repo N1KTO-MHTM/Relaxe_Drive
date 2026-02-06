@@ -4,10 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import './i18n';
+import './store/theme';
 import './styles/variables.css';
 import './styles/design-system.css';
-
-// Theme is applied in store on first getTheme() / module load
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

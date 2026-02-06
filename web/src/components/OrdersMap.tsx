@@ -67,7 +67,7 @@ export interface OrderRouteData {
   alternativeRoutes?: Array<{ polyline: string; durationMinutes: number; distanceKm: number }>;
 }
 
-export type DriverReportMap = { id: string; lat: number; lng: number; type: string; description?: string | null };
+export type DriverReportMap = { id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string };
 
 interface OrdersMapProps {
   drivers?: DriverForMap[];
@@ -202,14 +202,22 @@ const REPORT_COLORS: Record<string, string> = {
   OTHER: '#6b7280',
 };
 
+const REPORT_TYPE_KEYS: Record<string, string> = {
+  POLICE: 'dashboard.reportPolice',
+  TRAFFIC: 'dashboard.reportTraffic',
+  WORK_ZONE: 'dashboard.reportWorkZone',
+  CAR_CRASH: 'dashboard.reportCrash',
+  OTHER: 'dashboard.reportOther',
+};
+
 function reportIcon(type: string): L.DivIcon {
   const color = REPORT_COLORS[type] || REPORT_COLORS.OTHER;
-  const label = type.replace('_', ' ').slice(0, 2);
+  const short = type === 'CAR_CRASH' ? 'CR' : type.replace('_', ' ').slice(0, 2);
   return L.divIcon({
     className: 'orders-map-report-marker',
-    html: `<span style="background:${color};color:#fff;border:2px solid #fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;box-shadow:0 1px 3px rgba(0,0,0,0.4);">${label}</span>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    html: `<span style="background:${color};color:#fff;border:3px solid #fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.45);">${short}</span>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
   });
 }
 
@@ -657,14 +665,18 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     const map = mapRef.current;
     reports.forEach((r) => {
       const m = L.marker([r.lat, r.lng], { icon: reportIcon(r.type) }).addTo(map);
-      m.bindPopup(`${r.type.replace('_', ' ')}${r.description ? `: ${r.description}` : ''}`, { closeOnClick: false });
+      const typeLabel = t(REPORT_TYPE_KEYS[r.type] || 'dashboard.reportOther');
+      const ageSec = r.createdAt ? Math.max(0, Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 1000)) : 0;
+      const ageStr = ageSec < 60 ? `${ageSec}s ago` : `${Math.floor(ageSec / 60)}m ago`;
+      const desc = r.description?.trim() ? `<br><span class="rd-text-muted">${r.description}</span>` : '';
+      m.bindPopup(`<strong>${typeLabel}</strong><br><span class="rd-text-muted">${ageStr}</span>${desc}`, { closeOnClick: false });
       reportMarkersRef.current.push(m);
     });
     return () => {
       reportMarkersRef.current.forEach((m) => m.remove());
       reportMarkersRef.current = [];
     };
-  }, [reports]);
+  }, [reports, t]);
 
   // Re-fit map only when user clicks Re-center (centerTrigger). Do NOT re-run when drivers/route
   // update — that would make the dispatcher map follow driver movements; dispatcher map is independent.

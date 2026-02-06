@@ -38,9 +38,10 @@ export default function LiveWall() {
   const [drivers, setDrivers] = useState<DriverForMap[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [futureOrderCoords, setFutureOrderCoords] = useState<Array<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }>>([]);
-  const [reports, setReports] = useState<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null }>>([]);
+  const [reports, setReports] = useState<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string }>>([]);
   const [centerTrigger, setCenterTrigger] = useState(0);
   const [reportsTrigger, setReportsTrigger] = useState(0);
+  const [reportTicks, setReportTicks] = useState(0);
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
       return sessionStorage.getItem('livewall-search') ?? '';
@@ -108,10 +109,24 @@ export default function LiveWall() {
     const maxLat = 41.3;
     const minLng = -74.2;
     const maxLng = -73.8;
-    api.get<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null }>>(`/reports?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}&sinceMinutes=120`)
+    api.get<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string }>>(`/reports?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}&sinceMinutes=2`)
       .then((data) => setReports(Array.isArray(data) ? data : []))
       .catch(() => setReports([]));
   }, [reportsTrigger]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setReportTicks((n) => n + 1), 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const reportsOnMap = useMemo(() => {
+    const now = Date.now();
+    const maxAgeMs = 60 * 1000;
+    return reports.filter((r) => {
+      const created = r.createdAt ? new Date(r.createdAt).getTime() : now;
+      return now - created < maxAgeMs;
+    });
+  }, [reports, reportTicks]);
 
   const futurePickups = futureOrderCoords.map((f) => ({
     orderId: f.orderId,
@@ -219,7 +234,7 @@ export default function LiveWall() {
           centerTrigger={centerTrigger}
           onRecenter={() => { setFocusCenter(null); setCenterTrigger((c) => c + 1); }}
           recenterLabel={t('dashboard.recenter')}
-          reports={reports}
+          reports={reportsOnMap}
           futureOrderPickups={futurePickups}
           focusCenter={focusCenter}
         />

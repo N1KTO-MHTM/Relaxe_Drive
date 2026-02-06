@@ -101,6 +101,7 @@ export default function Dashboard() {
   const [now, setNow] = useState(() => Date.now());
   const [sharingLocation, setSharingLocation] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectConfirmOrderId, setRejectConfirmOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [routeData, setRouteData] = useState<OrderRouteData | null>(null);
   const [driverEtas, setDriverEtas] = useState<Record<string, { drivers: DriverEta[] }>>({});
@@ -156,6 +157,7 @@ export default function Dashboard() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
   const [reportsRefreshTrigger, setReportsRefreshTrigger] = useState(0);
+  const [reportTicks, setReportTicks] = useState(0);
   const [driverAssignSearch, setDriverAssignSearch] = useState<Record<string, string>>({});
   const [driverAssignByIdInput, setDriverAssignByIdInput] = useState<Record<string, string>>({});
   const [selectedDriverDetail, setSelectedDriverDetail] = useState<{ orderId: string; driver: User } | null>(null);
@@ -802,6 +804,22 @@ export default function Dashboard() {
     return () => { socket.off('report', onReport); };
   }, [socket]);
 
+  /** Re-tick every 10s so reports older than 1 minute are removed from the map. */
+  useEffect(() => {
+    const interval = setInterval(() => setReportTicks((n) => n + 1), 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  /** Reports visible on map: only from the last 1 minute. */
+  const reportsOnMap = useMemo(() => {
+    const now = Date.now();
+    const maxAgeMs = 60 * 1000;
+    return reports.filter((r) => {
+      const created = r.createdAt ? new Date(r.createdAt).getTime() : now;
+      return now - created < maxAgeMs;
+    });
+  }, [reports, reportTicks]);
+
   const MOVE_AWAY_METERS = 80;
   useEffect(() => {
     if (!isDriver || !driverLocation || !routeData?.pickupCoords || !selectedOrderId) return;
@@ -1188,6 +1206,7 @@ export default function Dashboard() {
   }
 
   async function handleRejectOrder(orderId: string) {
+    setRejectConfirmOrderId(null);
     setRejectingId(orderId);
     try {
       await api.patch(`/orders/${orderId}/reject`, {});
@@ -1367,7 +1386,7 @@ export default function Dashboard() {
               <button type="button" className="rd-btn rd-btn-primary" disabled={!!statusUpdatingId} onClick={() => handleStatusChange(assignedOrder.id, 'IN_PROGRESS')}>
                 {statusUpdatingId === assignedOrder.id ? '…' : t('dashboard.startRide')}
               </button>
-              <button type="button" className="rd-btn rd-btn-danger" disabled={!!rejectingId} onClick={() => handleRejectOrder(assignedOrder.id)}>
+              <button type="button" className="rd-btn rd-btn-danger" disabled={!!rejectingId} onClick={() => setRejectConfirmOrderId(assignedOrder.id)}>
                 {rejectingId === assignedOrder.id ? '…' : t('dashboard.cancel')}
               </button>
             </div>
@@ -1678,7 +1697,27 @@ export default function Dashboard() {
               {tripTypeForm === 'ROUNDTRIP' && (
                 <div className="dashboard-form-section">
                   <label>{t('dashboard.secondLocation')}</label>
-                  <input type="text" className="rd-input" value={middleAddress} onChange={(e) => setMiddleAddress(e.target.value)} placeholder={t('dashboard.secondLocation')} />
+                  <div className="dashboard-address-row">
+                    <input
+                      type="text"
+                      className="rd-input dashboard-address-input"
+                      list="middle-address-list"
+                      value={middleAddress}
+                      onChange={(e) => setMiddleAddress(e.target.value)}
+                      placeholder={t('dashboard.addressPlaceholder')}
+                      aria-describedby={middleAddress.trim() && existingAddresses.some((a) => a.toLowerCase() === middleAddress.trim().toLowerCase()) ? 'middle-existing-hint' : undefined}
+                    />
+                    <datalist id="middle-address-list">
+                      {existingAddresses.map((addr) => (
+                        <option key={addr} value={addr} />
+                      ))}
+                    </datalist>
+                  </div>
+                  {middleAddress.trim() && existingAddresses.some((a) => a.toLowerCase() === middleAddress.trim().toLowerCase()) && (
+                    <p id="middle-existing-hint" className="rd-text-muted dashboard-form-hint" style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                      {t('dashboard.addressMatchExisting')}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="dashboard-form-section">
@@ -2497,7 +2536,7 @@ export default function Dashboard() {
             pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
             navMode={isDriver && !!routeData && !!driverLocation}
             centerTrigger={mapCenterTrigger}
-            reports={isDriver ? [] : reports}
+            reports={isDriver ? [] : reportsOnMap}
             selectedRouteIndex={selectedRouteIndex}
             onRecenter={() => setMapCenterTrigger((t) => t + 1)}
             recenterLabel={t('dashboard.recenter')}
@@ -2607,6 +2646,24 @@ export default function Dashboard() {
                   {deletingId === deleteConfirmOrderId ? '…' : t('common.delete')}
                 </button>
                 <button type="button" className="rd-btn" onClick={() => setDeleteConfirmOrderId(null)}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {rejectConfirmOrderId && (
+          <div role="dialog" aria-modal="true" aria-labelledby="confirm-reject-order-title" style={{
+            position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }} onClick={() => setRejectConfirmOrderId(null)} onKeyDown={(e) => e.key === 'Escape' && setRejectConfirmOrderId(null)}>
+            <div className="rd-panel" style={{ maxWidth: 360, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+              <h3 id="confirm-reject-order-title" style={{ margin: '0 0 0.5rem' }}>{t('dashboard.confirmRejectOrderTitle')}</h3>
+              <p className="rd-text-muted" style={{ margin: '0 0 1rem' }}>{t('dashboard.confirmRejectOrderMessage')}</p>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="rd-btn rd-btn-danger" disabled={!!rejectingId} onClick={() => rejectConfirmOrderId && handleRejectOrder(rejectConfirmOrderId)}>
+                  {rejectingId === rejectConfirmOrderId ? '…' : t('dashboard.confirmRejectButton')}
+                </button>
+                <button type="button" className="rd-btn" onClick={() => setRejectConfirmOrderId(null)}>
                   {t('common.cancel')}
                 </button>
               </div>
