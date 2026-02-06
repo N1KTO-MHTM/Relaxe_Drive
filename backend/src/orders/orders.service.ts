@@ -49,7 +49,7 @@ export class OrdersService {
     const waypointsJson =
       data.waypoints && data.waypoints.length > 0
         ? (data.waypoints as unknown as object)
-        : null;
+        : undefined;
     return this.prisma.order.create({
       data: {
         pickupAt: data.pickupAt,
