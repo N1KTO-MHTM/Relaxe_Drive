@@ -281,7 +281,7 @@ export class OrdersService {
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');
     if (order.tripType !== 'ROUNDTRIP' || !order.arrivedAtMiddleAt) throw new BadRequestException('Must be roundtrip and have arrived at second stop');
     const now = new Date();
-    const { chargeCents } = computeWaitCharge(order.arrivedAtMiddleAt, now);
+    const { chargeCents } = computeWaitCharge(order.arrivedAtMiddleAt!, now);
     return this.prisma.order.update({
       where: { id: orderId },
       data: { leftMiddleAt: now, waitChargeAtMiddleCents: chargeCents },
