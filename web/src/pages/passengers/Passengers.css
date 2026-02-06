@@ -69,3 +69,18 @@
 .passengers-map-popup-row {
   margin: 0.25rem 0;
 }
+
+.passengers-map-marker-pin {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: inline-block;
+}
+
+@media (max-width: 768px) {
+  .passengers-map-section {
+    margin-bottom: var(--rd-space-md);
+  }
+  .passengers-map {
+    min-height: 260px;
+  }
+}

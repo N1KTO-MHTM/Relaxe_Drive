@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth';
+import { useToastStore } from '../../store/toast';
 import { api } from '../../api/client';
+import { shortId } from '../../utils/shortId';
 import './Calendar.css';
 
 interface Order {
@@ -44,6 +46,7 @@ function getTodayKey(): string {
 export default function Calendar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const toast = useToastStore();
   const user = useAuthStore((s) => s.user);
   const todayKey = getTodayKey();
   const [view, setView] = useState<'day' | 'week'>('week');
@@ -52,7 +55,9 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+  const canEditCalendar = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
 
   const from = view === 'week'
     ? startOfDay(new Date(todayKey + 'T00:00:00'))
@@ -66,6 +71,29 @@ export default function Calendar() {
       .then((data) => setOrders(Array.isArray(data) ? data : []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
+  }
+
+  async function handleCancelOrder(orderId: string) {
+    if (!canEditCalendar) return;
+    if (!window.confirm(t('calendar.confirmCancelOrder'))) return;
+    setCancellingId(orderId);
+    try {
+      await api.delete(`/orders/${orderId}`);
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      toast.success(t('toast.orderDeleted'));
+      loadCalendar();
+    } catch {
+      try {
+        await api.patch(`/orders/${orderId}/status`, { status: 'CANCELLED' });
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        toast.success(t('toast.orderCancelled'));
+        loadCalendar();
+      } catch {
+        toast.error(t('toast.deleteFailed'));
+      }
+    } finally {
+      setCancellingId(null);
+    }
   }
 
   useEffect(() => {
@@ -83,9 +111,12 @@ export default function Calendar() {
     }).catch(() => setDrivers([]));
   }, [user?.role]);
 
+  const isDispatcherOnly = user?.role === 'DISPATCHER';
   const filteredOrders = selectedDriverId
     ? orders.filter((o) => o.driverId === selectedDriverId)
-    : orders;
+    : isDispatcherOnly
+      ? []
+      : orders;
 
   const ordersByDay = filteredOrders.reduce<Record<string, Order[]>>((acc, o) => {
     const key = toDateKey(new Date(o.pickupAt));
@@ -113,17 +144,24 @@ export default function Calendar() {
         <h1>{t('calendar.title')}</h1>
         <div className="calendar-controls">
           {(user?.role === 'ADMIN' || user?.role === 'DISPATCHER') && (
-            <select
-              className="rd-input calendar-driver-select"
-              value={selectedDriverId}
-              onChange={(e) => setSelectedDriverId(e.target.value)}
-              title={t('calendar.chooseDriver')}
-            >
-              <option value="">{t('calendar.allDrivers')}</option>
-              {drivers.map((d) => (
-                <option key={d.id} value={d.id}>{d.nickname}</option>
-              ))}
-            </select>
+            <>
+              <select
+                className="rd-input calendar-driver-select"
+                value={selectedDriverId}
+                onChange={(e) => setSelectedDriverId(e.target.value)}
+                title={t('calendar.chooseDriver')}
+              >
+                <option value="">{user?.role === 'DISPATCHER' ? t('calendar.chooseDriver') : t('calendar.allDrivers')}</option>
+                {drivers.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nickname}</option>
+                ))}
+              </select>
+              {selectedDriverId && (
+                <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setSelectedDriverId('')} title={t('calendar.clearDriverFilter')}>
+                  {t('calendar.clear')}
+                </button>
+              )}
+            </>
           )}
           <button
             type="button"
@@ -161,7 +199,9 @@ export default function Calendar() {
       <p className="rd-text-muted">
         {selectedDriverId
           ? t('calendar.driverSchedule', { name: drivers.find((d) => d.id === selectedDriverId)?.nickname ?? '' })
-          : t('calendar.preOrder')}
+          : user?.role === 'DISPATCHER'
+            ? t('calendar.chooseDriverToSeeSchedule')
+            : t('calendar.preOrder')}
       </p>
       {selectedDriverId && (
         <p style={{ marginTop: '0.25rem' }}>
@@ -200,7 +240,17 @@ export default function Calendar() {
                       <div className="rd-text-muted">{o.pickupAddress} → {o.dropoffAddress}</div>
                       {!selectedDriverId && o.driverId && (
                         <div className="calendar-order-driver rd-text-muted">
-                          {drivers.find((d) => d.id === o.driverId)?.nickname ?? o.driverId}
+                          {drivers.find((d) => d.id === o.driverId)?.nickname ?? (o.driverId ? <span className="rd-id-compact" title={o.driverId}>{shortId(o.driverId)}</span> : '—')}
+                        </div>
+                      )}
+                      {canEditCalendar && (
+                        <div className="calendar-order-actions" style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                          <button type="button" className="rd-btn rd-btn--small rd-btn-secondary" onClick={(e) => { e.stopPropagation(); navigate('/dashboard', { state: { focusOrderId: o.id } }); }}>
+                            {t('calendar.edit')}
+                          </button>
+                          <button type="button" className="rd-btn rd-btn--small rd-btn-danger" onClick={(e) => { e.stopPropagation(); handleCancelOrder(o.id); }} disabled={cancellingId === o.id}>
+                            {cancellingId === o.id ? '…' : t('calendar.cancelOrder')}
+                          </button>
                         </div>
                       )}
                     </li>

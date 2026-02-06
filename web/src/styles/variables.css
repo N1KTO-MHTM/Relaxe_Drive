@@ -43,6 +43,21 @@
   --rd-transition: 0.2s ease;
 }
 
+/* Light theme */
+[data-theme="light"] {
+  --rd-bg: #f0f2f5;
+  --rd-bg-elevated: #ffffff;
+  --rd-bg-panel: #ffffff;
+  --rd-surface: #f6f8fa;
+  --rd-border: rgba(0, 0, 0, 0.12);
+  --rd-border-strong: rgba(0, 0, 0, 0.2);
+  --rd-text: #1a1a1a;
+  --rd-text-muted: rgba(0, 0, 0, 0.65);
+  --rd-text-dim: rgba(0, 0, 0, 0.45);
+  --rd-glass: rgba(255, 255, 255, 0.95);
+  --rd-glass-border: rgba(0, 0, 0, 0.08);
+}
+
 /* Status helpers */
 .status-ok { color: var(--rd-ok); }
 .status-warning { color: var(--rd-warning); }

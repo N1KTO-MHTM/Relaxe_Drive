@@ -148,15 +148,17 @@ export class OrdersService {
     });
   }
 
-  /** Driver stops the trip while underway (IN_PROGRESS). Order becomes CANCELLED. */
+  /** Passenger requested an extra stop (not in original route). Add waypoint and keep trip IN_PROGRESS. */
   async stopUnderway(orderId: string, driverId: string) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.driverId !== driverId) throw new BadRequestException('This order is not assigned to you');
-    if (order.status !== 'IN_PROGRESS') throw new BadRequestException('Only in-progress trips can be stopped');
+    if (order.status !== 'IN_PROGRESS') throw new BadRequestException('Only in-progress trips can add a passenger stop');
+    const existing = (order.waypoints as unknown as { address: string }[] | null) ?? [];
+    const next = [...existing, { address: 'Passenger stop (en route)' }];
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { status: 'CANCELLED' },
+      data: { waypoints: next as unknown as object },
     });
   }
 

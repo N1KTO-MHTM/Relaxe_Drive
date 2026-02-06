@@ -7,6 +7,8 @@ import './i18n';
 import './styles/variables.css';
 import './styles/design-system.css';
 
+// Theme is applied in store on first getTheme() / module load
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

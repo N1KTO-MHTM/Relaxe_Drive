@@ -120,9 +120,9 @@ export function PassengersMap({ clients, className }: PassengersMapProps) {
       const marker = L.marker(latLng, {
         icon: L.divIcon({
           className: 'passengers-map-marker',
-          html: '📍',
-          iconSize: [28, 28],
-          iconAnchor: [14, 14],
+          html: '<span class="passengers-map-marker-pin" aria-hidden="true">📍</span>',
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
         }),
       }).addTo(map);
       marker.bindPopup(
@@ -164,12 +164,14 @@ export function PassengersMap({ clients, className }: PassengersMapProps) {
   }
 
   if (points.length === 0) {
+    const hasAddresses = clients.some((c) => (c.pickupAddr ?? '').trim() || (c.dropoffAddr ?? '').trim());
     return (
       <div
         className={className}
         style={{
           width: '100%',
-          height: 200,
+          minHeight: 240,
+          height: 240,
           background: 'var(--rd-bg-muted, #2a2a2e)',
           borderRadius: 'var(--rd-radius-md, 8px)',
           display: 'flex',
@@ -177,9 +179,11 @@ export function PassengersMap({ clients, className }: PassengersMapProps) {
           justifyContent: 'center',
           color: 'var(--rd-text-muted)',
           fontSize: '0.875rem',
+          padding: '1rem',
+          textAlign: 'center',
         }}
       >
-        {t('passengers.noAddressesOnMap')}
+        {hasAddresses ? t('passengers.geocodingOrNoCoords') : t('passengers.noAddressesOnMap')}
       </div>
     );
   }
@@ -188,13 +192,14 @@ export function PassengersMap({ clients, className }: PassengersMapProps) {
     <div
       ref={containerRef}
       className={className}
-      style={{
-        width: '100%',
-        height: 320,
-        borderRadius: 'var(--rd-radius-md, 8px)',
-        overflow: 'hidden',
-        background: 'var(--rd-bg-muted, #2a2a2e)',
-      }}
+style={{
+          width: '100%',
+          height: 320,
+          minHeight: 280,
+          borderRadius: 'var(--rd-radius-md, 8px)',
+          overflow: 'hidden',
+          background: 'var(--rd-bg-muted, #2a2a2e)',
+        }}
     />
   );
 }

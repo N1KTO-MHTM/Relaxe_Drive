@@ -49,3 +49,55 @@
   font-size: 0.9375rem;
   line-height: 1.5;
 }
+
+.about-location-guide {
+  margin-top: var(--rd-space-lg);
+}
+
+.about-location-guide-title {
+  margin: 0 0 var(--rd-space-sm);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.about-location-guide-intro {
+  margin: 0 0 var(--rd-space-md);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.about-location-guide-steps {
+  margin: 0 0 var(--rd-space-md);
+  padding-left: 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--rd-text-muted);
+}
+
+.about-location-guide-steps li {
+  margin-bottom: 0.5rem;
+}
+
+.about-location-guide-success {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.about-location-guide-phone {
+  margin-top: var(--rd-space-md);
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-panel);
+  border-radius: var(--rd-radius);
+  border: 1px solid var(--rd-border);
+}
+
+.about-location-guide-phone-title {
+  margin: 0 0 var(--rd-space-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.about-location-guide-phone .about-location-guide-steps {
+  margin-bottom: 0;
+}

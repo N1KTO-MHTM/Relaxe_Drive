@@ -19,12 +19,12 @@ interface NavBarProps {
   eta?: string;
 }
 
-const STEP_TYPE_ICON: Record<number, string> = {
+export const STEP_TYPE_ICON: Record<number, string> = {
   0: '↰', 1: '↱', 2: '⤴', 3: '⤵', 4: '←', 5: '→', 6: '↑', 9: '↻', 10: '●', 11: '▶',
 };
 
-/** Format distance for turn hint: "0.2 mi" or "500 ft" */
-function formatDistanceHint(m: number): string {
+/** Format distance for turn hint: "0.2 mi" or "500 ft" (exported for instructions list) */
+export function formatDistanceHint(m: number): string {
   const mi = m / 1609.34;
   if (mi >= 0.1) return `${mi < 1 ? mi.toFixed(1) : Math.round(mi * 10) / 10} mi`;
   const ft = Math.round(m * 3.28084);

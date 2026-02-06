@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { downloadCsv } from '../../utils/exportCsv';
+import { shortId } from '../../utils/shortId';
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import { TripCardMap } from '../../components/TripCardMap';
 import './Drivers.css';
@@ -310,7 +311,7 @@ export default function Drivers() {
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
                       {showPhone && <td className="drivers-cell-email">{d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}</td>}
-                      {showPhone && <td className="drivers-cell-id" title={d.id}>{d.id}</td>}
+                      {showPhone && <td className="drivers-cell-id rd-id-compact" title={d.id}>{shortId(d.id)}</td>}
                       <td>{d.driverId ?? '—'}</td>
                       <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
                       <td>{d.carPlateNumber ?? '—'}</td>

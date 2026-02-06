@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/auth';
 import { useSocket } from '../ws/useSocket';
 import { api } from '../api/client';
+import { themeStore } from '../store/theme';
 import type { Role } from '../store/auth';
 import { getAllowedNavItems, canAccessPath } from '../config/roles';
 import Toast from '../components/Toast';
@@ -30,6 +31,11 @@ export default function DashboardLayout() {
 
   const nav = getAllowedNavItems(user?.role ?? null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [theme, setThemeState] = useState(themeStore.getTheme());
+  useEffect(() => {
+    const unsub = themeStore.subscribe(setThemeState);
+    return () => { unsub(); };
+  }, []);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -80,8 +86,18 @@ export default function DashboardLayout() {
               + {t('nav.newOrder')}
             </Link>
           )}
+          <button
+            type="button"
+            className="rd-btn theme-toggle"
+            onClick={() => themeStore.setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={theme === 'dark' ? (t('nav.themeLight') || 'Light theme') : (t('nav.themeDark') || 'Dark theme')}
+            title={theme === 'dark' ? (t('nav.themeLight') || 'Light') : (t('nav.themeDark') || 'Dark')}
+          >
+            {theme === 'dark' ? '☀' : '🌙'}
+          </button>
           <select
             value={i18n.language}
+            aria-label={t('nav.language') || 'Language'}
             onChange={(e) => {
               const lng = e.target.value;
               i18n.changeLanguage(lng);
@@ -103,7 +119,7 @@ export default function DashboardLayout() {
           <span className="user-info">
             {[user?.nickname, user?.phone, user?.email].filter(Boolean).join(' • ') || ''}
           </span>
-          <button type="button" className="rd-btn rd-btn-danger" onClick={clearAuth}>
+          <button type="button" className="rd-btn rd-btn-danger" onClick={clearAuth} aria-label={t('auth.logout')}>
             {t('auth.logout')}
           </button>
         </div>

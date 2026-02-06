@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
+import { shortId } from '../../utils/shortId';
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import { PassengersMap } from './PassengersMap';
 import type { PassengerRow } from '../../types';
@@ -229,12 +230,14 @@ export default function Passengers() {
       {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
       {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('passengers.noClients')}</p>}
       {!loading && !error && list.length > 0 && filteredList.length === 0 && <p className="rd-text-muted">{t('passengers.noMatch')}</p>}
-      {!loading && !error && filteredList.length > 0 && (
-        <>
+      {!loading && !error && list.length > 0 && (
         <section className="passengers-map-section" aria-label={t('passengers.clientsOnMap')}>
           <h2 className="passengers-map-heading">{t('passengers.clientsOnMap')}</h2>
           <PassengersMap clients={filteredList} className="passengers-map" />
         </section>
+      )}
+      {!loading && !error && filteredList.length > 0 && (
+        <>
         <div className="rd-table-wrapper">
           <table className="rd-table" style={{ width: '100%' }}>
             <thead>
@@ -276,7 +279,7 @@ export default function Passengers() {
                     </>
                   ) : (
                     <>
-                      <td className="passengers-cell-id" title={p.id}>{p.id.slice(0, 8)}…</td>
+                      <td className="passengers-cell-id rd-id-compact" title={p.id}>{shortId(p.id)}</td>
                       <td>{p.phone ?? '—'}</td>
                       <td>{p.name ?? '—'}</td>
                       <td>{p.userId ? <span className="rd-badge rd-badge-ok">{t('passengers.driver')}</span> : '—'}</td>

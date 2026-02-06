@@ -65,6 +65,53 @@
   }
 }
 
+/* Mobile: top bar and controls wrap, touch-friendly */
+@media (max-width: 768px) {
+  .dashboard-page__top {
+    gap: 0.5rem;
+  }
+  .dashboard-page__top h1 {
+    font-size: 1.15rem;
+  }
+  .dashboard-driver-top-controls {
+    width: 100%;
+  }
+  .dashboard-driver-top-controls > div {
+    width: 100%;
+  }
+  .driver-trip-card {
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+  }
+  .driver-trip-card__address {
+    font-size: 0.9375rem;
+  }
+  .orders-map-container {
+    min-height: 280px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-page__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .dashboard-find-by-id {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .dashboard-order-form-wrap .rd-input,
+  .dashboard-order-form-wrap input[type="text"],
+  .dashboard-order-form-wrap select {
+    min-width: 0;
+    width: 100%;
+  }
+  input[id^="driver-"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
 .dashboard-page--driver.dashboard-page--full-map .dashboard-page__grid {
   grid-template-columns: 1fr;
   grid-template-areas: "map-area";
@@ -662,5 +709,74 @@
   .dashboard-page--driver .dashboard-page__sidebar .rd-panel-header h2 {
     font-size: 1rem;
   }
+}
+
+/* Turn-by-turn instructions list (driver) */
+.dashboard-route-instructions {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--rd-bg-panel);
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.dashboard-route-instructions__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--rd-text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.dashboard-route-instructions__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dashboard-route-instructions__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--rd-border);
+}
+
+.dashboard-route-instructions__item:last-child {
+  border-bottom: none;
+}
+
+.dashboard-route-instructions__icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.dashboard-route-instructions__text {
+  color: var(--rd-text);
+}
+
+/* Driver cluster: number only (no letter), car-style circle */
+.orders-map-driver-cluster {
+  background: var(--rd-accent, #22c55e) !important;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.orders-map-driver-cluster__count {
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
 }
 

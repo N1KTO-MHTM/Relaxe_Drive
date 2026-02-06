@@ -41,9 +41,23 @@ export default function LiveWall() {
   const [reports, setReports] = useState<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null }>>([]);
   const [centerTrigger, setCenterTrigger] = useState(0);
   const [reportsTrigger, setReportsTrigger] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      return sessionStorage.getItem('livewall-search') ?? '';
+    } catch {
+      return '';
+    }
+  });
   const [filterCarType, setFilterCarType] = useState<string>('');
   const [focusCenter, setFocusCenter] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('livewall-search', searchQuery);
+    } catch {
+      // ignore
+    }
+  }, [searchQuery]);
 
   const canAssign = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
 

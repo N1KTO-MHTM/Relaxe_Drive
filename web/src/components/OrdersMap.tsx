@@ -94,11 +94,20 @@ interface OrdersMapProps {
   problemZones?: { late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] };
   /** When set, Re-center / centerTrigger will move map to this point (e.g. search by geo or driver location) */
   focusCenter?: { lat: number; lng: number } | null;
+  /** Optional "My location" button label and callback to center map on user's geo */
+  myLocationLabel?: string;
+  onMyLocation?: () => void;
   /** Restore saved map view (e.g. per-dispatcher). Applied only on first init. */
   initialCenter?: [number, number];
   initialZoom?: number;
   /** Called on moveend so parent can persist view (e.g. per-dispatcher map). */
   onMapViewChange?: (center: [number, number], zoom: number) => void;
+  /** Driver's "You" marker style: car or arrow (only when currentUserLocation is set). */
+  driverMarkerStyle?: 'car' | 'arrow';
+  /** Current speed in mph (shown near driver marker). */
+  currentUserSpeedMph?: number | null;
+  /** Short label where driver is heading (e.g. "To pickup", "To dropoff"). */
+  currentUserHeadingTo?: string | null;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -150,6 +159,29 @@ const DRIVER_COLORS: Record<DriverMapStatus, string> = {
 
 /** SVG car icon (top-down) for consistent look across devices */
 const CAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
+
+/** SVG arrow (pointing up) for driver "You" marker */
+const ARROW_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
+
+/** "You" marker: blue car icon */
+function currentUserCarIcon(): L.DivIcon {
+  return L.divIcon({
+    className: 'orders-map-current-user-marker',
+    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);" title="You">${CAR_ICON_SVG.replace('width="18" height="18"', 'width="22" height="22"')}</span>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  });
+}
+
+/** "You" marker: blue arrow icon (pointing up) */
+function currentUserArrowIcon(): L.DivIcon {
+  return L.divIcon({
+    className: 'orders-map-current-user-marker',
+    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);" title="You">${ARROW_ICON_SVG}</span>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  });
+}
 
 /** Driver marker: green = available, red = on trip, gray = offline. Map view is never synced between driver and dispatcher. */
 function driverIcon(status: DriverMapStatus): L.DivIcon {
@@ -203,7 +235,8 @@ declare global {
   }
 }
 
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange }: OrdersMapProps) {
+const SMOOTH_MOVE_MS = 180;
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserHeadingTo, myLocationLabel, onMyLocation }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -331,6 +364,15 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       maxClusterRadius: 60,
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: `<span class="orders-map-driver-cluster__count">${count}</span>`,
+          className: 'orders-map-driver-cluster',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        });
+      },
     });
     withCoords.forEach((driver) => {
       const status: DriverMapStatus = driver.status ?? (driver.lat != null && driver.lng != null ? 'available' : 'offline');
@@ -448,26 +490,77 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     };
   }, [problemZones]);
 
-  // "You" marker for driver view
+  // "You" marker for driver view: create once, then smooth-move on location change
+  const currentUserTargetRef = useRef<{ lat: number; lng: number } | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (currentUserMarkerRef.current) {
-      map.removeLayer(currentUserMarkerRef.current);
-      currentUserMarkerRef.current = null;
-    }
-    if (currentUserLocation && Number.isFinite(currentUserLocation.lat) && Number.isFinite(currentUserLocation.lng)) {
-      const m = L.marker([currentUserLocation.lat, currentUserLocation.lng], { icon: defaultIcon }).addTo(map);
-      m.bindPopup('You', { closeOnClick: false });
-      currentUserMarkerRef.current = m;
-    }
-    return () => {
+    if (!currentUserLocation || !Number.isFinite(currentUserLocation.lat) || !Number.isFinite(currentUserLocation.lng)) {
       if (currentUserMarkerRef.current) {
         map.removeLayer(currentUserMarkerRef.current);
         currentUserMarkerRef.current = null;
       }
+      currentUserTargetRef.current = null;
+      return;
+    }
+    const target = { lat: currentUserLocation.lat, lng: currentUserLocation.lng };
+    if (!currentUserMarkerRef.current) {
+      const icon = driverMarkerStyle === 'arrow' ? currentUserArrowIcon() : currentUserCarIcon();
+      const m = L.marker([target.lat, target.lng], { icon }).addTo(map);
+      const popupLines = ['You'];
+      if (currentUserSpeedMph != null && Number.isFinite(currentUserSpeedMph)) popupLines.push(`${Math.round(currentUserSpeedMph)} mph`);
+      if (currentUserHeadingTo) popupLines.push(currentUserHeadingTo);
+      m.bindPopup(popupLines.join(' · '), { closeOnClick: false });
+      currentUserMarkerRef.current = m;
+      currentUserTargetRef.current = target;
+      return () => {
+        if (currentUserMarkerRef.current) {
+          map.removeLayer(currentUserMarkerRef.current);
+          currentUserMarkerRef.current = null;
+        }
+        currentUserTargetRef.current = null;
+      };
+    }
+    currentUserMarkerRef.current.setIcon(driverMarkerStyle === 'arrow' ? currentUserArrowIcon() : currentUserCarIcon());
+    currentUserTargetRef.current = target;
+  }, [driverMarkerStyle, currentUserLocation?.lat, currentUserLocation?.lng]);
+
+  // Smooth animate marker to new position when location updates (instant if jump is large)
+  useEffect(() => {
+    const map = mapRef.current;
+    const marker = currentUserMarkerRef.current;
+    if (!map || !marker || !currentUserLocation || !Number.isFinite(currentUserLocation.lat) || !Number.isFinite(currentUserLocation.lng)) return;
+    const start = marker.getLatLng();
+    const end = L.latLng(currentUserLocation.lat, currentUserLocation.lng);
+    const distM = Math.sqrt((end.lat - start.lat) ** 2 + (end.lng - start.lng) ** 2) * 111320;
+    if (distM > 80) {
+      marker.setLatLng(end);
+      return;
+    }
+    const startTime = performance.now();
+    let rafId: number;
+    const tick = () => {
+      const t = Math.min((performance.now() - startTime) / SMOOTH_MOVE_MS, 1);
+      const eased = t < 1 ? 1 - (1 - t) * (1 - t) : 1;
+      const lat = start.lat + (end.lat - start.lat) * eased;
+      const lng = start.lng + (end.lng - start.lng) * eased;
+      marker.setLatLng(L.latLng(lat, lng));
+      if (t < 1) rafId = requestAnimationFrame(tick);
     };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [currentUserLocation?.lat, currentUserLocation?.lng]);
+
+  // Update popup when speed or heading changes
+  useEffect(() => {
+    const marker = currentUserMarkerRef.current;
+    if (!marker) return;
+    const popupLines = ['You'];
+    if (currentUserSpeedMph != null && Number.isFinite(currentUserSpeedMph)) popupLines.push(`${Math.round(currentUserSpeedMph)} mph`);
+    if (currentUserHeadingTo) popupLines.push(currentUserHeadingTo);
+    const content = popupLines.join(' · ');
+    if (marker.getPopup()?.getContent() !== content) marker.getPopup()?.setContent(content);
+  }, [currentUserSpeedMph, currentUserHeadingTo]);
 
   // Route and pickup/dropoff markers; fit map to route (geo update)
   useEffect(() => {
@@ -506,15 +599,15 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       orderMarkersRef.current.push(m);
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
-    // Route style: visible on light map (dark outline + blue main line)
-    const routeOutline = { color: '#1e293b', weight: 14, lineCap: 'round' as const, lineJoin: 'round' as const };
-    const routeMain = { color: '#2563eb', weight: 8, opacity: 1, lineCap: 'round' as const, lineJoin: 'round' as const };
+    // Route style: more visible roads (thicker outline + brighter main line)
+    const routeOutline = { color: '#0f172a', weight: 20, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const routeMain = { color: '#3b82f6', weight: 12, opacity: 1, lineCap: 'round' as const, lineJoin: 'round' as const };
 
     if (driverToPickupPolyline && driverToPickupPolyline.length > 0) {
       try {
         const latLngs = decodePolyline(driverToPickupPolyline).map(([lat, lng]) => L.latLng(lat, lng));
-        const outline = L.polyline(latLngs, { ...routeOutline, dashArray: '12,10' }).addTo(map);
-        const line = L.polyline(latLngs, { ...routeMain, weight: 6, dashArray: '10,8' }).addTo(map);
+        const outline = L.polyline(latLngs, { ...routeOutline, dashArray: '14,12' }).addTo(map);
+        const line = L.polyline(latLngs, { ...routeMain, weight: 8, dashArray: '12,10' }).addTo(map);
         routeLayersRef.current.push(outline, line);
         latLngs.forEach((ll) => allLatLngs.push(ll));
       } catch {
@@ -599,39 +692,19 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-center on button click (centerTrigger), not when drivers/route update
   }, [centerTrigger, focusCenter?.lat, focusCenter?.lng]);
 
-  // Nav mode: only for this session (driver's own map). Driver pan/zoom/rotate is never sent to or applied on dispatcher map.
+  // Nav mode: map follows the driver (center on car when moving). Updates every 1s so map tracks driver.
   useEffect(() => {
-    if (!navMode || !mapRef.current || !currentUserLocation || !routeData) return;
+    if (!navMode || !mapRef.current || !currentUserLocation) return;
     const map = mapRef.current;
-    const encoded = routeData.driverToPickupPolyline || routeData.polyline;
-    if (!encoded) return;
-    let points: [number, number][];
-    try {
-      points = decodePolyline(encoded);
-    } catch {
-      return;
-    }
-    if (points.length < 2) return;
     const NAV_ZOOM = 17;
-    const updateView = () => {
+    const followDriver = () => {
       if (!mapRef.current || !currentUserLocation) return;
-      let bestIdx = 0;
-      let bestD = 1e9;
-      for (let i = 0; i < points.length; i++) {
-        const d = (points[i][0] - currentUserLocation.lat) ** 2 + (points[i][1] - currentUserLocation.lng) ** 2;
-        if (d < bestD) {
-          bestD = d;
-          bestIdx = i;
-        }
-      }
-      const aheadIdx = Math.min(bestIdx + 25, points.length - 1);
-      const center = points[aheadIdx];
-      map.setView([center[0], center[1]], NAV_ZOOM);
+      map.setView([currentUserLocation.lat, currentUserLocation.lng], NAV_ZOOM);
     };
-    updateView();
-    const t = setInterval(updateView, 2000);
+    followDriver();
+    const t = setInterval(followDriver, 1000);
     return () => clearInterval(t);
-  }, [navMode, currentUserLocation?.lat, currentUserLocation?.lng, routeData?.polyline, routeData?.driverToPickupPolyline]);
+  }, [navMode, currentUserLocation?.lat, currentUserLocation?.lng]);
 
   const handlePickOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onMapClick || !mapRef.current) return;
@@ -664,19 +737,23 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           title="Click anywhere to set location"
         />
       )}
-      {onRecenter && (navMode || showDriverMarkers || routeData) && (
-        <button
-          type="button"
-          className="rd-btn orders-map-recenter"
-          onClick={onRecenter}
-          style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 1000 }}
-        >
-          {recenterLabel}
-        </button>
+      {((onRecenter && (navMode || showDriverMarkers || routeData)) || onMyLocation) && (
+        <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 1000, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {onMyLocation && myLocationLabel && (
+            <button type="button" className="rd-btn orders-map-recenter" onClick={onMyLocation} aria-label={myLocationLabel}>
+              {myLocationLabel}
+            </button>
+          )}
+          {onRecenter && (navMode || showDriverMarkers || routeData) && (
+            <button type="button" className="rd-btn orders-map-recenter" onClick={onRecenter} aria-label={recenterLabel}>
+              {recenterLabel}
+            </button>
+          )}
+        </div>
       )}
       {!navMode && (
         <div className="orders-map-overlay rd-text-muted" style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: 8, background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.75rem', zIndex: 501, pointerEvents: onMapClick ? 'none' : undefined }}>
-          {onMapClick ? 'Click anywhere on the map to set location. Address will be detected automatically.' : showDriverMarkers ? 'Click driver marker for name and phone.' : 'OpenStreetMap. Orders with coordinates will show as markers.'}
+          {onMapClick ? t('dashboard.mapHintClick') : showDriverMarkers ? t('dashboard.mapHintDriver') : t('dashboard.mapHintOrders')}
         </div>
       )}
     </div>

@@ -61,6 +61,23 @@ body {
   touch-action: manipulation;
 }
 
+@media (max-width: 768px) {
+  .rd-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 0.75rem;
+  }
+  .rd-modal-overlay {
+    align-items: flex-start;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  .rd-modal-overlay .rd-panel {
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
 .rd-btn:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: var(--rd-border-strong);
@@ -217,6 +234,15 @@ a:hover {
 .rd-badge-critical { background: rgba(239, 68, 68, 0.25); color: var(--rd-critical); }
 .rd-badge-assigned { background: rgba(255, 193, 7, 0.25); color: var(--rd-warning); }
 .rd-badge-pending { background: rgba(79, 114, 158, 0.3); color: #8ec5e8; }
+
+/* Compact long ID (User ID, etc.) — small monospace, full id in title */
+.rd-id-compact {
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  color: var(--rd-text-muted, #888);
+  letter-spacing: 0.02em;
+  cursor: default;
+}
 
 /* WS status pill (green dot + text) */
 .rd-ws-pill {
