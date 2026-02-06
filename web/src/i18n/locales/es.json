@@ -177,6 +177,8 @@
     "subtitle": "Conductores registrados que esperan aprobación del administrador. Hasta entonces no pueden iniciar sesión.",
     "noPending": "No hay conductores pendientes.",
     "approve": "Aprobar",
+    "reject": "Rechazar",
+    "rejectConfirm": "¿Rechazar a este conductor? Se eliminará la cuenta; podrá registrarse de nuevo.",
     "registered": "Registrado"
   },
   "drivers": {

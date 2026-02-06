@@ -1,10 +1,10 @@
 import type { Role } from '../store/auth';
 
-/** Desktop paths each role can access. Drivers and Clients tabs only for DISPATCHER and ADMIN; DRIVER cannot see them. */
+/** Desktop paths each role can access. Same as web where applicable. */
 export const DESKTOP_ROLE_PATHS: Record<Role, string[]> = {
-  ADMIN: ['/control', '/wall', '/health', '/logs', '/admin', '/clients', '/drivers', '/calendar', '/about'],
-  DISPATCHER: ['/control', '/wall', '/health', '/logs', '/clients', '/drivers', '/calendar', '/about'],
-  /** Driver: no Clients, no Drivers, no Calendar — only control and about. */
+  ADMIN: ['/control', '/wall', '/health', '/logs', '/admin', '/clients', '/drivers', '/pendings', '/translation', '/analytics', '/calendar', '/cost-control', '/white-label', '/about'],
+  DISPATCHER: ['/control', '/wall', '/health', '/logs', '/clients', '/drivers', '/pendings', '/translation', '/analytics', '/calendar', '/about'],
+  /** Driver: only control and about. */
   DRIVER: ['/control', '/about'],
 };
 
@@ -24,7 +24,12 @@ export function getAllowedDesktopNavItems(role: Role | null): { path: string; ke
     { path: '/admin', key: 'modes.admin' },
     { path: '/clients', key: 'modes.clients' },
     { path: '/drivers', key: 'modes.drivers' },
+    { path: '/pendings', key: 'modes.pendings' },
+    { path: '/translation', key: 'modes.translation' },
+    { path: '/analytics', key: 'modes.analytics' },
     { path: '/calendar', key: 'modes.calendar' },
+    { path: '/cost-control', key: 'modes.costControl' },
+    { path: '/white-label', key: 'modes.whiteLabel' },
     { path: '/about', key: 'about.title' },
   ];
   if (!role) return [];

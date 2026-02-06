@@ -165,8 +165,9 @@ export default function Drivers() {
                 <th>{t('drivers.nickname')}</th>
                 {showPhone && <th>{t('drivers.phone')}</th>}
                 {showPhone && <th>{t('auth.email')}</th>}
-                {showPhone && <th>{t('drivers.driverId')}</th>}
-                {showPhone && <th>{t('auth.carType')}</th>}
+                <th>{t('drivers.driverId')}</th>
+                <th>{t('auth.carType')}</th>
+                <th>{t('auth.carPlateNumber')}</th>
                 <th>{t('drivers.status')}</th>
               </tr>
             </thead>
@@ -179,8 +180,9 @@ export default function Drivers() {
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
                       {showPhone && <td>{d.email ?? '—'}</td>}
-                      {showPhone && <td>{d.driverId ?? '—'}</td>}
-                      {showPhone && <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>}
+                      <td>{d.driverId ?? '—'}</td>
+                      <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
+                      <td>{d.carPlateNumber ?? '—'}</td>
                       <td>
                         <span className={`rd-badge ${statusKey === 'onMap' ? 'rd-badge-ok' : statusKey === 'blocked' || statusKey === 'banned' ? 'rd-badge-critical' : ''}`}>
                           {t(`drivers.${statusKey}`)}

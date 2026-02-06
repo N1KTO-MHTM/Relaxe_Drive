@@ -1,7 +1,13 @@
 {
   "app": { "name": "RelaxDrive", "tagline": "საკონტროლო ცენტრი" },
   "common": { "refresh": "განახლება", "loading": "იტვირთება…" },
-  "modes": { "control": "საკონტროლო რეჟიმი", "wall": "სცენა", "admin": "ადმინი", "clients": "კლიენტები", "drivers": "მძღოლები", "health": "სისტემის მდგომარეობა", "logs": "ლოგები და აუდიტი", "wallMap": "რუკა", "wallEta": "ETA", "wallAlerts": "შეტყობინებები", "ctrlOrders": "შეკვეთები", "ctrlDrivers": "მძღოლები", "ctrlSessions": "სესიები", "noOrders": "შეკვეთები არ არის", "noDrivers": "მძღოლები არ არის", "noSessions": "სესიები არ არის", "ctrlAccounts": "რეგისტრირებული ანგარიშები", "noAccounts": "რეგისტრირებული ანგარიშები არ არის", "active": "აქტიური", "offline": "ოფლაინ" },
+  "modes": { "control": "საკონტროლო რეჟიმი", "wall": "სცენა", "admin": "ადმინი", "clients": "კლიენტები", "drivers": "მძღოლები", "health": "სისტემის მდგომარეობა", "logs": "ლოგები და აუდიტი", "wallMap": "რუკა", "wallEta": "ETA", "wallAlerts": "შეტყობინებები", "ctrlOrders": "შეკვეთები", "ctrlDrivers": "მძღოლები", "ctrlSessions": "სესიები", "noOrders": "შეკვეთები არ არის", "noDrivers": "მძღოლები არ არის", "noSessions": "სესიები არ არის", "ctrlAccounts": "რეგისტრირებული ანგარიშები", "noAccounts": "რეგისტრირებული ანგარიშები არ არის", "active": "აქტიური", "offline": "ოფლაინ", "assignedTitle": "შეკვეთა მინიჭებულია", "calendar": "კალენდარი", "pendings": "მოლოდინის მძღოლები", "translation": "თარგმანი", "analytics": "ანალიტიკა", "costControl": "ხარჯების კონტროლი", "whiteLabel": "White Label" },
+  "pendings": { "title": "მოლოდინის მძღოლები", "subtitle": "მძღოლები ელოდებიან დამტკიცებას. დამტკიცებამდე ვერ შედიან.", "noPending": "მოლოდინის მძღოლები არ არის.", "approve": "დამტკიცება", "reject": "უარყოფა", "rejectConfirm": "უარვაყოთ ეს მძღოლი? ანგარიში წაიშლება; ხელახლა რეგისტრაცია შეიძლება.", "registered": "რეგისტრაცია" },
+  "translation": { "title": "თარგმანი", "voiceToText": "ხმა → ტექსტი", "autoLanguage": "ენის ავტო გამოცნობა", "history": "ისტორია" },
+  "analytics": { "title": "ანალიტიკა", "from": "საწყისი", "to": "საბოლოო", "apply": "გამოყენება", "ordersCreated": "შექმნილი შეკვეთები", "ordersCompleted": "შესრულებული შეკვეთები", "scheduled": "დაგეგმილი", "assigned": "მინიჭებული", "inProgress": "პროცესში", "heatmap": "სითბური რუკა", "heatmapHint": "აქტივობა დღე და საათის მიხედვით.", "noData": "აქტივობა არ არის პერიოდში." },
+  "costControl": { "title": "ხარჯების კონტროლი", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS", "usage": "გამოყენება (API)", "loadError": "ვერ ჩაიტვირთა.", "limit": "ლიმიტი", "limitExceeded": "ერთი ან მეტი ლიმიტი გადაჭარბებულია." },
+  "order": { "pickupAt": "პიკაპის დრო", "pickupAddress": "პიკაპის მისამართი", "dropoffAddress": "დასაშვები მისამართი", "phone": "ტელეფონი", "passengerName": "მგზავრის სახელი", "create": "შექმნა", "cancel": "გაუქმება" },
+  "whiteLabel": { "title": "White Label", "logo": "ლოგო", "colors": "ფერები", "domains": "დომენები", "languages": "ენები", "logoUrl": "ლოგოს URL", "primaryColor": "ძირითადი ფერი", "domain": "დომენი", "locales": "ლოკალები (მძიმით)", "save": "შენახვა", "saved": "შენახულია", "loadError": "ვერ ჩაიტვირთა" },
   "health": { "title": "სისტემის მდგომარეობა", "api": "API", "websocket": "WebSocket", "redis": "Redis", "database": "მონაცემთა ბაზა", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "queues": "წყობები", "latency": "ჩავარდნა" },
   "logs": { "title": "ლოგები და აუდიტი", "filter": "ფილტრი", "export": "ექსპორტი", "exportAuto": "ავტო-ექსპორტი (ყოველ 5 წთ)", "tabAll": "ყველა", "tabAuth": "ავტორიზაცია", "tabOrders": "შეკვეთები", "tabUsers": "მომხმარებლები", "time": "დრო", "user": "მომხმარებელი", "device": "მოწყობილობა", "phone": "ტელეფონი", "action": "მოქმედება", "resource": "რესურსი", "payload": "მონაცემები", "noData": "ჩანაწერები არ არის", "accessDenied": "წვდომა მხოლოდ ადმინისტრატორებისთვის" },
   "about": { "title": "აპლიკაციის შესახებ", "app": "აპლიკაცია", "version": "ვერსია", "creator": "შემქმნელი", "description": "RelaxDrive — დისპეტჩერული პლატფორმა. ვებ, Desktop Control Center, შეკვეთები და მძღოლები რეალურ დროში.", "yourAccess": "თქვენი წვდომა", "roleDriver": "მძღოლი", "roleDispatcher": "დისპეტჩერი", "roleAdmin": "ადმინი", "driverAccess": "მძღოლად: ჩემი მგზავრობები, რუკა, თარგმანი.", "driverDetail": "ჩემი მგზავრობები: მხოლოდ თქვენთვის მინიჭებული შეკვეთები; მიღება/უარყოფა; გაშვება, ჩასვლის აღნიშვნა, დასრულება. ლოკაციის გაზიარება. თარგმანი: ხმა-ტექსტში, ისტორია. შეჯამება: იღებთ შეკვეთებს, აკავშირებთ სტატუსს, იყენებთ ნავიგაციას და თარგმანს.", "dispatcherAccess": "დისპეტჩერად: პანელი, კალენდარი, კლიენტები, თარგმანი, ანალიტიკა, სესიები.", "dispatcherDetail": "პანელი: შეკვეთების შექმნა; ყველა შეკვეთა რუკაზე; მძღოლების მინიჭება; ლოკაცია და ETA; შეტყობინებები. კალენდარი: დღე/კვირა, კონფლიქტები. კლიენტები: დამატება, ძებნა, CSV, შეკვეთა კლიენტიდან ერთი დაწკაპუნებით. მონიტორი: ვინ არის ონლაინში. სრული კონტროლი შეკვეთებსა და მძღოლებზე.", "adminAccess": "ადმინად: ყველა ფუნქცია დისპეტჩერის + როლები, ხარჯები, White label, აუდიტი, სისტემის მდგომარეობა." },
@@ -18,7 +24,12 @@
     "forgotPasswordSent": "მიმართეთ ადმინისტრატორს პაროლის გასაუქმებლად.",
     "forgotPasswordHint": "შეიყვანეთ ნიკნეიმი.",
     "forgotPasswordSubmit": "პაროლის გასაუქმების მოთხოვნა",
-    "logout": "გასვლა"
+    "logout": "გასვლა",
+    "carType": "მანქანის ტიპი",
+    "carPlateNumber": "ნომერი",
+    "carType_SEDAN": "სედანი",
+    "carType_MINIVAN": "მინივენი",
+    "carType_SUV": "ჯიპი"
   },
   "roles": {
     "admin": "ადმინი",
@@ -66,18 +77,30 @@
     "placeStore": "მაღაზია",
     "placeOffice": "ოფისი",
     "placeHome": "სახლი",
-    "placeOther": "სხვა"
+    "placeOther": "სხვა",
+    "edit": "რედაქტირება",
+    "editClient": "კლიენტის რედაქტირება",
+    "save": "შენახვა",
+    "delete": "წაშლა",
+    "deleteConfirm": "წავშალოთ ეს კლიენტი?"
   },
   "drivers": {
     "title": "მძღოლები",
     "subtitle": "ყველა მძღოლი. რუკაზე ლოკაციები საკონტროლო რეჟიმში ჩანს.",
     "nickname": "მძღოლი",
     "phone": "ტელეფონი",
+    "driverId": "მძღოლის ID",
     "status": "სტატუსი",
     "noDrivers": "მძღოლები არ არის",
     "onMap": "რუკაზე",
     "offline": "ოფლაინ",
     "blocked": "დაბლოკილი",
-    "banned": "დაბანილი"
+    "banned": "დაბანილი",
+    "tabAll": "ყველა",
+    "tabOther": "სხვა",
+    "search": "ძებნა",
+    "exportCsv": "CSV ექსპორტი",
+    "noMatch": "შედეგები არ არის",
+    "page": "გვ."
   }
 }

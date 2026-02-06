@@ -1,13 +1,13 @@
 /**
- * Delete ALL users except ADMIN. Use when you want to reset to "only admin";
- * everyone else must register again (as driver) and get approved by admin.
- *
+ * Delete ALL users except ADMIN and remove their data; then clear ALL audit logs.
  * Run from backend folder: node prisma/delete-all-non-admin-users.js
  * Requires DATABASE_URL.
  *
- * Steps: orders createdBy -> reassign to first ADMIN; orders driverId -> null;
- * AuditLog/Passenger/TranslationRecord userId -> null; delete DriverReport,
- * DriverTripSummary, DriverStats for those users; then delete users (Session cascade).
+ * Steps:
+ * 1. orders createdBy -> reassign to admin; orders driverId -> null
+ * 2. Passenger/TranslationRecord userId -> null; delete DriverReport, DriverTripSummary, DriverStats
+ * 3. Delete all non-admin users (sessions removed by cascade)
+ * 4. Delete ALL audit log entries (clear logs everywhere)
  */
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -24,54 +24,53 @@ async function main() {
     select: { id: true, nickname: true, role: true },
   });
 
-  if (nonAdmins.length === 0) {
-    console.log('No non-admin users. Nothing to delete.');
-    return;
+  const ids = nonAdmins.length > 0 ? nonAdmins.map((u) => u.id) : [];
+
+  if (nonAdmins.length > 0) {
+    console.log('Non-admin users to delete:', nonAdmins.map((u) => `${u.nickname} (${u.role})`).join(', '));
+
+    // Reassign orders created by these users to admin
+    const ordersReassigned = await prisma.order.updateMany({
+      where: { createdById: { in: ids } },
+      data: { createdById: admin.id },
+    });
+    if (ordersReassigned.count > 0) console.log('Orders reassigned to admin:', ordersReassigned.count);
+
+    // Unassign them as drivers
+    await prisma.order.updateMany({
+      where: { driverId: { in: ids } },
+      data: { driverId: null },
+    });
+
+    await prisma.passenger.updateMany({
+      where: { userId: { in: ids } },
+      data: { userId: null },
+    });
+    await prisma.translationRecord.updateMany({
+      where: { userId: { in: ids } },
+      data: { userId: null },
+    });
+    await prisma.driverReport.deleteMany({
+      where: { userId: { in: ids } },
+    });
+    await prisma.driverTripSummary.deleteMany({
+      where: { driverId: { in: ids } },
+    });
+    await prisma.driverStats.deleteMany({
+      where: { driverId: { in: ids } },
+    });
+
+    const deleted = await prisma.user.deleteMany({
+      where: { id: { in: ids } },
+    });
+    console.log('Deleted users:', deleted.count);
+  } else {
+    console.log('No non-admin users.');
   }
 
-  const ids = nonAdmins.map((u) => u.id);
-  console.log('Non-admin users to delete:', nonAdmins.map((u) => `${u.nickname} (${u.role})`).join(', '));
-
-  // Reassign orders created by these users to admin
-  const ordersReassigned = await prisma.order.updateMany({
-    where: { createdById: { in: ids } },
-    data: { createdById: admin.id },
-  });
-  if (ordersReassigned.count > 0) console.log('Orders reassigned to admin:', ordersReassigned.count);
-
-  // Unassign them as drivers
-  await prisma.order.updateMany({
-    where: { driverId: { in: ids } },
-    data: { driverId: null },
-  });
-
-  // Break links so we can delete users. Audit logs are KEPT (only userId set to null).
-  await prisma.auditLog.updateMany({
-    where: { userId: { in: ids } },
-    data: { userId: null },
-  });
-  await prisma.passenger.updateMany({
-    where: { userId: { in: ids } },
-    data: { userId: null },
-  });
-  await prisma.translationRecord.updateMany({
-    where: { userId: { in: ids } },
-    data: { userId: null },
-  });
-  await prisma.driverReport.deleteMany({
-    where: { userId: { in: ids } },
-  });
-  await prisma.driverTripSummary.deleteMany({
-    where: { driverId: { in: ids } },
-  });
-  await prisma.driverStats.deleteMany({
-    where: { driverId: { in: ids } },
-  });
-
-  const deleted = await prisma.user.deleteMany({
-    where: { id: { in: ids } },
-  });
-  console.log('Deleted users:', deleted.count);
+  // Clear ALL audit logs everywhere
+  const allAuditDeleted = await prisma.auditLog.deleteMany({});
+  console.log('Audit logs cleared (total deleted):', allAuditDeleted.count);
 }
 
 main()

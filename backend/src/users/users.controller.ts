@@ -39,7 +39,7 @@ export class UsersController {
 
   @Get('pending')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'DISPATCHER')
   getPending() {
     return this.usersService.findPendingDrivers();
   }
@@ -53,7 +53,7 @@ export class UsersController {
 
   @Patch(':id/approve')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'DISPATCHER')
   async approveDriver(
     @Param('id') id: string,
     @Request() req: { user: { id: string } },
@@ -61,6 +61,18 @@ export class UsersController {
     const result = await this.usersService.approveDriver(id);
     await this.audit.log(req.user.id, 'user.approve_driver', 'user', { targetUserId: id });
     this.ws.emitUserUpdated(id);
+    return result;
+  }
+
+  @Patch(':id/reject')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async rejectDriver(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    const result = await this.usersService.rejectDriver(id);
+    await this.audit.log(req.user.id, 'user.reject_driver', 'user', { targetUserId: id });
     return result;
   }
 

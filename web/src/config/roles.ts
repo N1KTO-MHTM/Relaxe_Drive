@@ -23,6 +23,7 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/calendar',
     '/passengers',
     '/drivers',
+    '/pendings',
     '/translation',
     '/sessions',
     '/audit',

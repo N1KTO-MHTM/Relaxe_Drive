@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../api/client';
-import './Pendings.css';
+import DesktopLayout from '../layouts/DesktopLayout';
+import { api } from '../api/client';
 
 interface PendingDriver {
   id: string;
@@ -16,7 +16,7 @@ interface PendingDriver {
   createdAt: string;
 }
 
-export default function Pendings() {
+export default function PendingsMode() {
   const { t } = useTranslation();
   const [list, setList] = useState<PendingDriver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,23 +64,21 @@ export default function Pendings() {
   }
 
   return (
-    <div className="rd-page">
-      <div className="pendings-page rd-panel">
+    <DesktopLayout>
+      <div className="pendings-mode">
         <div className="rd-panel-header">
           <h1>{t('pendings.title')}</h1>
-          <button type="button" className="rd-btn rd-btn-secondary" onClick={() => load()} disabled={loading}>
+          <button type="button" className="rd-btn rd-btn-secondary" onClick={load} disabled={loading}>
             {t('common.refresh')}
           </button>
         </div>
-        <p className="rd-text-muted pendings-subtitle">{t('pendings.subtitle')}</p>
-        {error && <p className="rd-text-critical pendings-error">{error}</p>}
-        {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
-        {!loading && !error && list.length === 0 && (
-          <p className="rd-text-muted">{t('pendings.noPending')}</p>
-        )}
+        <p className="rd-text-muted" style={{ marginBottom: '1rem' }}>{t('pendings.subtitle')}</p>
+        {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
+        {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
+        {!loading && !error && list.length === 0 && <p className="logs-mode__muted">{t('pendings.noPending')}</p>}
         {!loading && !error && list.length > 0 && (
-          <div className="rd-table-wrapper">
-            <table className="rd-table" style={{ width: '100%' }}>
+          <div className="logs-mode__table-wrap">
+            <table className="logs-mode__table">
               <thead>
                 <tr>
                   <th>{t('auth.nickname')}</th>
@@ -129,6 +127,6 @@ export default function Pendings() {
           </div>
         )}
       </div>
-    </div>
+    </DesktopLayout>
   );
 }

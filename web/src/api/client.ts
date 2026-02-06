@@ -19,7 +19,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const isAuthRequest = path === '/auth/login' || path === '/auth/register' || path === '/auth/forgot-password';
     if (isAuthRequest) {
       const text = await res.text().catch(() => 'Unauthorized');
-      throw new Error(text || 'Unauthorized');
+      let message = 'Invalid credentials';
+      try {
+        const body = text ? JSON.parse(text) : null;
+        if (body?.message) message = Array.isArray(body.message) ? body.message[0] : body.message;
+      } catch {
+        if (text && text.length < 120) message = text;
+      }
+      throw new Error(message);
     }
     const refresh = localStorage.getItem('relaxdrive-refresh-token');
     if (refresh) {

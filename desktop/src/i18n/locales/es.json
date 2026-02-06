@@ -21,8 +21,21 @@
     "ctrlAccounts": "Cuentas registradas",
     "noAccounts": "Sin cuentas registradas",
     "active": "Activo",
-    "offline": "Desconectado"
+    "offline": "Desconectado",
+    "assignedTitle": "Orden asignada",
+    "calendar": "Calendario",
+    "pendings": "Conductores pendientes",
+    "translation": "Traducción",
+    "analytics": "Analíticas",
+    "costControl": "Control de costes",
+    "whiteLabel": "White Label"
   },
+  "pendings": { "title": "Conductores pendientes", "subtitle": "Conductores esperando aprobación. Hasta entonces no pueden iniciar sesión.", "noPending": "No hay conductores pendientes.", "approve": "Aprobar", "reject": "Rechazar", "rejectConfirm": "¿Rechazar a este conductor? Se eliminará la cuenta; podrá registrarse de nuevo.", "registered": "Registrado" },
+  "translation": { "title": "Traducción", "voiceToText": "Voz → Texto", "autoLanguage": "Detección automática de idioma", "history": "Historial" },
+  "analytics": { "title": "Analíticas", "from": "Desde", "to": "Hasta", "apply": "Aplicar", "ordersCreated": "Órdenes creadas", "ordersCompleted": "Órdenes completadas", "scheduled": "Programadas", "assigned": "Asignadas", "inProgress": "En curso", "heatmap": "Mapa de calor", "heatmapHint": "Actividad por día y hora.", "noData": "Sin actividad en el periodo." },
+  "costControl": { "title": "Control de costes", "maps": "Mapas", "translation": "Traducción", "ai": "IA", "tts": "TTS", "usage": "Uso (llamadas API)", "loadError": "No se pudo cargar el uso.", "limit": "límite", "limitExceeded": "Se ha superado uno o más límites." },
+  "order": { "pickupAt": "Hora de recogida", "pickupAddress": "Dirección de recogida", "dropoffAddress": "Dirección de destino", "phone": "Teléfono", "passengerName": "Nombre del pasajero", "create": "Crear", "cancel": "Cancelar" },
+  "whiteLabel": { "title": "White Label", "logo": "Logo", "colors": "Colores", "domains": "Dominios", "languages": "Idiomas", "logoUrl": "URL del logo", "primaryColor": "Color primario", "domain": "Dominio", "locales": "Idiomas (separados por comas)", "save": "Guardar", "saved": "Configuración guardada", "loadError": "No se pudo cargar la configuración" },
   "health": {
     "title": "Panel de estado del sistema",
     "api": "API",
@@ -83,7 +96,12 @@
     "forgotPasswordSent": "Si existe una cuenta con este usuario, contacta a tu administrador para restablecer la contraseña.",
     "forgotPasswordHint": "Ingresa tu usuario. Un administrador puede restablecer tu contraseña.",
     "forgotPasswordSubmit": "Solicitar restablecimiento",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "carType": "Tipo de coche",
+    "carPlateNumber": "Matrícula",
+    "carType_SEDAN": "Sedán",
+    "carType_MINIVAN": "Miniván",
+    "carType_SUV": "SUV"
   },
   "clients": {
     "title": "Clientes",
@@ -104,18 +122,30 @@
     "placeStore": "Tienda",
     "placeOffice": "Oficina",
     "placeHome": "Casa",
-    "placeOther": "Otro"
+    "placeOther": "Otro",
+    "edit": "Editar",
+    "editClient": "Editar cliente",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Eliminar este cliente?"
   },
   "drivers": {
     "title": "Conductores",
     "subtitle": "Todos los conductores. Ver en el mapa del modo control.",
     "nickname": "Conductor",
     "phone": "Teléfono",
+    "driverId": "ID conductor",
     "status": "Estado",
     "noDrivers": "Sin conductores",
     "onMap": "En mapa",
     "offline": "Desconectado",
     "blocked": "Bloqueado",
-    "banned": "Baneado"
+    "banned": "Baneado",
+    "tabAll": "Todos",
+    "tabOther": "Otro",
+    "search": "Buscar",
+    "exportCsv": "Exportar CSV",
+    "noMatch": "Sin coincidencias",
+    "page": "Pág."
   }
 }

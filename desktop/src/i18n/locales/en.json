@@ -23,7 +23,77 @@
     "active": "Active",
     "offline": "Offline",
     "assignedTitle": "Order assigned",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "pendings": "Pending drivers",
+    "translation": "Translation",
+    "analytics": "Analytics",
+    "costControl": "Cost Control",
+    "whiteLabel": "White Label",
+    "newOrder": "New order",
+    "createOrder": "Create order"
+  },
+  "order": {
+    "pickupAt": "Pickup time",
+    "pickupAddress": "Pickup address",
+    "dropoffAddress": "Dropoff address",
+    "phone": "Phone",
+    "passengerName": "Passenger name",
+    "create": "Create",
+    "cancel": "Cancel"
+  },
+  "pendings": {
+    "title": "Pending drivers",
+    "subtitle": "Drivers waiting for approval. Until approved, they cannot sign in.",
+    "noPending": "No pending drivers.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "rejectConfirm": "Reject this driver? Their account will be removed; they can register again.",
+    "registered": "Registered"
+  },
+  "translation": {
+    "title": "Translation",
+    "voiceToText": "Voice → Text",
+    "autoLanguage": "Auto language detection",
+    "history": "History"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "ordersCreated": "Orders created",
+    "ordersCompleted": "Orders completed",
+    "scheduled": "Scheduled",
+    "assigned": "Assigned",
+    "inProgress": "In progress",
+    "heatmap": "Heatmap",
+    "heatmapHint": "Activity by day and hour.",
+    "noData": "No activity in this period."
+  },
+  "costControl": {
+    "title": "Cost Control",
+    "maps": "Maps",
+    "translation": "Translation",
+    "ai": "AI",
+    "tts": "TTS",
+    "usage": "Usage (API calls)",
+    "loadError": "Could not load usage data.",
+    "limit": "limit",
+    "limitExceeded": "One or more usage limits have been exceeded."
+  },
+  "whiteLabel": {
+    "title": "White Label",
+    "logo": "Logo",
+    "colors": "Colors",
+    "domains": "Domains",
+    "languages": "Languages",
+    "logoUrl": "Logo URL",
+    "primaryColor": "Primary color",
+    "domain": "Domain",
+    "locales": "Locales (comma-separated)",
+    "save": "Save",
+    "saved": "Settings saved",
+    "loadError": "Could not load settings"
   },
   "calendar": {
     "title": "Calendar",
@@ -60,7 +130,12 @@
     "forgotPasswordHint": "Enter your nickname. An administrator can reset your password.",
     "forgotPasswordSubmit": "Request reset",
     "logout": "Log out",
-    "driversUseWeb": "Drivers should use the web app. Desktop is for dispatchers and admins."
+    "driversUseWeb": "Drivers should use the web app. Desktop is for dispatchers and admins.",
+    "carType": "Car type",
+    "carPlateNumber": "Car plate",
+    "carType_SEDAN": "Sedan",
+    "carType_MINIVAN": "Minivan",
+    "carType_SUV": "SUV"
   },
   "roles": {
     "admin": "Admin",
@@ -108,18 +183,30 @@
     "placeStore": "Store",
     "placeOffice": "Office",
     "placeHome": "Home",
-    "placeOther": "Other"
+    "placeOther": "Other",
+    "edit": "Edit",
+    "editClient": "Edit client",
+    "save": "Save",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this client?"
   },
   "drivers": {
     "title": "Drivers",
     "subtitle": "All drivers. View on Control Mode map to see locations.",
     "nickname": "Driver",
     "phone": "Phone",
+    "driverId": "Driver ID",
     "status": "Status",
     "noDrivers": "No drivers",
+    "noMatch": "No matching drivers",
     "onMap": "On map",
     "offline": "Offline",
     "blocked": "Blocked",
-    "banned": "Banned"
+    "banned": "Banned",
+    "tabAll": "All",
+    "tabOther": "Other",
+    "search": "Search",
+    "exportCsv": "Export CSV",
+    "page": "Page"
   }
 }

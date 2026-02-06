@@ -1,8 +1,18 @@
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DesktopLayout from '../layouts/DesktopLayout';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/auth';
+
+type PassengerPrefill = {
+  phone?: string;
+  name?: string;
+  pickupAddr?: string;
+  dropoffAddr?: string;
+  pickupType?: string;
+  dropoffType?: string;
+};
 
 type CtrlSubTab = 'orders' | 'drivers' | 'sessions';
 type SessionSubTab = 'sessions' | 'accounts';
@@ -48,6 +58,8 @@ interface AccountRow {
 /** Control Mode with sub-tabs: Orders, Drivers, Sessions. */
 export default function ControlMode() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const [tab, setTab] = useState<CtrlSubTab>('orders');
   const [sessionSubTab, setSessionSubTab] = useState<SessionSubTab>('sessions');
@@ -57,8 +69,31 @@ export default function ControlMode() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [formPickupAt, setFormPickupAt] = useState('');
+  const [formPickupAddress, setFormPickupAddress] = useState('');
+  const [formDropoffAddress, setFormDropoffAddress] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formPassengerName, setFormPassengerName] = useState('');
 
   const canSeeDrivers = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+  const canCreateOrder = canSeeDrivers;
+
+  // Prefill from Clients "New order" link
+  useEffect(() => {
+    const prefill = (location.state as { passengerPrefill?: PassengerPrefill })?.passengerPrefill;
+    if (prefill) {
+      setTab('orders');
+      setShowCreateOrder(true);
+      setFormPhone(prefill.phone ?? '');
+      setFormPassengerName(prefill.name ?? '');
+      setFormPickupAddress(prefill.pickupAddr ?? '');
+      setFormDropoffAddress(prefill.dropoffAddr ?? '');
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
   const canSeeSessions = canSeeDrivers;
   const isAdmin = user?.role === 'ADMIN';
   const notifiedOrderIds = useRef<Set<string>>(new Set());
@@ -132,6 +167,37 @@ export default function ControlMode() {
     return () => clearInterval(interval);
   }, [user?.id, user?.role, t]);
 
+  async function handleCreateOrder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formPickupAt || !formPickupAddress.trim() || !formDropoffAddress.trim()) {
+      setCreateError('Fill pickup time and addresses');
+      return;
+    }
+    setCreateSubmitting(true);
+    setCreateError(null);
+    try {
+      await api.post('/orders', {
+        pickupAt: new Date(formPickupAt).toISOString(),
+        tripType: 'ONE_WAY',
+        pickupAddress: formPickupAddress.trim(),
+        dropoffAddress: formDropoffAddress.trim(),
+        phone: formPhone.trim() || undefined,
+        passengerName: formPassengerName.trim() || undefined,
+      });
+      setFormPickupAt('');
+      setFormPickupAddress('');
+      setFormDropoffAddress('');
+      setFormPhone('');
+      setFormPassengerName('');
+      setShowCreateOrder(false);
+      if (tab === 'orders') refreshData();
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create order');
+    } finally {
+      setCreateSubmitting(false);
+    }
+  }
+
   return (
     <DesktopLayout>
       <div className="control-mode">
@@ -161,9 +227,32 @@ export default function ControlMode() {
           <div className="mode-content">
             {tab === 'orders' && (
               <>
+                {canCreateOrder && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <button type="button" className="rd-btn rd-btn-primary" onClick={() => setShowCreateOrder(!showCreateOrder)}>
+                      {showCreateOrder ? t('order.cancel') : `+ ${t('modes.newOrder')}`}
+                    </button>
+                    {showCreateOrder && (
+                      <form onSubmit={handleCreateOrder} style={{ marginTop: '1rem', padding: '1rem', background: 'var(--rd-bg-elevated, #252525)', borderRadius: 8, maxWidth: 480 }}>
+                        {createError && <p className="rd-text-critical" style={{ marginBottom: '0.5rem' }}>{createError}</p>}
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.pickupAt')} *</label>
+                        <input type="datetime-local" className="rd-input" value={formPickupAt} onChange={(e) => setFormPickupAt(e.target.value)} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.pickupAddress')} *</label>
+                        <input type="text" className="rd-input" value={formPickupAddress} onChange={(e) => setFormPickupAddress(e.target.value)} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.dropoffAddress')} *</label>
+                        <input type="text" className="rd-input" value={formDropoffAddress} onChange={(e) => setFormDropoffAddress(e.target.value)} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.phone')}</label>
+                        <input type="text" className="rd-input" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.passengerName')}</label>
+                        <input type="text" className="rd-input" value={formPassengerName} onChange={(e) => setFormPassengerName(e.target.value)} style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <button type="submit" className="rd-btn rd-btn-primary" disabled={createSubmitting}>{createSubmitting ? '…' : t('order.create')}</button>
+                      </form>
+                    )}
+                  </div>
+                )}
                 {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
                 {error && <p className="logs-mode__error">{error}</p>}
-                {!loading && !error && orders.length === 0 && <p className="logs-mode__muted">{t('modes.noOrders')}</p>}
+                {!loading && !error && orders.length === 0 && !showCreateOrder && <p className="logs-mode__muted">{t('modes.noOrders')}</p>}
                 {!loading && orders.length > 0 && (
                   <div className="logs-mode__table-wrap">
                     <table className="logs-mode__table">

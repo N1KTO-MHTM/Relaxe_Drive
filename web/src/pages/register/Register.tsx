@@ -104,7 +104,7 @@ export default function Register() {
           <span>{t('auth.showPassword')}</span>
         </label>
       </div>
-      <details style={{ marginBottom: '0.75rem' }}>
+      <details open style={{ marginBottom: '0.75rem' }}>
         <summary className="rd-text-muted" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>{t('auth.email')}, {t('auth.carPlateNumber')}, {t('auth.carModelAndYear')}</summary>
         <div style={{ marginTop: '0.5rem', display: 'grid', gap: '0.5rem' }}>
           <div>

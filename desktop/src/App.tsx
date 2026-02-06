@@ -8,6 +8,11 @@ import AdminMode from './modes/AdminMode';
 import ClientsMode from './modes/ClientsMode';
 import DriversMode from './modes/DriversMode';
 import CalendarMode from './modes/CalendarMode';
+import PendingsMode from './modes/PendingsMode';
+import TranslationMode from './modes/TranslationMode';
+import AnalyticsMode from './modes/AnalyticsMode';
+import CostControlMode from './modes/CostControlMode';
+import WhiteLabelMode from './modes/WhiteLabelMode';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import { useAuthStore } from './store/auth';
@@ -109,6 +114,56 @@ export default function App() {
           <PrivateRoute>
             <RoleProtectedRoute path="/calendar">
               <CalendarMode />
+            </RoleProtectedRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/pendings"
+        element={
+          <PrivateRoute>
+            <RoleProtectedRoute path="/pendings">
+              <PendingsMode />
+            </RoleProtectedRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/translation"
+        element={
+          <PrivateRoute>
+            <RoleProtectedRoute path="/translation">
+              <TranslationMode />
+            </RoleProtectedRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <PrivateRoute>
+            <RoleProtectedRoute path="/analytics">
+              <AnalyticsMode />
+            </RoleProtectedRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/cost-control"
+        element={
+          <PrivateRoute>
+            <RoleProtectedRoute path="/cost-control">
+              <CostControlMode />
+            </RoleProtectedRoute>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/white-label"
+        element={
+          <PrivateRoute>
+            <RoleProtectedRoute path="/white-label">
+              <WhiteLabelMode />
             </RoleProtectedRoute>
           </PrivateRoute>
         }

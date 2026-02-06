@@ -15,6 +15,17 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { nickname } });
   }
 
+  /** Find user by nickname; tries exact match, then title-case (e.g. "admin" → "Admin") for login. */
+  async findByNicknameForLogin(nickname: string) {
+    const trimmed = nickname?.trim() ?? '';
+    const user = await this.prisma.user.findUnique({ where: { nickname: trimmed } });
+    if (user) return user;
+    if (trimmed.length === 0) return null;
+    const title = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    if (title === trimmed) return null;
+    return this.prisma.user.findUnique({ where: { nickname: title } });
+  }
+
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
   }
@@ -52,6 +63,22 @@ export class UsersService {
       where: { id: userId },
       select: { id: true, nickname: true, approvedAt: true },
     });
+  }
+
+  /** Reject pending driver: remove account so they can register again. */
+  async rejectDriver(userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, role: 'DRIVER', approvedAt: null },
+    });
+    if (!user) throw new NotFoundException('Pending driver not found or already approved');
+    await this.prisma.auditLog.deleteMany({ where: { userId } });
+    await this.prisma.passenger.updateMany({ where: { userId }, data: { userId: null } });
+    await this.prisma.translationRecord.updateMany({ where: { userId }, data: { userId: null } });
+    await this.prisma.driverReport.deleteMany({ where: { userId } });
+    await this.prisma.driverTripSummary.deleteMany({ where: { driverId: userId } });
+    await this.prisma.driverStats.deleteMany({ where: { driverId: userId } });
+    await this.prisma.user.delete({ where: { id: userId } });
+    return { deleted: true };
   }
 
   /** Next driverId for carType (e.g. 001suv, 002sedan). */
