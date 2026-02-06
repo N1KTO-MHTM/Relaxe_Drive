@@ -56,7 +56,14 @@ npm run install:all
    Проверить устаревшие: `npm outdated`.
 
 5. **Деплой (Render)**  
-   После пуша в GitHub сервисы пересоберутся. Для PostgreSQL выполните миграции в Shell: `npx prisma migrate deploy`.
+   После пуша в GitHub сервисы пересоберутся. Миграции выполняются в `startCommand`: `npx prisma migrate deploy && npm run start:prod`.
+
+6. **Если деплой падает с P3009 (failed migration)**  
+   В базе осталась запись о неудачной миграции. Один раз в **Render → relaxdrive-api → Shell** (или локально с `DATABASE_URL` из Render) выполните:
+   ```bash
+   cd backend && npx prisma migrate resolve --rolled-back "20260219000000_add_order_completed_at"
+   ```
+   Затем задеплойте снова — миграция применится с исправленным SQL.
 
 ---
 
