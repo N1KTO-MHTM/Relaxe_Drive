@@ -14,12 +14,20 @@
 
 .roles-cell-email {
   font-size: 0.875rem;
-  word-break: break-all;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .roles-cell-email a {
   color: var(--rd-accent);
   text-decoration: none;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 
 .roles-cell-email a:hover {
@@ -28,6 +36,10 @@
 
 .roles-cell-phone {
   font-variant-numeric: tabular-nums;
+}
+
+.roles-select-role {
+  min-width: 110px;
 }
 
 .roles-cell-id {

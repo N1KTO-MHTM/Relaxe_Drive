@@ -339,7 +339,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
       const exitLabel = escapeHtml(t('common.close'));
       const popupContent = rows.join('<br/>') + `<br/><button type="button" class="orders-map-popup-close rd-btn rd-btn-primary" style="margin-top:0.5rem;cursor:pointer">${exitLabel}</button>`;
-      marker.bindPopup(popupContent, { closeOnClick: true, autoClose: true });
+      marker.bindPopup(popupContent, { closeOnClick: false, autoClose: false });
       clusterGroup.addLayer(marker);
     });
     clusterGroup.addTo(map);

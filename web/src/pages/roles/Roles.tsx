@@ -259,14 +259,15 @@ export default function Roles() {
                 {filteredUsers.map((u) => (
                   <tr key={u.id}>
                     <td>{u.nickname}</td>
-                    <td className="roles-cell-email">{u.email ? <a href={`mailto:${u.email}`}>{u.email}</a> : '—'}</td>
+                    <td className="roles-cell-email" title={u.email ?? undefined}>{u.email ? <a href={`mailto:${u.email}`}>{u.email}</a> : '—'}</td>
                     <td className="roles-cell-phone">{u.phone ?? '—'}</td>
                     <td>
                       <select
-                        className="rd-input"
+                        className="rd-input roles-select-role"
                         value={u.role}
                         disabled={updatingId === u.id || (isAdmin && u.id === currentUser?.id)}
                         onChange={(e) => handleRoleChange(u.id, e.target.value as Role)}
+                        title={t('roles.role') + ': ' + t('roles.' + u.role.toLowerCase())}
                       >
                         {ROLES.map((r) => (
                           <option key={r} value={r}>{t('roles.' + r.toLowerCase())}</option>

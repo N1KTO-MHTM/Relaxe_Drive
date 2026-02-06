@@ -83,7 +83,11 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className }: TripCa
     const bounds = line.getBounds();
     map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
 
+    const t = window.setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
     return () => {
+      window.clearTimeout(t);
       map.remove();
       mapRef.current = null;
     };
@@ -96,6 +100,8 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className }: TripCa
         role="img"
         aria-label="Route map loading"
         style={{
+          width: '100%',
+          minWidth: 200,
           height: 160,
           minHeight: 160,
           background: 'var(--rd-bg-muted, #2a2a2e)',
@@ -119,7 +125,15 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className }: TripCa
     <div
       ref={containerRef}
       className={className}
-      style={{ height: 160, borderRadius: 'var(--rd-radius-md, 8px)', overflow: 'hidden' }}
+      style={{
+        width: '100%',
+        minWidth: 200,
+        height: 160,
+        minHeight: 160,
+        borderRadius: 'var(--rd-radius-md, 8px)',
+        overflow: 'hidden',
+        background: 'var(--rd-bg-muted, #2a2a2e)',
+      }}
     />
   );
 }
