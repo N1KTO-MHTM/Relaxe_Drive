@@ -5,6 +5,7 @@ import { api } from '../../api/client';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
+import { PassengersMap } from './PassengersMap';
 import type { PassengerRow } from '../../types';
 import './Passengers.css';
 
@@ -89,6 +90,17 @@ export default function Passengers() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!formPhone.trim()) return;
+    const phone = formPhone.trim();
+    const pickup = formPickup.trim();
+    if (pickup) {
+      const already = list.some(
+        (p) => (p.phone ?? '').trim() === phone && (p.pickupAddr ?? '').trim() === pickup,
+      );
+      if (already) {
+        toast.error(t('passengers.duplicatePhonePickup'));
+        return;
+      }
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -218,6 +230,11 @@ export default function Passengers() {
       {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('passengers.noClients')}</p>}
       {!loading && !error && list.length > 0 && filteredList.length === 0 && <p className="rd-text-muted">{t('passengers.noMatch')}</p>}
       {!loading && !error && filteredList.length > 0 && (
+        <>
+        <section className="passengers-map-section" aria-label={t('passengers.clientsOnMap')}>
+          <h2 className="passengers-map-heading">{t('passengers.clientsOnMap')}</h2>
+          <PassengersMap clients={filteredList} className="passengers-map" />
+        </section>
         <div className="rd-table-wrapper">
           <table className="rd-table" style={{ width: '100%' }}>
             <thead>
@@ -301,6 +318,7 @@ export default function Passengers() {
           </table>
           <Pagination page={page} totalItems={filteredList.length} onPageChange={setPage} />
         </div>
+        </>
       )}
       </div>
     </div>

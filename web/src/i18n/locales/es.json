@@ -324,7 +324,10 @@
     "pickup": "Recogida",
     "dropoff": "Destino",
     "addresses": "Direcciones",
-    "history": "Historial de viajes"
+    "history": "Historial de viajes",
+    "duplicatePhonePickup": "Ya existe un cliente con este teléfono y dirección de recogida.",
+    "clientsOnMap": "Clientes en el mapa",
+    "noAddressesOnMap": "No hay direcciones de recogida o destino para mostrar"
   },
   "translation": {
     "title": "Centro de traducción",

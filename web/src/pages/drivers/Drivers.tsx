@@ -309,8 +309,8 @@ export default function Drivers() {
                     >
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
-                      {showPhone && <td>{d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}</td>}
-                      {showPhone && <td className="drivers-cell-id" title={d.id}>{d.id.slice(0, 8)}…</td>}
+                      {showPhone && <td className="drivers-cell-email">{d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}</td>}
+                      {showPhone && <td className="drivers-cell-id" title={d.id}>{d.id}</td>}
                       <td>{d.driverId ?? '—'}</td>
                       <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
                       <td>{d.carPlateNumber ?? '—'}</td>

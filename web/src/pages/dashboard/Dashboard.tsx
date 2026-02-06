@@ -396,6 +396,9 @@ export default function Dashboard() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
+  /** Trigger one immediate location send (so driver appears on map right after going online). */
+  const sendLocationOnceRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     if (user?.role !== 'DRIVER') return;
     let cancelled = false;
@@ -535,7 +538,7 @@ export default function Dashboard() {
       }).catch(() => setDrivers([]));
     };
     load();
-    const interval = setInterval(load, 3000); // refresh driver positions for live map every 3s
+    const interval = setInterval(load, 6000); // refresh driver positions every 6s (less aggressive; visibility refresh below keeps map responsive)
     return () => clearInterval(interval);
   }, [canAssign]);
 
@@ -708,7 +711,7 @@ export default function Dashboard() {
     }).catch(() => {});
   }
 
-  // Live geo: driver location sent to server so dispatcher always sees it on the map (no need to click Share)
+  // Live geo: driver location sent to server so dispatcher sees it on the map
   useEffect(() => {
     if (user?.role !== 'DRIVER' || !navigator.geolocation) return;
     const sendLocation = () => {
@@ -723,13 +726,15 @@ export default function Dashboard() {
         { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
       );
     };
+    sendLocationOnceRef.current = sendLocation;
     sendLocation();
     const hasActiveOrder = orders.some((o) => o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS');
-    const intervalMs = hasActiveOrder ? 5000 : 10000; // 5s on trip, 10s when free — always live on dispatcher map
+    const intervalMs = hasActiveOrder ? 5000 : 10000; // 5s on trip, 10s when free
     const interval = setInterval(sendLocation, intervalMs);
     const onVisible = () => { sendLocation(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
+      sendLocationOnceRef.current = null;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
     };
@@ -2087,7 +2092,25 @@ export default function Dashboard() {
               onClick={() => {
                 const next = user?.available === false;
                 api.patch('/users/me/available', { available: next })
-                  .then(() => setUser(user ? { ...user, available: next } : null))
+                  .then(() => {
+                    setUser(user ? { ...user, available: next } : null);
+                    if (next && navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                          const lat = pos.coords.latitude;
+                          const lng = pos.coords.longitude;
+                          setDriverLocation({ lat, lng });
+                          api.patch('/users/me/location', { lat, lng })
+                            .then(() => toast.success(t('toast.youAreOnMap')))
+                            .catch(() => {});
+                        },
+                        () => toast.error(t('toast.locationRequiredForMap')),
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                      );
+                    } else if (next) {
+                      sendLocationOnceRef.current?.();
+                    }
+                  })
                   .catch(() => toast.error(t('toast.statusUpdateFailed')));
               }}
             >

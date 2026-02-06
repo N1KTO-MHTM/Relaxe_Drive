@@ -13,6 +13,7 @@ export class PassengersService {
     });
   }
 
+  /** Create a passenger. If one with the same phone and pickup address already exists, return that instead (no duplicate). */
   async create(data: {
     phone: string;
     name?: string;
@@ -21,6 +22,14 @@ export class PassengersService {
     pickupType?: string;
     dropoffType?: string;
   }) {
+    const phone = data.phone?.trim();
+    const pickupAddr = data.pickupAddr?.trim();
+    if (phone && pickupAddr) {
+      const existing = await this.prisma.passenger.findFirst({
+        where: { phone, pickupAddr },
+      });
+      if (existing) return existing;
+    }
     return this.prisma.passenger.create({
       data: {
         phone: data.phone,

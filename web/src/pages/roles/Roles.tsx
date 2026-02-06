@@ -191,15 +191,15 @@ export default function Roles() {
 
   return (
     <div className="rd-page">
-      <div className="rd-panel">
-        <div className="rd-panel-header">
+      <div className="rd-panel roles-panel">
+        <div className="roles-header-row">
           <h1>{t('roles.title')}</h1>
+          <p className="rd-text-muted">{t('roles.usersList')}</p>
           <button type="button" className="rd-btn rd-btn-secondary" onClick={loadUsers} disabled={loading}>
             {t('common.refresh')}
           </button>
         </div>
-        <p className="rd-text-muted">{t('roles.usersList')}</p>
-        {error && <p className="rd-text-critical">{error}</p>}
+        {error && <p className="rd-text-critical" style={{ margin: '0 0 0.5rem' }}>{error}</p>}
         {!loading && (
           <div className="roles-search-bar">
             <input
@@ -214,7 +214,6 @@ export default function Roles() {
               className="rd-input"
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
-              style={{ minWidth: 120 }}
             >
               <option value="">{t('roles.filterRole')} —</option>
               <option value="ADMIN">{t('roles.admin')}</option>
@@ -225,7 +224,6 @@ export default function Roles() {
               className="rd-input"
               value={filterCarType}
               onChange={(e) => setFilterCarType(e.target.value)}
-              style={{ minWidth: 120 }}
             >
               <option value="">{t('roles.filterCarType')} —</option>
               <option value="SEDAN">{t('auth.carType_SEDAN')}</option>
@@ -292,7 +290,7 @@ export default function Roles() {
                       </td>
                     )}
                     <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
+                      <div className="roles-actions-cell">
                         <button
                           type="button"
                           className="rd-btn"

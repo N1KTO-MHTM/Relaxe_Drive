@@ -43,3 +43,29 @@
   color: var(--rd-text-muted);
   cursor: help;
 }
+
+.passengers-map-section {
+  margin-bottom: var(--rd-space-lg);
+}
+
+.passengers-map-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 var(--rd-space-sm);
+  color: var(--rd-text, #1a1a1a);
+}
+
+.passengers-map {
+  border-radius: var(--rd-radius-md, 8px);
+  border: 1px solid var(--rd-border);
+}
+
+.passengers-map-popup {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  padding: 0.25rem 0;
+}
+
+.passengers-map-popup-row {
+  margin: 0.25rem 0;
+}
