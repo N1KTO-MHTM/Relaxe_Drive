@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { downloadCsv } from '../../utils/exportCsv';
@@ -9,6 +9,8 @@ import './Drivers.css';
 
 const CAR_TYPES = ['SEDAN', 'MINIVAN', 'SUV'] as const;
 type CarTypeTab = 'ALL' | (typeof CAR_TYPES)[number] | 'OTHER';
+
+type DriverDetailTab = 'info' | 'trips' | 'earnings';
 
 /** Driver phones only for DISPATCHER and ADMIN. */
 function canSeeDriverPhones(role: string | undefined) {
@@ -32,16 +34,40 @@ interface DriverRow {
   carModelAndYear?: string | null;
 }
 
+interface DriverStats {
+  totalEarningsCents: number;
+  totalMiles: number;
+  updatedAt?: string | null;
+}
+
+interface TripSummary {
+  id: string;
+  orderId: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  startedAt: string;
+  completedAt: string;
+  distanceKm: number;
+  earningsCents: number;
+}
+
 export default function Drivers() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [list, setList] = useState<DriverRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [carTypeTab, setCarTypeTab] = useState<CarTypeTab>('ALL');
+  const [selectedDriver, setSelectedDriver] = useState<DriverRow | null>(null);
+  const [detailTab, setDetailTab] = useState<DriverDetailTab>('info');
+  const [driverStats, setDriverStats] = useState<DriverStats | null>(null);
+  const [tripHistory, setTripHistory] = useState<TripSummary[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
   const showPhone = canSeeDriverPhones(user?.role);
+  const canViewDriverDetail = showPhone;
 
   const listByCarType = useMemo(() => {
     if (carTypeTab === 'ALL') return list;
@@ -85,6 +111,60 @@ export default function Drivers() {
     load();
   }, []);
 
+  const openDriverId = searchParams.get('open');
+  useEffect(() => {
+    if (!openDriverId || list.length === 0 || !canViewDriverDetail) return;
+    const driver = list.find((d) => d.id === openDriverId);
+    if (driver) {
+      setSelectedDriver(driver);
+      setDetailTab('info');
+      setSearchParams((p) => { const next = new URLSearchParams(p); next.delete('open'); return next; }, { replace: true });
+    }
+  }, [openDriverId, list, canViewDriverDetail, setSearchParams]);
+
+  useEffect(() => {
+    if (!selectedDriver || !canViewDriverDetail) {
+      setDriverStats(null);
+      setTripHistory([]);
+      return;
+    }
+    setDetailLoading(true);
+    Promise.all([
+      api.get<DriverStats>(`/users/${selectedDriver.id}/stats`).catch(() => null),
+      api.get<TripSummary[]>(`/users/${selectedDriver.id}/trip-history`).catch(() => []),
+    ]).then(([stats, trips]) => {
+      setDriverStats(stats ?? null);
+      setTripHistory(Array.isArray(trips) ? trips : []);
+    }).finally(() => setDetailLoading(false));
+  }, [selectedDriver?.id, canViewDriverDetail]);
+
+  function formatTripTime(start: string, end: string): string {
+    const s = new Date(start);
+    const e = new Date(end);
+    return `${s.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} – ${e.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  function formatTripDuration(start: string, end: string): string {
+    const min = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60_000);
+    return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
+  }
+
+  /** Average speed in mph from distance (km) and time (ms). */
+  function tripAvgSpeedMph(distanceKm: number, startedAt: string, completedAt: string): number {
+    const hours = (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / (1000 * 60 * 60);
+    if (hours <= 0) return 0;
+    const kmh = distanceKm / hours;
+    return Math.round(kmh / 1.60934);
+  }
+
+  function googleMapsRouteUrl(origin: string, destination: string): string {
+    const params = new URLSearchParams({
+      origin: origin,
+      destination: destination,
+    });
+    return `https://www.google.com/maps/dir/?api=1&${params.toString()}`;
+  }
+
   return (
     <div className="rd-page">
       <div className="drivers-page rd-panel">
@@ -118,6 +198,9 @@ export default function Drivers() {
           </div>
         </div>
         <p className="rd-text-muted drivers-subtitle">{t('drivers.subtitle')}</p>
+        {!loading && list.length > 0 && (
+          <p className="drivers-summary rd-text-muted">{t('drivers.summaryCount', { count: list.length })}</p>
+        )}
         {error && <p className="rd-text-critical drivers-error">{error}</p>}
         {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
         {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('drivers.noDrivers')}</p>}
@@ -169,14 +252,23 @@ export default function Drivers() {
                 <th>{t('auth.carType')}</th>
                 <th>{t('auth.carPlateNumber')}</th>
                 <th>{t('drivers.status')}</th>
+                {canViewDriverDetail && <th></th>}
               </tr>
             </thead>
             <tbody>
                 {paginatedList.map((d) => {
                   const hasLocation = d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng);
                   const statusKey = d.blocked ? 'blocked' : d.bannedUntil && new Date(d.bannedUntil) > new Date() ? 'banned' : hasLocation ? 'onMap' : 'offline';
+                  const isSelected = selectedDriver?.id === d.id;
                   return (
-                    <tr key={d.id}>
+                    <tr
+                      key={d.id}
+                      className={isSelected ? 'drivers-row--selected' : ''}
+                      onClick={() => canViewDriverDetail && setSelectedDriver(isSelected ? null : d)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => canViewDriverDetail && (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setSelectedDriver(selectedDriver?.id === d.id ? null : d))}
+                    >
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
                       {showPhone && <td>{d.email ?? '—'}</td>}
@@ -188,12 +280,136 @@ export default function Drivers() {
                           {t(`drivers.${statusKey}`)}
                         </span>
                       </td>
+                      {canViewDriverDetail && (
+                        <td>
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn-secondary drivers-btn-view"
+                            onClick={(e) => { e.stopPropagation(); setSelectedDriver(isSelected ? null : d); }}
+                          >
+                            {t('drivers.viewDetails')}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
             <Pagination page={page} totalItems={filteredList.length} onPageChange={setPage} />
+          </div>
+        )}
+
+        {canViewDriverDetail && selectedDriver && (
+          <div className="drivers-detail-panel rd-panel">
+            <div className="drivers-detail-header">
+              <h2>{selectedDriver.nickname} — {t('drivers.driverInfo')}</h2>
+              <button type="button" className="rd-btn" onClick={() => setSelectedDriver(null)} aria-label={t('common.close')}>×</button>
+            </div>
+            <div className="drivers-detail-tabs">
+              <button type="button" className={`drivers-tab ${detailTab === 'info' ? 'active' : ''}`} onClick={() => setDetailTab('info')}>{t('drivers.driverInfo')}</button>
+              <button type="button" className={`drivers-tab ${detailTab === 'trips' ? 'active' : ''}`} onClick={() => setDetailTab('trips')}>{t('drivers.tripHistory')}</button>
+              <button type="button" className={`drivers-tab ${detailTab === 'earnings' ? 'active' : ''}`} onClick={() => setDetailTab('earnings')}>{t('drivers.earnings')}</button>
+            </div>
+            {detailLoading ? (
+              <p className="rd-text-muted">{t('common.loading')}</p>
+            ) : (
+              <>
+                {detailTab === 'info' && (
+                  <div className="drivers-detail-info">
+                    <div className="drivers-detail-stat-row"><span>{t('drivers.nickname')}</span><span>{selectedDriver.nickname}</span></div>
+                    {showPhone && <div className="drivers-detail-stat-row"><span>{t('drivers.phone')}</span><span>{selectedDriver.phone ?? '—'}</span></div>}
+                    {showPhone && <div className="drivers-detail-stat-row"><span>{t('auth.email')}</span><span>{selectedDriver.email ?? '—'}</span></div>}
+                    <div className="drivers-detail-stat-row"><span>{t('drivers.driverId')}</span><span>{selectedDriver.driverId ?? '—'}</span></div>
+                    <div className="drivers-detail-stat-row"><span>{t('auth.carType')}</span><span>{selectedDriver.carType ? t('auth.carType_' + selectedDriver.carType) : '—'}</span></div>
+                    <div className="drivers-detail-stat-row"><span>{t('auth.carPlateNumber')}</span><span>{selectedDriver.carPlateNumber ?? '—'}</span></div>
+                    {selectedDriver.carModelAndYear && <div className="drivers-detail-stat-row"><span>{t('auth.carModelAndYear')}</span><span>{selectedDriver.carModelAndYear}</span></div>}
+                  </div>
+                )}
+                {detailTab === 'trips' && (
+                  <div className="drivers-trip-history">
+                    {tripHistory.length > 0 && (
+                      <div className="drivers-trip-history-actions">
+                        <button
+                          type="button"
+                          className="rd-btn rd-btn-secondary"
+                          onClick={() => downloadCsv(
+                            tripHistory.map((t) => ({
+                              date: new Date(t.completedAt).toLocaleDateString(),
+                              time: formatTripTime(t.startedAt, t.completedAt),
+                              pickup: t.pickupAddress,
+                              dropoff: t.dropoffAddress,
+                              distanceMi: (t.distanceKm / 1.60934).toFixed(1),
+                              duration: formatTripDuration(t.startedAt, t.completedAt),
+                              avgSpeedMph: tripAvgSpeedMph(t.distanceKm, t.startedAt, t.completedAt),
+                              earnings: `$${(t.earningsCents / 100).toFixed(2)}`,
+                            })),
+                            `trips-${selectedDriver.nickname.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`,
+                            [
+                              { key: 'date', label: t('drivers.exportDate') },
+                              { key: 'time', label: t('drivers.exportTime') },
+                              { key: 'pickup', label: t('dashboard.pickupAddress') },
+                              { key: 'dropoff', label: t('dashboard.dropoffAddress') },
+                              { key: 'distanceMi', label: t('drivers.exportDistance') },
+                              { key: 'duration', label: t('drivers.duration') },
+                              { key: 'avgSpeedMph', label: t('drivers.avgSpeed') },
+                              { key: 'earnings', label: t('drivers.earnings') },
+                            ]
+                          )}
+                        >
+                          {t('drivers.exportCsv')}
+                        </button>
+                      </div>
+                    )}
+                    {tripHistory.length === 0 ? (
+                      <p className="rd-text-muted">{t('drivers.noTripHistory')}</p>
+                    ) : (
+                      <ul className="drivers-trip-list">
+                        {tripHistory.map((trip) => {
+                          const avgMph = tripAvgSpeedMph(trip.distanceKm, trip.startedAt, trip.completedAt);
+                          const riskyCount = 0; // placeholder until backend supports risky events
+                          return (
+                            <li key={trip.id} className="drivers-trip-card">
+                              <div className="drivers-trip-route">{trip.pickupAddress} → {trip.dropoffAddress}</div>
+                              <div className="drivers-trip-meta">
+                                <span className="drivers-trip-time">{formatTripTime(trip.startedAt, trip.completedAt)}</span>
+                                <span className="drivers-trip-sep"> · </span>
+                                <span className="drivers-trip-distance">{(trip.distanceKm / 1.60934).toFixed(1)} mi</span>
+                                <span className="drivers-trip-sep"> · </span>
+                                <span>{formatTripDuration(trip.startedAt, trip.completedAt)}</span>
+                              </div>
+                              <div className="drivers-trip-extra">
+                                {avgMph > 0 && <span className="drivers-trip-avg-speed">{t('drivers.avgSpeed')}: {avgMph} mph</span>}
+                                <a href={googleMapsRouteUrl(trip.pickupAddress, trip.dropoffAddress)} target="_blank" rel="noopener noreferrer" className="drivers-trip-route-link">{t('drivers.viewRoute')}</a>
+                              </div>
+                              {riskyCount > 0 && <span className="drivers-trip-risky">{t('drivers.riskyEvents', { count: riskyCount })}</span>}
+                              <div className="drivers-trip-earnings">${(trip.earningsCents / 100).toFixed(2)}</div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+                {detailTab === 'earnings' && (
+                  <div className="drivers-earnings-panel">
+                    <div className="drivers-earnings-total">
+                      <div className="drivers-earnings-row">
+                        <span>{t('drivers.totalEarned')}</span>
+                        <strong>{driverStats != null ? `$${(driverStats.totalEarningsCents / 100).toFixed(2)}` : '—'}</strong>
+                      </div>
+                      <div className="drivers-earnings-row">
+                        <span>{t('drivers.totalMiles')}</span>
+                        <strong>{driverStats != null ? (driverStats.totalMiles).toFixed(1) : '—'} mi</strong>
+                      </div>
+                    </div>
+                    {tripHistory.length > 0 && (
+                      <p className="rd-text-muted drivers-earnings-hint">{t('drivers.tripHistoryLast7')}</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

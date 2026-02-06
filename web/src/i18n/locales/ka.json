@@ -1,6 +1,6 @@
 {
   "app": { "name": "RelaxDrive", "tagline": "Relaxe Drive" },
-  "common": { "refresh": "განახლება", "loading": "იტვირთება…" },
+  "common": { "refresh": "განახლება", "loading": "იტვირთება…", "close": "დახურვა" },
   "auth": {
     "login": "შესვლა",
     "staffOnly": "მხოლოდ პერსონალისთვის — მძღოლები, დისპეტჩერები, ადმინისტრატორები.",
@@ -109,6 +109,8 @@
     "dropoffAddress": "დასაშვები მისამართი",
     "createOrder": "შეკვეთის შექმნა",
     "noOrders": "აქტიური შეკვეთები არ არის",
+    "noDrivers": "მძღოლები არ არის",
+    "car": "ავტო",
     "orderStatus": "სტატუსი",
     "assignDriver": "მძღოლის მინიჭება",
     "bestDriverSuggestion": "საუკეთესო: {{name}} (~{{min}} წთ პიკაპამდე)",
@@ -219,9 +221,9 @@
     "removeStop": "წაშლა",
     "stopAddressPlaceholder": "გაჩერების მისამართი"
   },
-  "calendar": { "title": "კალენდარი", "day": "დღე", "week": "კვირა", "preOrder": "წინასწარ (6 დღემდე)", "conflict": "კონფლიქტი" },
+  "calendar": { "title": "კალენდარი", "day": "დღე", "week": "კვირა", "preOrder": "წინასწარ (6 დღემდე)", "conflict": "კონფლიქტი", "createOrderForDay": "შეკვეთის შექმნა ამ დღისთვის", "allDrivers": "ყველა მძღოლი", "chooseDriver": "აირჩიეთ მძღოლი — გაიხსნება მისი კალენდარი", "driverSchedule": "{{name}}-ის გრაფიკი", "viewDriverDetails": "მძღოლის დეტალები", "status_SCHEDULED": "დაგეგმილი", "status_ASSIGNED": "მინიჭებული", "status_IN_PROGRESS": "პროცესში", "status_COMPLETED": "დასრულებული", "status_CANCELLED": "გაუქმებული", "status_DRAFT": "ჩანახატი" },
   "pendings": { "title": "მომლოდინე მძღოლები", "subtitle": "დარეგისტრირებული მძღოლები, რომლებიც ელოდებიან ადმინისტრატორის დადასტურებას. დადასტურებამდე ვერ შედიან.", "noPending": "მომლოდინე მძღოლები არ არის.", "approve": "დადასტურება", "reject": "უარყოფა", "rejectConfirm": "უარვაყოთ ეს მძღოლი? ანგარიში წაიშლება; ხელახლა რეგისტრაცია შეიძლება.", "registered": "დარეგისტრირდა" },
-  "drivers": { "title": "მძღოლები", "subtitle": "ყველა მძღოლი. რუკაზე სანახავად გადადით პანელზე.", "showOnMap": "რუკაზე", "nickname": "მძღოლი", "phone": "ტელეფონი", "driverId": "ID მძღოლი", "tabAll": "ყველა", "tabOther": "სხვა", "status": "სტატუსი", "noDrivers": "მძღოლები არ არის", "search": "ძებნა", "noMatch": "შედეგები არ არის", "exportCsv": "ექსპორტი CSV", "onMap": "რუკაზე", "offline": "ოფლაინ", "blocked": "დაბლოკილი", "banned": "დაბანილი" },
+  "drivers": { "title": "მძღოლები", "subtitle": "ყველა მძღოლი. რუკაზე სანახავად გადადით პანელზე.", "showOnMap": "რუკაზე", "nickname": "მძღოლი", "phone": "ტელეფონი", "driverId": "ID მძღოლი", "tabAll": "ყველა", "tabOther": "სხვა", "status": "სტატუსი", "noDrivers": "მძღოლები არ არის", "search": "ძებნა", "noMatch": "შედეგები არ არის", "exportCsv": "ექსპორტი CSV", "onMap": "რუკაზე", "offline": "ოფლაინ", "blocked": "დაბლოკილი", "banned": "დაბანილი", "viewDetails": "დეტალები", "driverInfo": "მძღოლის ინფორმაცია", "tripHistory": "მგზავრობების ისტორია", "earnings": "გამომუშავება", "totalEarned": "სულ გამომუშავებული", "totalMiles": "სულ მილი", "noTripHistory": "პოსტულ 7 დღეში მგზავრობები არ არის", "tripHistoryLast7": "მგზავრობების ისტორია ბოლო 7 დღის.", "viewRoute": "მარშრუტი", "avgSpeed": "საშ. სიჩქარე", "riskyEvents": "{{count}} რისკი", "exportDate": "თარიღი", "exportTime": "დრო", "exportDistance": "მანძილი (mi)", "duration": "ხანგრძლივობა", "summaryCount": "{{count}} მძღოლი" },
   "passengers": { "title": "მგზავრები", "phone": "ტელეფონი", "name": "სახელი", "type": "ტიპი", "driver": "მძღოლი", "pickup": "პიკაპი", "dropoff": "დასაშვები", "addresses": "მისამართები", "history": "ისტორია" },
   "translation": { "title": "თარგმანის ცენტრი", "voiceToText": "ხმა → ტექსტი", "autoLanguage": "ავტო ენა", "history": "ისტორია" },
   "analytics": { "title": "ანალიტიკა", "heatmap": "სითბოს რუკა", "filters": "ფილტრები", "from": "დან", "to": "მდე", "apply": "გამოყენება", "loading": "იტვირთება…", "ordersCreated": "შეკვეთა შექმნილი", "ordersCompleted": "შეკვეთა შესრულებული", "scheduled": "დაგეგმილი", "assigned": "მინიჭებული", "inProgress": "პროცესში", "heatmapHint": "აქტივობა დღისა და საათის მიხედვით.", "noData": "ამ პერიოდში აქტივობა არ არის." },

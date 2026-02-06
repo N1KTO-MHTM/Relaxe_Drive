@@ -1,4 +1,5 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { PassengersService } from '../passengers/passengers.service';
@@ -9,6 +10,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private passengersService: PassengersService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async findByNickname(nickname: string) {
@@ -244,11 +246,13 @@ export class UsersService {
   }
 
   async updateAvailable(userId: string, available: boolean) {
-    return this.prisma.user.update({
+    const result = await this.prisma.user.update({
       where: { id: userId },
       data: { available },
       select: { id: true, available: true },
     });
+    this.eventEmitter.emit('planning.recalculate');
+    return result;
   }
 
   async updateLocation(userId: string, lat: number, lng: number) {
@@ -319,8 +323,87 @@ export class UsersService {
     return {
       totalEarningsCents: row?.totalEarningsCents ?? 0,
       totalMiles: row?.totalMiles ?? 0,
+      idleAvg: row?.idleAvg ?? null,
+      lateRate: row?.lateRate ?? null,
+      rejectRate: row?.rejectRate ?? null,
       updatedAt: row?.updatedAt ?? null,
     };
+  }
+
+  /** Recompute idleAvg, lateRate, rejectRate for all drivers (called from cron). */
+  async recomputeAllDriverStats(): Promise<void> {
+    const drivers = await this.prisma.user.findMany({
+      where: { role: 'DRIVER' },
+      select: { id: true },
+    });
+    for (const d of drivers) {
+      await this.recomputeDriverStats(d.id);
+    }
+  }
+
+  private async recomputeDriverStats(driverId: string): Promise<void> {
+    const bufferMs = 15 * 60 * 1000; // 15 min default
+    const completed = await this.prisma.order.findMany({
+      where: { driverId, status: 'COMPLETED' },
+      select: { pickupAt: true, arrivedAtPickupAt: true, bufferMinutes: true },
+    });
+    let lateCount = 0;
+    for (const o of completed) {
+      if (!o.arrivedAtPickupAt) continue;
+      const buffer = (o.bufferMinutes ?? 15) * 60 * 1000;
+      if (o.arrivedAtPickupAt.getTime() > o.pickupAt.getTime() + buffer) lateCount++;
+    }
+    const lateRate = completed.length > 0 ? lateCount / completed.length : null;
+
+    const assignLogs = await this.prisma.auditLog.findMany({
+      where: { action: 'order.assign', resource: 'order' },
+      select: { payload: true },
+    });
+    let assignCount = 0;
+    for (const a of assignLogs) {
+      try {
+        const p = a.payload ? JSON.parse(a.payload) : {};
+        if (p.driverId === driverId) assignCount++;
+      } catch {
+        // ignore
+      }
+    }
+    const rejectCount = await this.prisma.auditLog.count({
+      where: { userId: driverId, action: 'order.driver_reject', resource: 'order' },
+    });
+    const rejectRate = assignCount + rejectCount > 0 ? rejectCount / (assignCount + rejectCount) : null;
+
+    const trips = await this.prisma.driverTripSummary.findMany({
+      where: { driverId },
+      orderBy: { completedAt: 'asc' },
+      select: { startedAt: true, completedAt: true },
+    });
+    let idleAvg: number | null = null;
+    if (trips.length >= 2) {
+      const gaps: number[] = [];
+      for (let i = 1; i < trips.length; i++) {
+        const gapMs = trips[i].startedAt.getTime() - trips[i - 1].completedAt.getTime();
+        if (gapMs > 0) gaps.push(gapMs / 60_000);
+      }
+      idleAvg = gaps.length > 0 ? gaps.reduce((s, g) => s + g, 0) / gaps.length : null;
+    } else if (trips.length === 1) {
+      const lastCompleted = trips[trips.length - 1].completedAt.getTime();
+      idleAvg = Math.max(0, (Date.now() - lastCompleted) / 60_000);
+    }
+
+    await this.prisma.driverStats.upsert({
+      where: { driverId },
+      create: {
+        driverId,
+        totalEarningsCents: 0,
+        totalMiles: 0,
+        idleAvg,
+        lateRate,
+        rejectRate,
+        updatedAt: new Date(),
+      },
+      update: { idleAvg, lateRate, rejectRate, updatedAt: new Date() },
+    });
   }
 
   /** Delete a user (admin only). Cannot delete self or the last admin. */

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
@@ -22,12 +23,14 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PassengersModule } from './passengers/passengers.module';
 import { ReportsModule } from './reports/reports.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { PlanningModule } from './planning/planning.module';
 
 @Module({
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    EventEmitterModule.forRoot(),
     PrismaModule,
     CostTrackerModule,
     AuthModule,
@@ -47,6 +50,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     HealthModule,
     ReportsModule,
     SchedulerModule,
+    PlanningModule,
   ],
 })
 export class AppModule {}

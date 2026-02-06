@@ -4,6 +4,8 @@ import { SchedulerService } from './scheduler.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AlertsModule } from '../alerts/alerts.module';
 import { CostControlModule } from '../cost-control/cost-control.module';
+import { PlanningModule } from '../planning/planning.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -11,6 +13,8 @@ import { CostControlModule } from '../cost-control/cost-control.module';
     PrismaModule,
     AlertsModule,
     CostControlModule,
+    PlanningModule,
+    UsersModule,
   ],
   providers: [SchedulerService],
 })

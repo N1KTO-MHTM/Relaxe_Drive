@@ -1,6 +1,6 @@
 {
   "app": { "name": "RelaxDrive", "tagline": "Relaxe Drive" },
-  "common": { "refresh": "Обновить", "loading": "Загрузка…" },
+  "common": { "refresh": "Обновить", "loading": "Загрузка…", "close": "Закрыть" },
   "auth": {
     "login": "Вход",
     "staffOnly": "Только для персонала — водители, диспетчеры, администраторы.",
@@ -125,6 +125,7 @@
     "createOrder": "Создать заказ",
     "noOrders": "Нет активных заказов",
     "noDrivers": "Нет водителей",
+    "car": "Авто",
     "navToPickup": "К точке подачи",
     "navToDropoff": "К точке назначения",
     "orderStatus": "Статус",
@@ -252,8 +253,8 @@
     "clientSuggestion": "Клиент (необяз. — выберите для подстановки адресов)"
   },
   "pendings": { "title": "Ожидают одобрения", "subtitle": "Водители, зарегистрировавшиеся и ожидающие одобрения администратора. До одобрения не могут войти.", "noPending": "Нет водителей в ожидании.", "approve": "Одобрить", "reject": "Отклонить", "rejectConfirm": "Отклонить заявку? Аккаунт будет удалён; водитель сможет зарегистрироваться снова.", "registered": "Зарегистрирован" },
-  "drivers": { "title": "Водители", "subtitle": "Все водители. Перейдите на панель с картой, чтобы видеть местоположения.", "tabAll": "Все", "tabOther": "Другое", "showOnMap": "Показать на карте", "nickname": "Водитель", "phone": "Телефон", "driverId": "ID водителя", "status": "Статус", "noDrivers": "Нет водителей", "search": "Поиск", "noMatch": "Нет совпадений", "exportCsv": "Экспорт CSV", "onMap": "На карте", "offline": "Офлайн", "blocked": "Заблокирован", "banned": "Забанен" },
-  "calendar": { "title": "Календарь", "day": "День", "week": "Неделя", "preOrder": "Предзаказ (до 6 дней)", "conflict": "Конфликт" },
+  "drivers": { "title": "Водители", "subtitle": "Все водители. Перейдите на панель с картой, чтобы видеть местоположения.", "tabAll": "Все", "tabOther": "Другое", "showOnMap": "Показать на карте", "nickname": "Водитель", "phone": "Телефон", "driverId": "ID водителя", "status": "Статус", "noDrivers": "Нет водителей", "search": "Поиск", "noMatch": "Нет совпадений", "exportCsv": "Экспорт CSV", "onMap": "На карте", "offline": "Офлайн", "blocked": "Заблокирован", "banned": "Забанен", "viewDetails": "Подробнее", "driverInfo": "Информация о водителе", "tripHistory": "История поездок", "earnings": "Заработок", "totalEarned": "Всего заработано", "totalMiles": "Всего миль", "noTripHistory": "Нет поездок за последние 7 дней", "tripHistoryLast7": "История поездок за последние 7 дней.", "viewRoute": "Маршрут", "avgSpeed": "Ср. скорость", "riskyEvents": "{{count}} риск(ов)", "exportDate": "Дата", "exportTime": "Время", "exportDistance": "Расстояние (ми)", "duration": "Длительность", "summaryCount": "{{count}} водитель(ей)" },
+  "calendar": { "title": "Календарь", "day": "День", "week": "Неделя", "preOrder": "Предзаказ (до 6 дней)", "conflict": "Конфликт", "createOrderForDay": "Создать заказ на этот день", "allDrivers": "Все водители", "chooseDriver": "Выберите водителя — откроется его календарь", "driverSchedule": "Расписание {{name}}", "viewDriverDetails": "Подробнее о водителе", "status_SCHEDULED": "Запланирован", "status_ASSIGNED": "Назначен", "status_IN_PROGRESS": "В пути", "status_COMPLETED": "Выполнен", "status_CANCELLED": "Отменён", "status_DRAFT": "Черновик" },
   "passengers": { "title": "Клиенты", "addClient": "Добавить клиента", "phone": "Телефон", "name": "Имя", "type": "Тип", "driver": "Водитель", "pickup": "Подача", "dropoff": "Высадка", "add": "Добавить", "addresses": "Адреса", "history": "История поездок", "subtitle": "Клиенты с телефоном и адресом подачи. Тип места показывается, если не дом. В списке только пассажиры; аккаунты водителей не отображаются. Завершённые заказы автоматически добавляют номер, имя и адрес подачи.", "noClients": "Нет клиентов", "loadError": "Не удалось загрузить клиентов. Проверьте, что API запущен и вы авторизованы.", "placeHome": "Дом", "placeSynagogue": "Синагога", "placeSchool": "Школа", "placeHospital": "Больница", "placeStore": "Магазин", "placeOffice": "Офис", "placeOther": "Другое", "edit": "Изменить", "delete": "Удалить", "save": "Сохранить", "editClient": "Редактировать клиента", "deleteConfirm": "Удалить этого клиента?", "deleted": "Клиент удалён", "saved": "Клиент сохранён" },
   "translation": { "title": "Центр переводов", "voiceToText": "Голос → Текст", "autoLanguage": "Авто язык", "history": "История" },
   "analytics": { "title": "Аналитика", "heatmap": "Тепловая карта", "filters": "Фильтры", "from": "С", "to": "По", "apply": "Применить", "loading": "Загрузка…", "ordersCreated": "Заказов создано", "ordersCompleted": "Заказов выполнено", "scheduled": "Запланировано", "assigned": "Назначено", "inProgress": "В пути", "heatmapHint": "Активность по дню и часу (создание/завершение заказа).", "noData": "Нет активности за период." },

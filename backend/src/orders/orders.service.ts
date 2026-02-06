@@ -107,6 +107,28 @@ export class OrdersService {
     });
   }
 
+  /** Set manual-assignment flag (dispatcher marked; no auto-suggest). */
+  async setManualAssignment(orderId: string, manualAssignment: boolean) {
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { manualAssignment },
+    });
+  }
+
+  /** Add delay minutes to pickupAt (SCHEDULED or ASSIGNED only). */
+  async delayOrder(orderId: string, delayMinutes: number) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== 'SCHEDULED' && order.status !== 'ASSIGNED') {
+      throw new BadRequestException('Only scheduled or assigned orders can be delayed');
+    }
+    const newPickupAt = new Date(order.pickupAt.getTime() + delayMinutes * 60 * 1000);
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { pickupAt: newPickupAt },
+    });
+  }
+
   async driverReject(orderId: string, driverId: string) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');

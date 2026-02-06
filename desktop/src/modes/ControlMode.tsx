@@ -172,6 +172,17 @@ export default function ControlMode() {
     refreshData();
   }, [tab, sessionSubTab, canSeeDrivers, canSeeSessions, isAdmin, user?.id, user?.role, t]);
 
+  // Live driver positions on Control: refresh drivers list every 3s when on drivers tab
+  useEffect(() => {
+    if (tab !== 'drivers' || !canSeeDrivers) return;
+    const interval = setInterval(() => {
+      api.get<User[]>('/users').then((data) => {
+        setDrivers(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []);
+      }).catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [tab, canSeeDrivers]);
+
   useEffect(() => {
     if (user?.role !== 'DRIVER' || !window.electronAPI?.showNotification) return;
     const interval = setInterval(() => {

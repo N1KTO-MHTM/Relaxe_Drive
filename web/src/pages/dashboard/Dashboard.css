@@ -132,6 +132,18 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 .dashboard-order-item .rd-badge { border-radius: 6px; padding: 4px 10px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; }
+/* Drivers sidebar: compact, scannable list + alerts */
+.dashboard-drivers-sidebar .dashboard-drivers-subtitle {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.875rem;
+}
+.dashboard-drivers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
 .dashboard-drivers-list li {
   border-radius: var(--rd-radius-lg);
   background: var(--rd-surface);
@@ -142,8 +154,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--rd-space-md);
-  padding: var(--rd-space-md);
-  margin-bottom: var(--rd-space-sm);
+  padding: 0.75rem var(--rd-space-md);
   border-radius: var(--rd-radius-lg);
   background: var(--rd-surface);
   border: 1px solid var(--rd-border);
@@ -154,9 +165,9 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 .dashboard-driver-card__avatar {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   background: var(--rd-bg-panel);
   border: 1px solid var(--rd-border);
@@ -164,14 +175,50 @@
 .dashboard-driver-card__body {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
   min-width: 0;
+  flex: 1;
 }
-.dashboard-driver-card__phone {
-  font-size: 0.85rem;
+.dashboard-driver-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-driver-card__name {
+  font-size: 0.95rem;
+}
+.dashboard-driver-card__status {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.dashboard-driver-card__line {
+  font-size: 0.8rem;
+  color: var(--rd-text-muted);
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+}
+.dashboard-driver-card__label {
+  flex-shrink: 0;
+  min-width: 3.5rem;
+  color: var(--rd-text-muted);
+  opacity: 0.9;
+}
+.dashboard-driver-card__link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--rd-accent);
+  text-decoration: none;
+}
+.dashboard-driver-card__link:hover {
+  text-decoration: underline;
 }
 .dashboard-driver-card .rd-badge {
-  margin-top: 0.25rem;
   align-self: flex-start;
 }
 
@@ -194,6 +241,18 @@
   border-radius: var(--rd-radius-lg);
   padding: var(--rd-space-md);
   margin-top: var(--rd-space-sm);
+}
+.dashboard-alerts-card__title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.dashboard-alerts-card .alert-item {
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+}
+.dashboard-alerts-card .alert-item + .alert-item {
+  border-top: 1px solid var(--rd-border);
 }
 
 .dashboard-completed-trip-info {
@@ -311,6 +370,9 @@
 .dashboard-alerts-card .alert-item:last-child { border-bottom: none; }
 .dashboard-orders-list .rd-badge { margin-right: var(--rd-space-sm); }
 .dashboard-order-item { display: flex; flex-direction: column; gap: 0.375rem; }
+.dashboard-order-item--risk-medium { border-left: 3px solid var(--rd-warning, #d97706); }
+.dashboard-order-item--risk-high { border-left: 3px solid var(--rd-critical, #dc2626); }
+.dashboard-plan-panel h3 { font-weight: 600; }
 .dashboard-order-assign { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
 .dashboard-order-assign .rd-input { width: auto; min-width: 140px; }
 @media (max-width: 768px) {

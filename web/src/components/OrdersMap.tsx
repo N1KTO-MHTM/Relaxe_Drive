@@ -6,6 +6,20 @@ import L from './leafletWithCluster';
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY
 const DEFAULT_ZOOM = 12;
 
+/** Rockland County, NY — simplified boundary as red line (no circle). Closed polygon. */
+const ROCKLAND_COUNTY_BOUNDARY: [number, number][] = [
+  [41.004, -74.078],  // SW
+  [41.004, -73.945],  // S
+  [41.025, -73.882],  // SE (Hudson)
+  [41.095, -73.862],
+  [41.168, -73.888],
+  [41.268, -73.912],  // NE
+  [41.272, -74.042],  // N
+  [41.248, -74.118],  // NW
+  [41.118, -74.152],  // W
+  [41.004, -74.078],  // close
+];
+
 export type DriverMapStatus = 'available' | 'busy' | 'offline';
 
 export interface DriverForMap {
@@ -27,6 +41,8 @@ export interface DriverForMap {
   etaMinutesPickupToDropoff?: number;
   assignedOrderPickup?: string | null;
   assignedOrderDropoff?: string | null;
+  /** When busy: "Busy until HH:MM" */
+  busyUntil?: string | null;
 }
 
 export interface RouteStep {
@@ -68,6 +84,14 @@ interface OrdersMapProps {
   /** Called when user clicks Re-center (e.g. to fit map to route + location) */
   onRecenter?: () => void;
   recenterLabel?: string;
+  /** Risk level of the selected order: colors pickup marker green/yellow/red */
+  orderRiskLevel?: string | null;
+  /** Tooltip for selected order pickup: ETA, on-time, driver */
+  selectedOrderTooltip?: { eta?: string; onTime?: boolean; driverName?: string };
+  /** Future orders for overlay: semi-transparent pickup markers (exclude selected) */
+  futureOrderPickups?: { orderId: string; lat: number; lng: number; pickupAt: string }[];
+  /** Problem zones for heatmap: late pickups and cancelled (from GET /planning/problem-zones) */
+  problemZones?: { late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] };
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -150,16 +174,41 @@ function reportIcon(type: string): L.DivIcon {
   });
 }
 
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center' }: OrdersMapProps) {
+const ORDER_RISK_COLORS: Record<string, string> = {
+  LOW: '#22c55e',
+  MEDIUM: '#eab308',
+  HIGH: '#ef4444',
+};
+
+function orderPickupIcon(riskLevel: string | null | undefined): L.DivIcon {
+  const color = (riskLevel && ORDER_RISK_COLORS[riskLevel]) || ORDER_RISK_COLORS.LOW;
+  return L.divIcon({
+    className: 'orders-map-order-marker',
+    html: `<span style="background:${color};border:2px solid #fff;border-radius:50%;width:28px;height:28px;display:inline-block;box-shadow:0 2px 6px rgba(0,0,0,0.35);" title="Pickup"></span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+}
+
+declare global {
+  interface Window {
+    L: typeof L & { heatLayer?: (latlngs: [number, number, number][], options?: { radius?: number; blur?: number; gradient?: Record<number, string> }) => L.Layer };
+  }
+}
+
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const driverClusterRef = useRef<L.MarkerClusterGroup | null>(null);
   const routeLayersRef = useRef<L.Polyline[]>([]);
   const orderMarkersRef = useRef<L.Marker[]>([]);
+  const futureMarkersRef = useRef<L.Marker[]>([]);
+  const heatLayerRef = useRef<L.Layer | null>(null);
   const reportMarkersRef = useRef<L.Marker[]>([]);
   const currentUserMarkerRef = useRef<L.Marker | null>(null);
   const pickPointMarkerRef = useRef<L.Marker | null>(null);
+  const rocklandBoundaryRef = useRef<L.Polygon | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -168,12 +217,25 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
+    const rocklandLatLngs = ROCKLAND_COUNTY_BOUNDARY.map(([lat, lng]) => L.latLng(lat, lng));
+    const rocklandLine = L.polygon(rocklandLatLngs, {
+      color: '#ef4444',
+      weight: 3,
+      fill: false,
+      fillOpacity: 0,
+    }).addTo(map);
+    rocklandLine.bindPopup('Rockland County');
+    rocklandBoundaryRef.current = rocklandLine;
     mapRef.current = map;
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
     setTimeout(() => map.invalidateSize(), 100);
     return () => {
       window.removeEventListener('resize', onResize);
+      if (rocklandBoundaryRef.current) {
+        map.removeLayer(rocklandBoundaryRef.current);
+        rocklandBoundaryRef.current = null;
+      }
       if (driverClusterRef.current) {
         map.removeLayer(driverClusterRef.current);
         driverClusterRef.current = null;
@@ -259,6 +321,14 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       if (driver.etaMinutesTotal != null && Number.isFinite(driver.etaMinutesTotal)) {
         rows.push(`${escapeHtml(t('dashboard.etaTotal'))}: ${driver.etaMinutesTotal} min`);
       }
+      if (driver.busyUntil) {
+        try {
+          const busyUntilDate = new Date(driver.busyUntil);
+          rows.push(`${escapeHtml(t('dashboard.busyUntil'))}: ${busyUntilDate.toLocaleTimeString()}`);
+        } catch {
+          // ignore
+        }
+      }
       marker.bindPopup(rows.join('<br/>'));
       clusterGroup.addLayer(marker);
     });
@@ -275,6 +345,60 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
     };
   }, [drivers, showDriverMarkers, t]);
+
+  // Future order pickups overlay (semi-transparent)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    futureMarkersRef.current.forEach((m) => m.remove());
+    futureMarkersRef.current = [];
+    futureOrderPickups.forEach((f) => {
+      const icon = L.divIcon({
+        className: 'orders-map-future-marker',
+        html: `<span style="background:rgba(79,114,158,0.5);border:2px solid rgba(255,255,255,0.8);border-radius:50%;width:22px;height:22px;display:inline-block;box-shadow:0 1px 4px rgba(0,0,0,0.3);" title="Future pickup"></span>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      const m = L.marker([f.lat, f.lng], { icon }).addTo(map);
+      try {
+        const t = new Date(f.pickupAt);
+        m.bindPopup(`Future pickup ${t.toLocaleTimeString()}`);
+      } catch {
+        m.bindPopup('Future pickup');
+      }
+      futureMarkersRef.current.push(m);
+    });
+    return () => {
+      futureMarkersRef.current.forEach((m) => m.remove());
+      futureMarkersRef.current = [];
+    };
+  }, [futureOrderPickups]);
+
+  // Problem zones heatmap (late pickups + cancels)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !problemZones) return;
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current);
+      heatLayerRef.current = null;
+    }
+    const points: [number, number, number][] = [];
+    problemZones.late.forEach((p) => points.push([p.lat, p.lng, 0.8]));
+    problemZones.cancelled.forEach((p) => points.push([p.lat, p.lng, 0.5]));
+    if (points.length === 0) return;
+    const HeatLayer = (L as unknown as { heatLayer: (latlngs: [number, number, number][], o?: object) => L.Layer }).heatLayer;
+    if (HeatLayer) {
+      const layer = HeatLayer(points, { radius: 28, blur: 20, minOpacity: 0.3 });
+      layer.addTo(map);
+      heatLayerRef.current = layer;
+    }
+    return () => {
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
+    };
+  }, [problemZones]);
 
   // "You" marker for driver view
   useEffect(() => {
@@ -317,8 +441,14 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       });
     }
     if (pickupCoords) {
-      const m = L.marker([pickupCoords.lat, pickupCoords.lng]).addTo(map);
-      m.bindPopup('Pickup');
+      const m = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: orderPickupIcon(orderRiskLevel) }).addTo(map);
+      const popupRows: string[] = ['<strong>Pickup</strong>'];
+      if (selectedOrderTooltip) {
+        if (selectedOrderTooltip.eta) popupRows.push(`ETA: ${escapeHtml(selectedOrderTooltip.eta)}`);
+        popupRows.push(selectedOrderTooltip.onTime ? 'On time' : 'At risk / Late');
+        if (selectedOrderTooltip.driverName) popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
+      }
+      m.bindPopup(popupRows.join('<br/>'));
       orderMarkersRef.current.push(m);
       allLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
     }
@@ -379,7 +509,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       orderMarkersRef.current.forEach((m) => m.remove());
       orderMarkersRef.current = [];
     };
-  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode, selectedRouteIndex]);
+  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode, selectedRouteIndex, orderRiskLevel, selectedOrderTooltip]);
 
   useEffect(() => {
     if (!mapRef.current || reports.length === 0) return;

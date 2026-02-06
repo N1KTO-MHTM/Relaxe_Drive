@@ -4,8 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { CostControlService } from '../cost-control/cost-control.service';
+import { PlanningService } from '../planning/planning.service';
+import { UsersService } from '../users/users.service';
 
-/** Cron jobs: session cleanup, DriverTripSummary cleanup, pickup reminders, cost limit alert. */
+/** Cron jobs: session cleanup, DriverTripSummary cleanup, pickup reminders, cost limit alert, planning, driver stats. */
 @Injectable()
 export class SchedulerService {
   constructor(
@@ -13,6 +15,8 @@ export class SchedulerService {
     private alerts: AlertsService,
     private costControl: CostControlService,
     private config: ConfigService,
+    private planning: PlanningService,
+    private users: UsersService,
   ) {}
 
   /** Every day at 3:00 — delete sessions not active for 90 days (config: SESSION_CLEANUP_DAYS). */
@@ -59,6 +63,26 @@ export class SchedulerService {
         pickupAddress: o.pickupAddress ?? undefined,
         driverId: o.driverId ?? undefined,
       });
+    }
+  }
+
+  /** Every hour — recompute DriverStats (idleAvg, lateRate, rejectRate) for all drivers. */
+  @Cron('0 * * * *')
+  async runDriverStats() {
+    try {
+      await this.users.recomputeAllDriverStats();
+    } catch {
+      // ignore
+    }
+  }
+
+  /** Every 5 minutes — recompute planning (window, risky orders, suggested drivers) and emit planning.update. */
+  @Cron('*/5 * * * *')
+  async runPlanning() {
+    try {
+      await this.planning.recalculateAndEmit();
+    } catch {
+      // ignore
     }
   }
 

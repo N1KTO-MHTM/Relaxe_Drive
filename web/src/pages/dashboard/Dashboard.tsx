@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore } from '../../store/auth';
 import { api } from '../../api/client';
@@ -9,7 +9,7 @@ import type { OrderRouteData, DriverForMap, DriverReportMap } from '../../compon
 import NavBar from '../../components/NavBar';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
-import type { Order, DriverEta } from '../../types';
+import type { Order, DriverEta, PlanningResult } from '../../types';
 import './Dashboard.css';
 
 /** Wait billing: first 5 min free. 20 min = $5, 30 = $10, 1h = $20, 1h20 = $25, 1h30 = $30, 2h = $40. */
@@ -48,6 +48,19 @@ function distanceMeters(
   return R * c;
 }
 
+/** Default pickup time for new order form: now + 30 min, in datetime-local format (YYYY-MM-DDTHH:mm). */
+function defaultPickupAt(): string {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() + 30);
+  d.setSeconds(0, 0);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
+
 interface User {
   id: string;
   nickname: string;
@@ -56,6 +69,9 @@ interface User {
   lat?: number | null;
   lng?: number | null;
   available?: boolean;
+  carType?: string | null;
+  carPlateNumber?: string | null;
+  driverId?: string | null;
 }
 
 export default function Dashboard() {
@@ -83,6 +99,12 @@ export default function Dashboard() {
   const [leftMiddleId, setLeftMiddleId] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<User[]>([]);
   const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [delayOrderingId, setDelayOrderingId] = useState<string | null>(null);
+  const [manualUpdatingId, setManualUpdatingId] = useState<string | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const [futureOrderCoords, setFutureOrderCoords] = useState<Array<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }>>([]);
+  const [problemZones, setProblemZones] = useState<{ late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] } | null>(null);
+  const [showProblemZones, setShowProblemZones] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [stopUnderwayId, setStopUnderwayId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -110,6 +132,9 @@ export default function Dashboard() {
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [alerts, setAlerts] = useState<Array<{ id: string; type: string; orderId?: string; driverId?: string; pickupAddress?: string; at: string }>>([]);
   const [reports, setReports] = useState<DriverReportMap[]>([]);
+  const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
+  const [planningResult, setPlanningResult] = useState<PlanningResult | null>(null);
+  const [showPlanPanel, setShowPlanPanel] = useState(false);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [postTripSummary, setPostTripSummary] = useState<{
     pickupAddress: string;
@@ -195,9 +220,30 @@ export default function Dashboard() {
         etaMinutesPickupToDropoff: etaData?.etaMinutesPickupToDropoff,
         assignedOrderPickup: onTripOrder?.pickupAddress ?? null,
         assignedOrderDropoff: onTripOrder?.dropoffAddress ?? null,
+        busyUntil: (() => {
+          if (!onTripOrder) return null;
+          if (onTripOrder.completedAt) return new Date(onTripOrder.completedAt).toISOString();
+          const etaMin = etaData?.etaMinutesPickupToDropoff ?? etaData?.etaMinutesTotal ?? 30;
+          if (onTripOrder.leftPickupAt) {
+            return new Date(new Date(onTripOrder.leftPickupAt).getTime() + etaMin * 60_000).toISOString();
+          }
+          return new Date(new Date(onTripOrder.pickupAt).getTime() + (etaData?.etaMinutesTotal ?? etaMin) * 60_000).toISOString();
+        })(),
       };
     });
   }, [drivers, orders, driverEtas, selectedOrderId, t]);
+
+  const selectedOrderTooltip = useMemo(() => {
+    if (!selectedOrderId || !routeData) return undefined;
+    const ord = orders.find((x) => x.id === selectedOrderId);
+    const etas = ord ? driverEtas[ord.id]?.drivers?.[0] : null;
+    const driver = ord?.driverId ? drivers.find((d) => d.id === ord.driverId) : null;
+    return {
+      eta: etas ? `${etas.etaMinutesToPickup} min to pickup` : undefined,
+      onTime: !ord?.riskLevel || ord.riskLevel === 'LOW',
+      driverName: driver?.nickname ?? undefined,
+    };
+  }, [selectedOrderId, routeData, orders, driverEtas, drivers]);
 
   const PLACE_TYPES = [
     { value: '', labelKey: 'dashboard.placeTypeNone' },
@@ -322,6 +368,32 @@ export default function Dashboard() {
   }, [socket, user?.id, user?.role]);
 
   useEffect(() => {
+    if (!socket || !canAssign) return;
+    const onPlanning = (data: unknown) => setPlanningResult(data as PlanningResult);
+    socket.on('planning.update', onPlanning);
+    return () => { socket.off('planning.update', onPlanning); };
+  }, [socket, canAssign]);
+
+  useEffect(() => {
+    if (!canAssign) return;
+    api.get<PlanningResult>('/planning').then(setPlanningResult).catch(() => {});
+  }, [canAssign]);
+
+  useEffect(() => {
+    if (!selectedOrderId) setFocusMode(false);
+  }, [selectedOrderId]);
+
+  useEffect(() => {
+    if (!canAssign) return;
+    api.get<Array<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }>>('/planning/order-coords').then(setFutureOrderCoords).catch(() => {});
+  }, [canAssign]);
+
+  useEffect(() => {
+    if (!canAssign || !showProblemZones) return;
+    api.get<{ late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] }>('/planning/problem-zones').then(setProblemZones).catch(() => setProblemZones(null));
+  }, [canAssign, showProblemZones]);
+
+  useEffect(() => {
     if (!socket) return;
     const onAlert = (data: unknown) => {
       const d = data as { type?: string; orderId?: string; driverId?: string; pickupAddress?: string; pickupAt?: string; at?: string };
@@ -376,7 +448,7 @@ export default function Dashboard() {
       }).catch(() => setDrivers([]));
     };
     load();
-    const interval = setInterval(load, 5000); // refresh driver positions for map every 5s
+    const interval = setInterval(load, 3000); // refresh driver positions for live map every 3s
     return () => clearInterval(interval);
   }, [canAssign]);
 
@@ -549,7 +621,7 @@ export default function Dashboard() {
     }).catch(() => {});
   }
 
-  // Авто-отправка геолокации водителя: при открытом сайте и при возврате на вкладку (в т.ч. если была свёрнута)
+  // Live geo: driver location sent to server so dispatcher always sees it on the map (no need to click Share)
   useEffect(() => {
     if (user?.role !== 'DRIVER' || !navigator.geolocation) return;
     const sendLocation = () => {
@@ -561,12 +633,12 @@ export default function Dashboard() {
           api.patch('/users/me/location', { lat, lng }).catch(() => {});
         },
         () => {},
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
       );
     };
     sendLocation();
     const hasActiveOrder = orders.some((o) => o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS');
-    const intervalMs = hasActiveOrder ? 15000 : 45000; // чаще при активном заказе (навигация)
+    const intervalMs = hasActiveOrder ? 5000 : 10000; // 5s on trip, 10s when free — always live on dispatcher map
     const interval = setInterval(sendLocation, intervalMs);
     const onVisible = () => { sendLocation(); };
     document.addEventListener('visibilitychange', onVisible);
@@ -586,6 +658,30 @@ export default function Dashboard() {
       toast.error(t('toast.assignFailed'));
     } finally {
       setAssigningId(null);
+    }
+  }
+
+  async function handleDelayOrder(orderId: string, delayMinutes: number) {
+    setDelayOrderingId(orderId);
+    try {
+      await api.patch(`/orders/${orderId}/delay`, { delayMinutes });
+      toast.success(t('dashboard.delayMinutes', { min: delayMinutes }));
+    } catch {
+      toast.error(t('toast.assignFailed'));
+    } finally {
+      setDelayOrderingId(null);
+    }
+  }
+
+  async function handleSetManual(orderId: string, manualAssignment: boolean) {
+    setManualUpdatingId(orderId);
+    try {
+      await api.patch(`/orders/${orderId}/manual`, { manualAssignment });
+      toast.success(manualAssignment ? t('dashboard.markManual') : t('dashboard.unmarkManual'));
+    } catch {
+      toast.error(t('toast.assignFailed'));
+    } finally {
+      setManualUpdatingId(null);
     }
   }
 
@@ -985,8 +1081,8 @@ export default function Dashboard() {
                 if (sel && (getOrderStops(sel).length > 0 || sel.pickupAddress)) {
                   return (
                     <>
-                      <button type="button" className="rd-btn" onClick={() => openFullRouteInGoogleMaps(sel)}>{t('dashboard.openRouteInGoogleMaps')}</button>
-                      <button type="button" className="rd-btn" onClick={() => openFullRouteInWaze(sel)}>{t('dashboard.openRouteInWaze')}</button>
+                      <button type="button" className="rd-btn" title={t('dashboard.openRouteInGoogleMaps')} onClick={() => openFullRouteInGoogleMaps(sel)}>{t('dashboard.openInGoogleMaps')}</button>
+                      <button type="button" className="rd-btn" title={t('dashboard.openRouteInWaze')} onClick={() => openFullRouteInWaze(sel)}>{t('dashboard.openInWaze')}</button>
                     </>
                   );
                 }
@@ -998,11 +1094,11 @@ export default function Dashboard() {
                 if (stops.length === 0) return null;
                 return stops.map((stop, idx) => (
                   <span key={idx} style={{ display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                    <button type="button" className="rd-btn" onClick={() => openAddressInGoogleMaps(stop.address)}>
-                      {stops.length > 1 ? t('dashboard.openStopInGoogleMapsN', { n: idx + 1 }) : t('dashboard.openStopInGoogleMaps')}
+                    <button type="button" className="rd-btn" title={stops.length > 1 ? t('dashboard.openStopInGoogleMapsN', { n: idx + 1 }) : t('dashboard.openStopInGoogleMaps')} onClick={() => openAddressInGoogleMaps(stop.address)}>
+                      {t('dashboard.openInGoogleMaps')}
                     </button>
-                    <button type="button" className="rd-btn" onClick={() => openAddressInWaze(stop.address)}>
-                      {stops.length > 1 ? t('dashboard.openStopInWazeN', { n: idx + 1 }) : t('dashboard.openStopInWaze')}
+                    <button type="button" className="rd-btn" title={stops.length > 1 ? t('dashboard.openStopInWazeN', { n: idx + 1 }) : t('dashboard.openStopInWaze')} onClick={() => openAddressInWaze(stop.address)}>
+                      {t('dashboard.openInWaze')}
                     </button>
                   </span>
                 ));
@@ -1016,7 +1112,15 @@ export default function Dashboard() {
           <div className="rd-panel-header">
             <h2>{ordersTitle}</h2>
             {canCreateOrder && (
-              <button type="button" className="rd-btn rd-btn-primary" onClick={() => setShowForm(!showForm)}>
+              <button
+                type="button"
+                className="rd-btn rd-btn-primary"
+                onClick={() => {
+                  const opening = !showForm;
+                  setShowForm(!showForm);
+                  if (opening && !pickupAt) setPickupAt(defaultPickupAt());
+                }}
+              >
                 + {t('dashboard.newOrder')}
               </button>
             )}
@@ -1154,6 +1258,13 @@ export default function Dashboard() {
               )}
             </div>
           )}
+          {focusMode && canAssign && selectedOrderId && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setFocusMode(false)}>
+                {t('dashboard.exitFocusMode')}
+              </button>
+            </div>
+          )}
           <div className="dashboard-order-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
             <button type="button" className={`rd-btn ${orderTab === 'active' ? 'rd-btn-primary' : ''}`} onClick={() => setOrderTab('active')}>
               {t('dashboard.tabActive')}
@@ -1180,10 +1291,51 @@ export default function Dashboard() {
             <button type="button" className="rd-btn rd-btn-secondary" onClick={refreshAll} disabled={loading || (orderTab === 'completed' && completedLoading)} title={t('dashboard.refreshAllTitle')}>
               {t('dashboard.refreshAll')}
             </button>
+            {canAssign && (
+              <>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={autoAssignEnabled} onChange={(e) => setAutoAssignEnabled(e.target.checked)} />
+                  <span>{t('dashboard.enableAutoAssign')}</span>
+                </label>
+                <button type="button" className="rd-btn" onClick={() => setShowPlanPanel((v) => !v)}>
+                  {t('dashboard.viewPlan')}
+                </button>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showProblemZones} onChange={(e) => setShowProblemZones(e.target.checked)} />
+                  <span>{t('dashboard.problemZones')}</span>
+                </label>
+                <button type="button" className={`rd-btn ${focusMode ? 'rd-btn-primary' : ''}`} onClick={() => setFocusMode((v) => !v)}>
+                  {t('dashboard.focusMode')}
+                </button>
+              </>
+            )}
           </div>
+          {canAssign && showPlanPanel && planningResult && (
+            <div className="dashboard-plan-panel rd-panel" style={{ marginBottom: '1rem', padding: '0.75rem', border: '1px solid var(--rd-border)', borderRadius: 'var(--rd-radius-lg)' }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem' }}>{t('dashboard.planningWindow')}</h3>
+              <div className="dashboard-plan-stats" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                <span>{t('dashboard.planOrdersCount', { count: planningResult.ordersCount })}</span>
+                <span>{t('dashboard.planDriversAvailable', { count: planningResult.driversAvailable })}</span>
+                {planningResult.shortage && <span className="rd-badge rd-badge-warning">{t('dashboard.planShortage')}</span>}
+              </div>
+              {planningResult.riskyOrders.length > 0 && (
+                <div>
+                  <strong>{t('dashboard.riskyOrders')}</strong>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0.25rem 0 0' }}>
+                    {planningResult.riskyOrders.map((r) => (
+                      <li key={r.orderId} style={{ fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                        {r.orderId.slice(0, 8)}… — {r.reason} — {t('dashboard.pickupAt')}: {new Date(r.pickupAt).toLocaleTimeString()}
+                        {r.suggestedDrivers.length > 0 && ` (${t('dashboard.suggestedDrivers')}: ${r.suggestedDrivers.length})`}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
           {(loading || (orderTab === 'completed' && completedLoading)) ? (
             <p className="rd-text-muted">{t('common.loading')}</p>
-          ) : filteredOrders.length === 0 ? (
+          ) : (focusMode && canAssign && selectedOrderId ? filteredOrders.filter((o) => o.id === selectedOrderId) : filteredOrders).length === 0 ? (
             <>
               <p className="rd-text-muted">{orderTab === 'completed' ? t('dashboard.noCompletedOrders') : emptyMessage}</p>
               {isDriver && orderTab === 'active' && filteredOrders.length === 0 && t('dashboard.noMyOrdersHint') && (
@@ -1192,13 +1344,22 @@ export default function Dashboard() {
             </>
           ) : (
             <>
-              {!isDriver && <h3 className="rd-section-title">{orderTab === 'active' ? t('dashboard.activeOrders') : t('dashboard.completedOrders')}</h3>}
+              {!isDriver && !(focusMode && selectedOrderId) && <h3 className="rd-section-title">{orderTab === 'active' ? t('dashboard.activeOrders') : t('dashboard.completedOrders')}</h3>}
+              {focusMode && canAssign && selectedOrderId && <h3 className="rd-section-title">{t('dashboard.focusModeTitle')}</h3>}
               <ul className="dashboard-orders-list">
-              {filteredOrders.map((o) => (
-                <li key={o.id} className="dashboard-order-item">
+              {(focusMode && canAssign && selectedOrderId ? filteredOrders.filter((o) => o.id === selectedOrderId) : filteredOrders).map((o) => (
+                <li key={o.id} className={`dashboard-order-item ${o.riskLevel === 'HIGH' ? 'dashboard-order-item--risk-high' : o.riskLevel === 'MEDIUM' ? 'dashboard-order-item--risk-medium' : ''}`}>
                   <span className={`rd-badge ${o.status === 'ASSIGNED' ? 'rd-badge-assigned' : o.status === 'IN_PROGRESS' ? 'rd-badge-ok' : o.status === 'SCHEDULED' ? 'rd-badge-pending' : ''}`}>{o.status}</span>
+                  {o.riskLevel && (
+                    <span className={`rd-badge ${o.riskLevel === 'HIGH' ? 'rd-badge-critical' : o.riskLevel === 'MEDIUM' ? 'rd-badge-warning' : ''}`} style={{ marginLeft: '0.25rem', fontSize: '0.7rem' }} title={t('dashboard.riskLevel')}>{o.riskLevel}</span>
+                  )}
                   {getOrderStops(o).length > 0 && (
                     <span className="rd-badge rd-badge-pending" style={{ marginLeft: '0.25rem', fontSize: '0.75rem' }}>{t('dashboard.stopsCount', { count: getOrderStops(o).length })}</span>
+                  )}
+                  {autoAssignEnabled && o.suggestedDriverId && (
+                    <div className="rd-text-muted" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                      {t('dashboard.suggestedDriver')}: {drivers.find((d) => d.id === o.suggestedDriverId)?.nickname ?? o.suggestedDriverId}
+                    </div>
                   )}
                   {(o.passenger?.name || o.passenger?.phone) && (
                     <div>{t('dashboard.passenger')}: {[o.passenger?.name, o.passenger?.phone].filter(Boolean).join(' · ')}</div>
@@ -1357,20 +1518,29 @@ export default function Dashboard() {
                   })()}
                   {canAssign && (
                     <div className="dashboard-order-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
-                      <button type="button" className="rd-btn" onClick={() => setSelectedOrderId((id) => id === o.id ? null : o.id)}>
+                      <button type="button" className="rd-btn" onClick={() => {
+                        const next = selectedOrderId === o.id ? null : o.id;
+                        setSelectedOrderId(next);
+                        if (next && (!o.driverId || o.riskLevel === 'HIGH' || o.riskLevel === 'MEDIUM')) setMapCenterTrigger((n) => n + 1);
+                      }}>
                         {t('dashboard.showOnMap')}
                       </button>
                       <button type="button" className="rd-btn" onClick={() => { setSelectedOrderId(o.id); setMapCenterTrigger((n) => n + 1); }}>
                         {t('dashboard.centerOnMap')}
                       </button>
+                      {canAssign && (
+                        <button type="button" className="rd-btn rd-btn-primary" onClick={() => { setSelectedOrderId(o.id); setFocusMode(true); setMapCenterTrigger((n) => n + 1); }}>
+                          {t('dashboard.focusMode')}
+                        </button>
+                      )}
                       <button type="button" className="rd-btn" onClick={() => loadDriverEtasForOrder(o.id)}>
                         {t('dashboard.checkEta')}
                       </button>
                     </div>
                   )}
-                  {canAssign && o.status === 'SCHEDULED' && !o.driverId && (
+                  {canAssign && (o.status === 'SCHEDULED' && !o.driverId || o.status === 'ASSIGNED') && (
                     <div className="dashboard-order-assign" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                      {(driverEtas[o.id]?.drivers?.length ?? 0) > 0 && (() => {
+                      {o.status === 'SCHEDULED' && (driverEtas[o.id]?.drivers?.length ?? 0) > 0 && (() => {
                         const best = driverEtas[o.id]!.drivers[0];
                         return (
                           <span className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>
@@ -1387,7 +1557,7 @@ export default function Dashboard() {
                           if (v) handleAssign(o.id, v);
                         }}
                       >
-                        <option value="">{t('dashboard.assignDriver')}</option>
+                        <option value="">{o.status === 'ASSIGNED' ? t('dashboard.swapDriver') : t('dashboard.assignDriver')}</option>
                         {(driverEtas[o.id]?.drivers ?? (o.preferredCarType?.trim() ? drivers.filter((d) => (d as { carType?: string | null }).carType === o.preferredCarType!.trim().toUpperCase()) : drivers)).map((d) => {
                           const eta = driverEtas[o.id]?.drivers?.find((x) => x.id === d.id);
                           const label = eta
@@ -1401,6 +1571,19 @@ export default function Dashboard() {
                         })}
                       </select>
                       {assigningId === o.id && <span className="rd-text-muted">…</span>}
+                    </div>
+                  )}
+                  {canAssign && (o.status === 'SCHEDULED' || o.status === 'ASSIGNED') && (o.riskLevel === 'HIGH' || o.riskLevel === 'MEDIUM') && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.25rem' }}>
+                      <button type="button" className="rd-btn rd-btn-secondary" disabled={!!delayOrderingId} onClick={() => handleDelayOrder(o.id, 5)}>
+                        {delayOrderingId === o.id ? '…' : t('dashboard.delayMinutes', { min: 5 })}
+                      </button>
+                      <button type="button" className="rd-btn rd-btn-secondary" disabled={!!delayOrderingId} onClick={() => handleDelayOrder(o.id, 10)}>
+                        {delayOrderingId === o.id ? '…' : t('dashboard.delayMinutes', { min: 10 })}
+                      </button>
+                      <button type="button" className="rd-btn" title={o.manualAssignment ? t('dashboard.unmarkManual') : t('dashboard.markManual')} disabled={!!manualUpdatingId} onClick={() => handleSetManual(o.id, !o.manualAssignment)}>
+                        {manualUpdatingId === o.id ? '…' : (o.manualAssignment ? t('dashboard.unmarkManual') : t('dashboard.markManual'))}
+                      </button>
                     </div>
                   )}
                   {o.driverId && (() => {
@@ -1454,17 +1637,21 @@ export default function Dashboard() {
             selectedRouteIndex={selectedRouteIndex}
             onRecenter={() => setMapCenterTrigger((t) => t + 1)}
             recenterLabel={t('dashboard.recenter')}
+            orderRiskLevel={selectedOrderId ? (orders.find((x) => x.id === selectedOrderId)?.riskLevel ?? null) : null}
+            selectedOrderTooltip={selectedOrderTooltip}
+            futureOrderPickups={canAssign ? futureOrderCoords.filter((f) => f.orderId !== selectedOrderId).map((f) => ({ orderId: f.orderId, lat: f.pickupLat, lng: f.pickupLng, pickupAt: f.pickupAt })) : []}
+            problemZones={canAssign && showProblemZones && problemZones ? problemZones : undefined}
           />
         </div>
         {!isDriver && (
-          <aside className="dashboard-page__sidebar rd-panel">
+          <aside className="dashboard-page__sidebar dashboard-drivers-sidebar rd-panel">
             <div className="rd-panel-header">
               <h2>{t('dashboard.drivers')}</h2>
             </div>
-            <p className="rd-text-muted">{t('dashboard.driversSubtitle')}</p>
+            <p className="rd-text-muted dashboard-drivers-subtitle">{t('dashboard.driversSubtitle')}</p>
             {canAssign && (
-              <ul className="dashboard-drivers-list" style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0' }}>
-                {drivers.length === 0 && <li className="rd-text-muted">{t('dashboard.noDrivers')}</li>}
+              <ul className="dashboard-drivers-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {drivers.length === 0 && <li className="rd-text-muted" style={{ padding: '0.75rem 0' }}>{t('dashboard.noDrivers')}</li>}
                 {drivers.map((d) => {
                   const hasLocation = d.lat != null && d.lng != null;
                   const busy = orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
@@ -1472,23 +1659,32 @@ export default function Dashboard() {
                   const statusKey = notAvailable ? 'unavailable' : (busy ? 'busy' : (hasLocation ? 'locationOn' : 'offline'));
                   const statusClass = notAvailable ? '' : (busy ? 'rd-badge-warning' : (hasLocation ? 'rd-badge-ok' : ''));
                   const cardMod = notAvailable ? 'dashboard-driver-card--offline' : (busy ? 'dashboard-driver-card--warning' : (hasLocation ? 'dashboard-driver-card--ok' : 'dashboard-driver-card--offline'));
+                  const carLabel = d.carType ? t('auth.carType_' + d.carType) : null;
                   return (
                     <li key={d.id} className={`dashboard-driver-card ${cardMod}`}>
                       <div className="dashboard-driver-card__avatar" aria-hidden />
                       <div className="dashboard-driver-card__body">
-                        <strong>{d.nickname}</strong>
-                        {d.phone && <div className="rd-text-muted dashboard-driver-card__phone">{d.phone}</div>}
-                        <span className={`rd-badge ${statusClass}`}>{t(`dashboard.${statusKey}`)}</span>
+                        <div className="dashboard-driver-card__row">
+                          <strong className="dashboard-driver-card__name">{d.nickname}</strong>
+                          <span className={`rd-badge dashboard-driver-card__status ${statusClass}`}>{t(`dashboard.${statusKey}`)}</span>
+                        </div>
+                        {d.phone && <div className="dashboard-driver-card__line"><span className="dashboard-driver-card__label">{t('drivers.phone')}</span><span>{d.phone}</span></div>}
+                        {(carLabel || d.carPlateNumber) && (
+                          <div className="dashboard-driver-card__line">
+                            <span className="dashboard-driver-card__label">{t('dashboard.car')}</span>
+                            <span>{[carLabel, d.carPlateNumber].filter(Boolean).join(' · ')}</span>
+                          </div>
+                        )}
+                        {d.driverId && <div className="dashboard-driver-card__line"><span className="dashboard-driver-card__label">{t('drivers.driverId')}</span><span>{d.driverId}</span></div>}
+                        <Link to={`/drivers?open=${d.id}`} className="dashboard-driver-card__link">{t('drivers.viewDetails')}</Link>
                       </div>
                     </li>
                   );
                 })}
               </ul>
             )}
-            <div className="dashboard-alerts-card" style={{ marginTop: '1rem' }}>
-              <div className="rd-panel-header" style={{ marginBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem' }}>{t('dashboard.alerts')}</h3>
-              </div>
+            <div className="dashboard-alerts-card">
+              <h3 className="dashboard-alerts-card__title">{t('dashboard.alerts')}</h3>
               {alerts.length === 0 ? (
                 <div className="alert-item rd-text-muted">{t('dashboard.noAlerts')}</div>
               ) : (

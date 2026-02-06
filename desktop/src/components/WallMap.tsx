@@ -7,7 +7,7 @@ import { api } from '../api/client';
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY (USA)
 const DEFAULT_ZOOM = 10;
 const REPORTS_SINCE_MINUTES = 120;
-const WALL_REFRESH_MS = 10000; // refresh drivers + route every 10s
+const WALL_REFRESH_MS = 5000; // refresh drivers + route every 5s for live geo on map
 
 interface Driver {
   id: string;

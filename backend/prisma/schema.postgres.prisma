@@ -77,8 +77,12 @@ model Order {
   leftMiddleAt            DateTime? @map("left_middle_at")
   waitChargeAtMiddleCents Int?       @map("wait_charge_at_middle_cents")
   completedAt             DateTime? @map("completed_at")
+  riskLevel               String?   @map("risk_level")
+  suggestedDriverId       String?   @map("suggested_driver_id")
+  manualAssignment        Boolean   @default(false) @map("manual_assignment")
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
+  orderEvents             OrderEvent[]
 }
 
 model Passenger {
@@ -155,5 +159,18 @@ model DriverStats {
   driverId          String   @id @map("driver_id")
   totalEarningsCents Int      @default(0) @map("total_earnings_cents")
   totalMiles         Float    @default(0) @map("total_miles")
+  idleAvg           Float?   @map("idle_avg")
+  lateRate          Float?   @map("late_rate")
+  rejectRate        Float?   @map("reject_rate")
   updatedAt         DateTime @updatedAt @map("updated_at")
+}
+
+model OrderEvent {
+  id         String   @id @default(cuid())
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type       String   @map("type")
+  source     String   @map("source")
+  confidence Float?   @map("confidence")
+  createdAt  DateTime @default(now()) @map("created_at")
 }

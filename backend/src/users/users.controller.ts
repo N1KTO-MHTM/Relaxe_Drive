@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Request, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Request, HttpException, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuditService } from '../audit/audit.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -97,6 +97,24 @@ export class UsersController {
   @Roles('DRIVER')
   getMyStats(@Request() req: { user: { id: string } }) {
     return this.usersService.getDriverStats(req.user.id);
+  }
+
+  @Get(':id/stats')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async getDriverStatsById(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (!user || user.role !== 'DRIVER') throw new ForbiddenException('Not a driver');
+    return this.usersService.getDriverStats(id);
+  }
+
+  @Get(':id/trip-history')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async getDriverTripHistoryById(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (!user || user.role !== 'DRIVER') throw new ForbiddenException('Not a driver');
+    return this.usersService.getTripHistory(id);
   }
 
   @Patch('me/location')

@@ -91,6 +91,72 @@ export class PassengersService {
     return !!found;
   }
 
+  /** Find by pickup address only (no duplicate by address). Returns first passenger with this pickupAddr. */
+  async findByPickupAddr(pickupAddr: string) {
+    const a = pickupAddr?.trim();
+    if (!a) return null;
+    return this.prisma.passenger.findFirst({
+      where: { pickupAddr: a },
+    });
+  }
+
+  /** Find by phone or by pickup address; if neither exists, create. Avoids duplicate clients by phone or address. */
+  async findOrCreateByPhoneOrAddress(
+    data: {
+      phone?: string;
+      name?: string;
+      pickupAddr?: string;
+      dropoffAddr?: string;
+      pickupType?: string;
+      dropoffType?: string;
+    },
+  ) {
+    const phone = data.phone?.trim();
+    const pickupAddr = data.pickupAddr?.trim();
+
+    if (phone) {
+      const byPhone = await this.prisma.passenger.findFirst({ where: { phone } });
+      if (byPhone) {
+        const updateData: { name?: string; pickupAddr?: string; dropoffAddr?: string; pickupType?: string; dropoffType?: string } = {};
+        if (data.name != null) updateData.name = data.name || null;
+        if (data.pickupAddr != null) updateData.pickupAddr = data.pickupAddr || null;
+        if (data.dropoffAddr != null) updateData.dropoffAddr = data.dropoffAddr || null;
+        if (data.pickupType != null) updateData.pickupType = data.pickupType || null;
+        if (data.dropoffType != null) updateData.dropoffType = data.dropoffType || null;
+        if (Object.keys(updateData).length > 0) {
+          return this.prisma.passenger.update({ where: { id: byPhone.id }, data: updateData });
+        }
+        return byPhone;
+      }
+    }
+    if (pickupAddr) {
+      const byAddr = await this.prisma.passenger.findFirst({ where: { pickupAddr } });
+      if (byAddr) {
+        const updateData: { phone?: string; name?: string; dropoffAddr?: string; pickupType?: string; dropoffType?: string } = {};
+        if (phone != null) updateData.phone = phone || byAddr.phone;
+        if (data.name != null) updateData.name = data.name || null;
+        if (data.dropoffAddr != null) updateData.dropoffAddr = data.dropoffAddr || null;
+        if (data.pickupType != null) updateData.pickupType = data.pickupType || null;
+        if (data.dropoffType != null) updateData.dropoffType = data.dropoffType || null;
+        if (Object.keys(updateData).length > 0) {
+          return this.prisma.passenger.update({ where: { id: byAddr.id }, data: updateData });
+        }
+        return byAddr;
+      }
+    }
+    if (!phone && !pickupAddr) return null;
+    return this.prisma.passenger.create({
+      data: {
+        phone: phone ?? null,
+        name: data.name ?? null,
+        pickupAddr: pickupAddr ?? null,
+        dropoffAddr: data.dropoffAddr ?? null,
+        pickupType: data.pickupType ?? null,
+        dropoffType: data.dropoffType ?? null,
+      },
+    });
+  }
+
   /** Find by phone or create. If exists, update with provided fields (no duplicate phone/address). */
   async findOrCreateByPhone(
     phone: string,

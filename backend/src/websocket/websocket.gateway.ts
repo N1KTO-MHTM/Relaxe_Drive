@@ -42,4 +42,9 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
   broadcastReport(payload: unknown) {
     this.server?.emit('report', payload);
   }
+
+  /** Planning result update (window, riskyOrders, shortage) for dispatcher dashboard */
+  broadcastPlanning(payload: unknown) {
+    this.server?.emit('planning.update', payload);
+  }
 }

@@ -24,6 +24,12 @@ export interface Order {
   leftMiddleAt?: string | null;
   waitChargeAtMiddleCents?: number | null;
   completedAt?: string | null;
+  /** Planning: LOW | MEDIUM | HIGH — auto-detected risk */
+  riskLevel?: string | null;
+  /** Planning: suggested driver id (not auto-assigned) */
+  suggestedDriverId?: string | null;
+  /** Dispatcher marked: no auto-suggest */
+  manualAssignment?: boolean;
 }
 
 export interface Driver {
@@ -59,3 +65,20 @@ export interface DriverEta {
 }
 
 export type OrderStatus = 'DRAFT' | 'SCHEDULED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+/** Planning result from GET /planning and planning.update WebSocket */
+export interface RiskyOrderPlanning {
+  orderId: string;
+  pickupAt: string;
+  reason: 'NO_DRIVER' | 'LATE_FINISH' | 'FAR_DRIVER';
+  suggestedDrivers: string[];
+}
+
+export interface PlanningResult {
+  windowStart: string;
+  windowEnd: string;
+  ordersCount: number;
+  driversAvailable: number;
+  shortage: boolean;
+  riskyOrders: RiskyOrderPlanning[];
+}

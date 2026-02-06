@@ -68,3 +68,5 @@
 
 .calendar-order-card .rd-badge { margin-right: 0.5rem; }
 .calendar-order-card time { font-weight: 500; }
+.calendar-order-driver { font-size: 0.75rem; margin-top: 0.25rem; }
+.calendar-driver-select { width: auto; min-width: 160px; }

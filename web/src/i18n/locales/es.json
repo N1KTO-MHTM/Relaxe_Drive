@@ -1,6 +1,6 @@
 {
   "app": { "name": "RelaxDrive", "tagline": "Relaxe Drive" },
-  "common": { "refresh": "Actualizar", "loading": "Cargando…" },
+  "common": { "refresh": "Actualizar", "loading": "Cargando…", "close": "Cerrar" },
   "auth": {
     "login": "Iniciar sesión",
     "staffOnly": "Solo personal — conductores, despachadores, administradores.",
@@ -109,6 +109,8 @@
     "dropoffAddress": "Dirección de destino",
     "createOrder": "Crear orden",
     "noOrders": "No hay órdenes activas",
+    "noDrivers": "Sin conductores",
+    "car": "Coche",
     "orderStatus": "Estado",
     "assignDriver": "Asignar conductor",
     "bestDriverSuggestion": "Mejor opción: {{name}} (~{{min}} min al punto de recogida)",
@@ -224,7 +226,18 @@
     "day": "Día",
     "week": "Semana",
     "preOrder": "Pre-reserva (hasta 6 días)",
-    "conflict": "Conflicto"
+    "conflict": "Conflicto",
+    "createOrderForDay": "Crear orden para este día",
+    "allDrivers": "Todos los conductores",
+    "chooseDriver": "Elegir conductor para ver su agenda",
+    "driverSchedule": "Agenda de {{name}}",
+    "viewDriverDetails": "Ver detalles del conductor",
+    "status_SCHEDULED": "Programado",
+    "status_ASSIGNED": "Asignado",
+    "status_IN_PROGRESS": "En curso",
+    "status_COMPLETED": "Completado",
+    "status_CANCELLED": "Cancelado",
+    "status_DRAFT": "Borrador"
   },
   "pendings": {
     "title": "Conductores pendientes",
@@ -252,7 +265,23 @@
     "onMap": "En mapa",
     "offline": "Desconectado",
     "blocked": "Bloqueado",
-    "banned": "Baneado"
+    "banned": "Baneado",
+    "viewDetails": "Ver detalles",
+    "driverInfo": "Información del conductor",
+    "tripHistory": "Historial de viajes",
+    "earnings": "Ganancias",
+    "totalEarned": "Total ganado",
+    "totalMiles": "Millas totales",
+    "noTripHistory": "Sin viajes en los últimos 7 días",
+    "tripHistoryLast7": "El historial muestra los últimos 7 días.",
+    "viewRoute": "Ver ruta",
+    "avgSpeed": "Velocidad media",
+    "riskyEvents": "{{count}} evento(s) de riesgo",
+    "exportDate": "Fecha",
+    "exportTime": "Hora",
+    "exportDistance": "Distancia (mi)",
+    "duration": "Duración",
+    "summaryCount": "{{count}} conductor(es)"
   },
   "passengers": {
     "title": "Pasajeros",

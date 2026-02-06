@@ -6,6 +6,7 @@ import { AlertsService } from '../alerts/alerts.service';
 import { GeoService } from '../geo/geo.service';
 import { UsersService } from '../users/users.service';
 import { PassengersService } from '../passengers/passengers.service';
+import { PlanningService } from '../planning/planning.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -21,6 +22,7 @@ export class OrdersController {
     private geo: GeoService,
     private usersService: UsersService,
     private passengersService: PassengersService,
+    private planningService: PlanningService,
   ) {}
 
   @Get()
@@ -168,13 +170,14 @@ export class OrdersController {
     },
   ) {
     let passengerId = body.passengerId;
-    if (body.phone?.trim()) {
-      const passenger = await this.passengersService.findOrCreateByPhone(body.phone.trim(), {
+    if (body.phone?.trim() || body.pickupAddress?.trim()) {
+      const passenger = await this.passengersService.findOrCreateByPhoneOrAddress({
+        phone: body.phone?.trim(),
         name: body.passengerName?.trim(),
-        pickupAddr: body.pickupAddress?.trim() || undefined,
-        dropoffAddr: body.dropoffAddress?.trim() || undefined,
-        pickupType: body.pickupType || undefined,
-        dropoffType: body.dropoffType || undefined,
+        pickupAddr: body.pickupAddress?.trim(),
+        dropoffAddr: body.dropoffAddress?.trim(),
+        pickupType: body.pickupType,
+        dropoffType: body.dropoffType,
       });
       if (passenger) passengerId = passenger.id;
     }
@@ -202,6 +205,7 @@ export class OrdersController {
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
     this.alerts.emitAlert('order.created', { orderId: created.id, pickupAddress: created.pickupAddress, pickupAt: created.pickupAt?.toISOString() });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return created;
   }
 
@@ -218,6 +222,7 @@ export class OrdersController {
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
     this.alerts.emitAlert('order.assigned', { orderId, driverId: body.driverId, pickupAddress: updated.pickupAddress ?? undefined });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return updated;
   }
 
@@ -233,6 +238,7 @@ export class OrdersController {
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
     this.alerts.emitAlert('order.rejected', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return updated;
   }
 
@@ -304,6 +310,39 @@ export class OrdersController {
     return result;
   }
 
+  @Patch(':id/manual')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async setManual(
+    @Param('id') orderId: string,
+    @Body() body: { manualAssignment: boolean },
+    @Request() req: { user: { id: string } },
+  ) {
+    const updated = await this.ordersService.setManualAssignment(orderId, !!body.manualAssignment);
+    await this.audit.log(req.user.id, 'order.manual_flag', 'order', { orderId, manualAssignment: !!body.manualAssignment });
+    const list = await this.ordersService.findActiveAndScheduled();
+    this.ws.broadcastOrders(list);
+    this.planningService.recalculateAndEmit().catch(() => {});
+    return updated;
+  }
+
+  @Patch(':id/delay')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async delay(
+    @Param('id') orderId: string,
+    @Body() body: { delayMinutes: number },
+    @Request() req: { user: { id: string } },
+  ) {
+    const delayMinutes = Math.max(0, Math.min(120, Number(body.delayMinutes) || 0));
+    const updated = await this.ordersService.delayOrder(orderId, delayMinutes);
+    await this.audit.log(req.user.id, 'order.delay', 'order', { orderId, delayMinutes });
+    const list = await this.ordersService.findActiveAndScheduled();
+    this.ws.broadcastOrders(list);
+    this.planningService.recalculateAndEmit().catch(() => {});
+    return updated;
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'DISPATCHER')
@@ -312,6 +351,7 @@ export class OrdersController {
     await this.audit.log(req.user.id, 'order.delete', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
+    this.planningService.recalculateAndEmit().catch(() => {});
     return { deleted: true };
   }
 }

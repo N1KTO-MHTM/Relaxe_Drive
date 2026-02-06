@@ -78,8 +78,12 @@ model Order {
   leftMiddleAt           DateTime? @map("left_middle_at")
   waitChargeAtMiddleCents Int?      @map("wait_charge_at_middle_cents")
   completedAt            DateTime? @map("completed_at")  // when driver clicked dropped off
+  riskLevel               String?   @map("risk_level")   // LOW | MEDIUM | HIGH — planning auto-detect
+  suggestedDriverId       String?   @map("suggested_driver_id")  // suggested by planning, not auto-assigned
+  manualAssignment        Boolean   @default(false) @map("manual_assignment")  // dispatcher marked: no auto-suggest
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
+  orderEvents             OrderEvent[]
 }
 
 model Passenger {
@@ -156,5 +160,18 @@ model DriverStats {
   driverId          String   @id @map("driver_id")
   totalEarningsCents Int      @default(0) @map("total_earnings_cents")
   totalMiles         Float    @default(0) @map("total_miles")
+  idleAvg           Float?   @map("idle_avg")   // avg idle minutes between trips
+  lateRate          Float?   @map("late_rate")  // 0..1 share of late pickups
+  rejectRate        Float?   @map("reject_rate") // 0..1 share of rejected assignments
   updatedAt         DateTime @updatedAt @map("updated_at")
+}
+
+model OrderEvent {
+  id         String   @id @default(cuid())
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type       String   @map("type")   // e.g. LATE_PICKUP, FAR_DRIVER, NO_DRIVER
+  source     String   @map("source") // e.g. planning, manual
+  confidence Float?   @map("confidence") // 0..1
+  createdAt  DateTime @default(now()) @map("created_at")
 }

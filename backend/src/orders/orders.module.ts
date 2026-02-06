@@ -7,9 +7,10 @@ import { AlertsModule } from '../alerts/alerts.module';
 import { GeoModule } from '../geo/geo.module';
 import { UsersModule } from '../users/users.module';
 import { PassengersModule } from '../passengers/passengers.module';
+import { PlanningModule } from '../planning/planning.module';
 
 @Module({
-  imports: [AuditModule, WebSocketModule, AlertsModule, GeoModule, UsersModule, PassengersModule],
+  imports: [AuditModule, WebSocketModule, AlertsModule, GeoModule, UsersModule, PassengersModule, PlanningModule],
   providers: [OrdersService],
   controllers: [OrdersController],
   exports: [OrdersService],
