@@ -126,10 +126,13 @@ export default function AdminMode() {
         <div className="rd-panel">
           <div className="rd-panel-header">
             <h1>{t('admin.title')}</h1>
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={loadUsers} disabled={loading}>
+              {t('common.refresh')}
+            </button>
           </div>
           <p className="rd-text-muted" style={{ marginBottom: '1rem' }}>{t('admin.subtitle')}</p>
           {error && <p className="logs-mode__error">{error}</p>}
-          {loading && <p className="logs-mode__muted">Loading…</p>}
+          {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
           {!loading && users.length === 0 && <p className="logs-mode__muted">{t('admin.noUsers')}</p>}
           {!loading && users.length > 0 && (
             <div className="logs-mode__table-wrap">

@@ -33,6 +33,7 @@ export class OrdersService {
     pickupAddress: string;
     dropoffAddress: string;
     tripType?: 'ONE_WAY' | 'ROUNDTRIP';
+    routeType?: string | null;
     middleAddress?: string | null;
     pickupType?: string | null;
     dropoffType?: string | null;
@@ -44,6 +45,7 @@ export class OrdersService {
       data: {
         ...data,
         tripType: data.tripType ?? 'ONE_WAY',
+        routeType: data.routeType ?? null,
         middleAddress: data.tripType === 'ROUNDTRIP' ? data.middleAddress ?? null : null,
         status: 'SCHEDULED',
         bufferMinutes: data.bufferMinutes ?? 15,
@@ -95,7 +97,12 @@ export class OrdersService {
     });
   }
 
-  async updateStatus(orderId: string, status: 'IN_PROGRESS' | 'COMPLETED', driverId?: string) {
+  async updateStatus(
+    orderId: string,
+    status: 'IN_PROGRESS' | 'COMPLETED',
+    driverId?: string,
+    opts?: { distanceKm?: number; earningsCents?: number },
+  ) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (driverId && order.driverId !== driverId) {
@@ -109,6 +116,42 @@ export class OrdersService {
       throw new BadRequestException(`Cannot set status ${status} from ${order.status}`);
     }
     if (status === 'COMPLETED') {
+      const now = new Date();
+      if (order.driverId) {
+        const distanceKm = opts?.distanceKm ?? 0;
+        const earningsCents = opts?.earningsCents ?? 0;
+        await this.prisma.driverTripSummary.create({
+          data: {
+            driverId: order.driverId,
+            orderId: order.id,
+            pickupAddress: order.pickupAddress ?? '',
+            dropoffAddress: order.dropoffAddress ?? '',
+            startedAt: order.startedAt ?? now,
+            completedAt: now,
+            distanceKm,
+            earningsCents,
+          },
+        });
+        const milesToAdd = distanceKm / 1.60934;
+        await this.prisma.driverStats.upsert({
+          where: { driverId: order.driverId },
+          create: {
+            driverId: order.driverId,
+            totalEarningsCents: earningsCents,
+            totalMiles: milesToAdd,
+            updatedAt: now,
+          },
+          update: {
+            totalEarningsCents: { increment: earningsCents },
+            totalMiles: { increment: milesToAdd },
+            updatedAt: now,
+          },
+        });
+        const purgeBefore = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        await this.prisma.driverTripSummary.deleteMany({
+          where: { driverId: order.driverId, completedAt: { lt: purgeBefore } },
+        });
+      }
       if (order.passengerId && order.pickupAddress?.trim()) {
         const passenger = await this.prisma.passenger.findUnique({ where: { id: order.passengerId } });
         if (passenger?.phone?.trim()) {

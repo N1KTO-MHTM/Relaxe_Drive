@@ -1,5 +1,6 @@
 {
   "app": { "name": "RelaxDrive", "tagline": "Centro de control" },
+  "common": { "refresh": "Actualizar", "loading": "Cargando…" },
   "modes": {
     "control": "Modo control",
     "wall": "Muro en vivo",

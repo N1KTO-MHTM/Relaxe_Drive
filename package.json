@@ -10,6 +10,9 @@
     "install:all": "npm install && npm install --prefix backend && npm install --prefix web && npm install --prefix desktop",
     "build:all": "npm run build --prefix backend && npm run build --prefix web && npm run build --prefix desktop",
     "test": "npm run test --prefix web",
-    "typecheck": "npm run build --prefix web"
+    "typecheck": "npm run build --prefix web",
+    "build:web": "npm run build --prefix web",
+    "build:desktop": "npm run build:win --prefix desktop",
+    "build:web-and-desktop": "npm run build --prefix web && npm run build:win --prefix desktop"
   }
 }

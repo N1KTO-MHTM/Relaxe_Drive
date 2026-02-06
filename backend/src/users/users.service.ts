@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { PassengersService } from '../passengers/passengers.service';
@@ -23,21 +23,110 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async create(data: { nickname: string; password: string; role: Role; email?: string; phone?: string; locale?: string; tenantId?: string }) {
+  async findPendingDrivers() {
+    return this.prisma.user.findMany({
+      where: { role: 'DRIVER', approvedAt: null },
+      select: {
+        id: true,
+        nickname: true,
+        email: true,
+        phone: true,
+        driverId: true,
+        carType: true,
+        carPlateNumber: true,
+        carCapacity: true,
+        carModelAndYear: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async approveDriver(userId: string) {
+    const updated = await this.prisma.user.updateMany({
+      where: { id: userId, role: 'DRIVER', approvedAt: null },
+      data: { approvedAt: new Date() },
+    });
+    if (updated.count === 0) throw new NotFoundException('Pending driver not found or already approved');
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, nickname: true, approvedAt: true },
+    });
+  }
+
+  /** Next driverId for carType (e.g. 001suv, 002sedan). */
+  private async nextDriverIdForCarType(carType: string): Promise<string> {
+    const normalized = (carType || '').toUpperCase();
+    if (!['SEDAN', 'MINIVAN', 'SUV'].includes(normalized)) return '';
+    const suffix = normalized.toLowerCase();
+    const users = await this.prisma.user.findMany({
+      where: { driverId: { not: null }, carType: normalized },
+      select: { driverId: true },
+    });
+    let maxNum = 0;
+    const prefix = suffix; // e.g. "001" + "suv"
+    for (const u of users) {
+      if (!u.driverId || !u.driverId.endsWith(suffix)) continue;
+      const num = parseInt(u.driverId.slice(0, -suffix.length), 10);
+      if (!Number.isNaN(num) && num > maxNum) maxNum = num;
+    }
+    const next = (maxNum + 1).toString().padStart(3, '0');
+    return next + suffix;
+  }
+
+  async create(data: {
+    nickname: string;
+    password: string;
+    role: Role;
+    email?: string;
+    phone?: string;
+    locale?: string;
+    tenantId?: string;
+    carPlateNumber?: string;
+    carType?: string;
+    carCapacity?: number;
+    carModelAndYear?: string;
+  }) {
     const existing = await this.findByNickname(data.nickname);
     if (existing) throw new ConflictException('Nickname already registered');
+    if (data.email?.trim()) {
+      const existingEmail = await this.findByEmail(data.email.trim());
+      if (existingEmail) throw new ConflictException('Email already registered');
+    }
     const passwordHash = await bcrypt.hash(data.password, 10);
+    let driverId: string | null = null;
+    if (data.role === 'DRIVER' && data.carType?.trim()) {
+      driverId = await this.nextDriverIdForCarType(data.carType.trim());
+    }
     const user = await this.prisma.user.create({
       data: {
         nickname: data.nickname,
-        email: data.email ?? null,
-        phone: data.phone ?? null,
+        email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
         passwordHash,
         role: data.role,
         locale: data.locale ?? 'en',
         tenantId: data.tenantId,
+        carPlateNumber: data.carPlateNumber?.trim() || null,
+        carType: data.carType?.trim().toUpperCase() || null,
+        carCapacity: data.carCapacity ?? null,
+        carModelAndYear: data.carModelAndYear?.trim() || null,
+        driverId,
       },
-      select: { id: true, nickname: true, email: true, phone: true, role: true, locale: true, createdAt: true },
+      select: {
+        id: true,
+        nickname: true,
+        email: true,
+        phone: true,
+        role: true,
+        locale: true,
+        driverId: true,
+        carType: true,
+        carPlateNumber: true,
+        carCapacity: true,
+        carModelAndYear: true,
+        createdAt: true,
+      },
     });
     if (data.role === 'DRIVER' && data.phone?.trim()) {
       await this.passengersService.linkDriverToPassenger(data.phone.trim(), user.id);
@@ -53,6 +142,14 @@ export class UsersService {
 
   async revokeSession(sessionId: string) {
     return this.prisma.session.deleteMany({ where: { id: sessionId } });
+  }
+
+  /** Update lastActiveAt for all sessions of this user (called on each authenticated request). */
+  async touchSessionsByUserId(userId: string) {
+    await this.prisma.session.updateMany({
+      where: { userId },
+      data: { lastActiveAt: new Date() },
+    });
   }
 
   /** Active sessions: one row per user (latest session only), so online users are not duplicated. */
@@ -76,11 +173,15 @@ export class UsersService {
       orderBy: { nickname: 'asc' },
       include: { sessions: { orderBy: { lastActiveAt: 'desc' }, take: 1 } },
     });
-    return users.map(({ sessions, id, nickname, phone, role, createdAt }) => ({
+    return users.map(({ sessions, id, nickname, email, phone, role, createdAt, driverId, carType, carPlateNumber }) => ({
       id,
       nickname,
+      email,
       phone,
       role,
+      driverId,
+      carType,
+      carPlateNumber,
       createdAt,
       hasActiveSession: sessions.length > 0,
       lastActiveAt: sessions[0]?.lastActiveAt ?? null,
@@ -104,6 +205,11 @@ export class UsersService {
         blocked: true,
         bannedUntil: true,
         banReason: true,
+        driverId: true,
+        carType: true,
+        carPlateNumber: true,
+        carCapacity: true,
+        carModelAndYear: true,
         createdAt: true,
       },
       orderBy: { nickname: 'asc' },
@@ -167,5 +273,26 @@ export class UsersService {
       data: { locale: lng },
       select: { id: true, nickname: true, role: true, locale: true },
     });
+  }
+
+  /** Trip history for driver (last 7 days; older rows are purged on each completion). */
+  async getTripHistory(driverId: string) {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return this.prisma.driverTripSummary.findMany({
+      where: { driverId, completedAt: { gte: since } },
+      orderBy: { completedAt: 'desc' },
+    });
+  }
+
+  /** Aggregated earnings and miles for driver (persisted; not cleared by 7-day purge). */
+  async getDriverStats(driverId: string) {
+    const row = await this.prisma.driverStats.findUnique({
+      where: { driverId },
+    });
+    return {
+      totalEarningsCents: row?.totalEarningsCents ?? 0,
+      totalMiles: row?.totalMiles ?? 0,
+      updatedAt: row?.updatedAt ?? null,
+    };
   }
 }

@@ -28,12 +28,18 @@ export default function DriversMode() {
   const [error, setError] = useState<string | null>(null);
   const showPhone = canSeeDriverPhones(user?.role);
 
-  useEffect(() => {
+  function load() {
+    setLoading(true);
+    setError(null);
     api
       .get<DriverRow[]>('/users')
       .then((data) => setList(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []))
       .catch(() => setError('Failed to load drivers'))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
   }, []);
 
   return (
@@ -41,10 +47,13 @@ export default function DriversMode() {
       <div className="drivers-mode">
         <div className="rd-panel-header">
           <h1>{t('drivers.title')}</h1>
+          <button type="button" className="rd-btn rd-btn-secondary" onClick={load} disabled={loading}>
+            {t('common.refresh')}
+          </button>
         </div>
         <p className="rd-text-muted" style={{ marginBottom: '1rem' }}>{t('drivers.subtitle')}</p>
         {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
-        {loading && <p className="logs-mode__muted">Loading…</p>}
+        {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
         {!loading && list.length === 0 && <p className="logs-mode__muted">{t('drivers.noDrivers')}</p>}
         {!loading && list.length > 0 && (
           <div className="logs-mode__table-wrap">

@@ -7,6 +7,9 @@ import { downloadCsv } from '../../utils/exportCsv';
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import './Drivers.css';
 
+const CAR_TYPES = ['SEDAN', 'MINIVAN', 'SUV'] as const;
+type CarTypeTab = 'ALL' | (typeof CAR_TYPES)[number] | 'OTHER';
+
 /** Driver phones only for DISPATCHER and ADMIN. */
 function canSeeDriverPhones(role: string | undefined) {
   return role === 'ADMIN' || role === 'DISPATCHER';
@@ -16,11 +19,17 @@ interface DriverRow {
   id: string;
   nickname: string;
   phone?: string | null;
+  email?: string | null;
   role: string;
   lat?: number | null;
   lng?: number | null;
   blocked?: boolean;
   bannedUntil?: string | null;
+  driverId?: string | null;
+  carType?: string | null;
+  carPlateNumber?: string | null;
+  carCapacity?: number | null;
+  carModelAndYear?: string | null;
 }
 
 export default function Drivers() {
@@ -31,15 +40,24 @@ export default function Drivers() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [carTypeTab, setCarTypeTab] = useState<CarTypeTab>('ALL');
   const showPhone = canSeeDriverPhones(user?.role);
 
+  const listByCarType = useMemo(() => {
+    if (carTypeTab === 'ALL') return list;
+    if (carTypeTab === 'OTHER') return list.filter((d) => !d.carType || !CAR_TYPES.includes(d.carType as (typeof CAR_TYPES)[number]));
+    return list.filter((d) => d.carType === carTypeTab);
+  }, [list, carTypeTab]);
+
   const filteredList = searchQuery.trim()
-    ? list.filter(
+    ? listByCarType.filter(
         (d) =>
           (d.nickname ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+          (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (d.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
-      : list;
+    : listByCarType;
 
   const paginatedList = useMemo(
     () => paginate(filteredList, page, DEFAULT_PAGE_SIZE),
@@ -48,24 +66,23 @@ export default function Drivers() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, carTypeTab]);
 
-  useEffect(() => {
-    let cancelled = false;
+  function load() {
+    setLoading(true);
+    setError(null);
     api
       .get<DriverRow[]>('/users')
-      .then((data) => {
-        if (!cancelled) setList(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []);
-        if (!cancelled) setError(null);
-      })
+      .then((data) => setList(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []))
       .catch(() => {
-        if (!cancelled) setList([]);
-        if (!cancelled) setError('Failed to load drivers');
+        setList([]);
+        setError('Failed to load drivers');
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
   }, []);
 
   return (
@@ -82,21 +99,63 @@ export default function Drivers() {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ width: 180 }}
             />
-            <button type="button" className="rd-btn" onClick={() => downloadCsv(list, 'drivers.csv', [
+            <button type="button" className="rd-btn" onClick={() => downloadCsv(filteredList, 'drivers.csv', [
               { key: 'nickname', label: t('drivers.nickname') },
               { key: 'phone', label: t('drivers.phone') },
+              { key: 'email', label: t('auth.email') },
+              { key: 'driverId', label: t('drivers.driverId') },
+              { key: 'carType', label: t('auth.carType') },
+              { key: 'carPlateNumber', label: t('auth.carPlateNumber') },
             ])}>
               {t('drivers.exportCsv')}
             </button>
             <Link to="/dashboard" className="rd-btn rd-btn-primary">
               {t('drivers.showOnMap')}
             </Link>
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={load} disabled={loading}>
+              {t('common.refresh')}
+            </button>
           </div>
         </div>
         <p className="rd-text-muted drivers-subtitle">{t('drivers.subtitle')}</p>
         {error && <p className="rd-text-critical drivers-error">{error}</p>}
-        {loading && <p className="rd-text-muted">Loading…</p>}
+        {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
         {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('drivers.noDrivers')}</p>}
+        {!loading && !error && list.length > 0 && (
+          <>
+            <div className="drivers-tabs">
+              <button
+                type="button"
+                className={`drivers-tab ${carTypeTab === 'ALL' ? 'active' : ''}`}
+                onClick={() => setCarTypeTab('ALL')}
+              >
+                {t('drivers.tabAll')} ({list.length})
+              </button>
+              {CAR_TYPES.map((type) => {
+                const count = list.filter((d) => d.carType === type).length;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`drivers-tab ${carTypeTab === type ? 'active' : ''}`}
+                    onClick={() => setCarTypeTab(type)}
+                  >
+                    {t('auth.carType_' + type)} ({count})
+                  </button>
+                );
+              })}
+              {list.some((d) => !d.carType || !CAR_TYPES.includes(d.carType as (typeof CAR_TYPES)[number])) && (
+                <button
+                  type="button"
+                  className={`drivers-tab ${carTypeTab === 'OTHER' ? 'active' : ''}`}
+                  onClick={() => setCarTypeTab('OTHER')}
+                >
+                  {t('drivers.tabOther')} ({list.filter((d) => !d.carType || !CAR_TYPES.includes(d.carType as (typeof CAR_TYPES)[number])).length})
+                </button>
+              )}
+            </div>
+          </>
+        )}
         {!loading && !error && list.length > 0 && filteredList.length === 0 && <p className="rd-text-muted">{t('drivers.noMatch')}</p>}
         {!loading && !error && filteredList.length > 0 && (
           <div className="rd-table-wrapper">
@@ -105,6 +164,9 @@ export default function Drivers() {
               <tr>
                 <th>{t('drivers.nickname')}</th>
                 {showPhone && <th>{t('drivers.phone')}</th>}
+                {showPhone && <th>{t('auth.email')}</th>}
+                {showPhone && <th>{t('drivers.driverId')}</th>}
+                {showPhone && <th>{t('auth.carType')}</th>}
                 <th>{t('drivers.status')}</th>
               </tr>
             </thead>
@@ -116,6 +178,9 @@ export default function Drivers() {
                     <tr key={d.id}>
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
+                      {showPhone && <td>{d.email ?? '—'}</td>}
+                      {showPhone && <td>{d.driverId ?? '—'}</td>}
+                      {showPhone && <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>}
                       <td>
                         <span className={`rd-badge ${statusKey === 'onMap' ? 'rd-badge-ok' : statusKey === 'blocked' || statusKey === 'banned' ? 'rd-badge-critical' : ''}`}>
                           {t(`drivers.${statusKey}`)}

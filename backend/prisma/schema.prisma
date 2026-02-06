@@ -11,25 +11,32 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  nickname      String    @unique
-  email         String?   @unique
-  phone         String?   // сохраняется при регистрации, показывается у водителя
-  passwordHash  String    @map("password_hash")
-  role          String    // ADMIN | DISPATCHER | DRIVER
-  tenantId      String?   @map("tenant_id")
-  locale        String    @default("en")
-  lat           Float?    // последнее местоположение водителя (для карты)
-  lng           Float?
-  available     Boolean   @default(true)  // водитель: доступен для заказов (false = не назначать)
-  blocked       Boolean   @default(false) // заблокирован админом
-  bannedUntil   DateTime? @map("banned_until") // временный бан до даты
-  banReason     String?   @map("ban_reason")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  sessions      Session[]
-  auditLogs     AuditLog[]
-  ordersCreated Order[]   @relation("OrderCreator")
+  id               String    @id @default(cuid())
+  nickname         String    @unique
+  email            String?   @unique
+  phone            String?   // сохраняется при регистрации, показывается у водителя
+  passwordHash     String    @map("password_hash")
+  role             String    // ADMIN | DISPATCHER | DRIVER
+  tenantId         String?   @map("tenant_id")
+  locale           String    @default("en")
+  lat              Float?    // последнее местоположение водителя (для карты)
+  lng              Float?
+  available        Boolean   @default(true)  // водитель: доступен для заказов (false = не назначать)
+  blocked          Boolean   @default(false) // заблокирован админом
+  bannedUntil      DateTime? @map("banned_until") // временный бан до даты
+  banReason        String?   @map("ban_reason")
+  // Driver / car (registration)
+  carPlateNumber   String?   @map("car_plate_number")
+  carType          String?   @map("car_type")     // SEDAN | MINIVAN | SUV
+  carCapacity      Int?      @map("car_capacity")  // how many passengers
+  carModelAndYear  String?   @map("car_model_and_year")
+  driverId         String?   @unique @map("driver_id") // 001suv, 002sedan, 001minivan
+  approvedAt       DateTime? @map("approved_at") // driver can login only after admin approval
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  ordersCreated    Order[]   @relation("OrderCreator")
 }
 
 model Session {
@@ -46,6 +53,7 @@ model Order {
   id                      String    @id @default(cuid())
   status                  String    @default("DRAFT") // DRAFT|SCHEDULED|ASSIGNED|IN_PROGRESS|COMPLETED|CANCELLED
   tripType                String    @default("ONE_WAY") @map("trip_type") // ONE_WAY | ROUNDTRIP
+  routeType               String?   @map("route_type")   // LOCAL | LONG (local or long way)
   pickupAt                DateTime  @map("pickup_at")
   pickupAddress           String    @map("pickup_address")   // first location (A)
   middleAddress           String?   @map("middle_address")   // second location (B) for roundtrip
@@ -124,4 +132,24 @@ model WhiteLabelConfig {
   locales      String   @default("en,ru,ka") // comma-separated for SQLite
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+}
+
+model DriverTripSummary {
+  id             String   @id @default(cuid())
+  driverId       String   @map("driver_id")
+  orderId        String   @map("order_id")
+  pickupAddress  String   @map("pickup_address")
+  dropoffAddress String   @map("dropoff_address")
+  startedAt      DateTime @map("started_at")
+  completedAt    DateTime @map("completed_at")
+  distanceKm     Float    @map("distance_km")
+  earningsCents  Int      @default(0) @map("earnings_cents")
+  createdAt      DateTime @default(now()) @map("created_at")
+}
+
+model DriverStats {
+  driverId          String   @id @map("driver_id")
+  totalEarningsCents Int      @default(0) @map("total_earnings_cents")
+  totalMiles         Float    @default(0) @map("total_miles")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 }

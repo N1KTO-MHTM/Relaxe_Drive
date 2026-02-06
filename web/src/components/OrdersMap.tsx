@@ -53,6 +53,9 @@ interface OrdersMapProps {
   reports?: DriverReportMap[];
   /** When alternative routes exist, 0 = main, 1 = first alternative, etc. */
   selectedRouteIndex?: number;
+  /** Called when user clicks Re-center (e.g. to fit map to route + location) */
+  onRecenter?: () => void;
+  recenterLabel?: string;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -131,7 +134,7 @@ function reportIcon(type: string): L.DivIcon {
   });
 }
 
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0 }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center' }: OrdersMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const driverClusterRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -415,6 +418,16 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   return (
     <div className="orders-map-container" style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480 }} />
+      {navMode && onRecenter && (
+        <button
+          type="button"
+          className="rd-btn orders-map-recenter"
+          onClick={onRecenter}
+          style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 1000 }}
+        >
+          {recenterLabel}
+        </button>
+      )}
       {!navMode && (
         <div className="orders-map-overlay rd-text-muted" style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: 8, background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.75rem' }}>
           {onMapClick ? 'Click on map to set location. Address will be detected automatically.' : showDriverMarkers ? 'Click driver marker for name and phone.' : 'OpenStreetMap. Orders with coordinates will show as markers.'}

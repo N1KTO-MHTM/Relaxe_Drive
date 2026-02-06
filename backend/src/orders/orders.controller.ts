@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { AuditService } from '../audit/audit.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -87,9 +87,13 @@ export class OrdersController {
     @Query('fromLat') fromLat?: string,
     @Query('fromLng') fromLng?: string,
     @Query('alternatives') alternatives?: string,
+    @Request() req?: { user: { id: string; role: string } },
   ) {
     const order = await this.ordersService.findById(orderId);
     if (!order) return { pickupCoords: null, dropoffCoords: null, polyline: '', durationMinutes: 0, distanceKm: 0 };
+    if (req?.user?.role === 'DRIVER' && order.driverId !== req.user.id) {
+      throw new ForbiddenException('You can only view the route for orders assigned to you');
+    }
     const [pickupCoords, dropoffCoords] = await Promise.all([
       this.geo.geocode(order.pickupAddress),
       this.geo.geocode(order.dropoffAddress),
@@ -147,6 +151,7 @@ export class OrdersController {
       pickupAddress: string;
       dropoffAddress: string;
       tripType?: 'ONE_WAY' | 'ROUNDTRIP';
+      routeType?: 'LOCAL' | 'LONG';
       middleAddress?: string;
       pickupType?: string;
       dropoffType?: string;
@@ -172,6 +177,7 @@ export class OrdersController {
       pickupAddress: body.pickupAddress,
       dropoffAddress: body.dropoffAddress,
       tripType: body.tripType ?? 'ONE_WAY',
+      routeType: body.routeType ?? null,
       middleAddress: body.tripType === 'ROUNDTRIP' ? (body.middleAddress ?? null) : null,
       pickupType: body.pickupType ?? null,
       dropoffType: body.dropoffType ?? null,
@@ -257,10 +263,15 @@ export class OrdersController {
   @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async updateStatus(
     @Param('id') orderId: string,
-    @Body() body: { status: 'IN_PROGRESS' | 'COMPLETED' },
+    @Body() body: { status: 'IN_PROGRESS' | 'COMPLETED'; distanceKm?: number; earningsCents?: number },
     @Request() req: { user: { id: string; role: string } },
   ) {
-    const result = await this.ordersService.updateStatus(orderId, body.status, req.user.role === 'DRIVER' ? req.user.id : undefined);
+    const result = await this.ordersService.updateStatus(
+      orderId,
+      body.status,
+      req.user.role === 'DRIVER' ? req.user.id : undefined,
+      { distanceKm: body.distanceKm, earningsCents: body.earningsCents },
+    );
     await this.audit.log(req.user.id, 'order.status_change', 'order', { orderId, status: body.status });
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);

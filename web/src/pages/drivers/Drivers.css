@@ -8,3 +8,31 @@
 .drivers-error {
   margin-bottom: 1rem;
 }
+
+.drivers-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--rd-border);
+  padding-bottom: 0.5rem;
+}
+.drivers-tab {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  background: var(--rd-bg-elevated);
+  color: var(--rd-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.drivers-tab:hover {
+  color: var(--rd-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+.drivers-tab.active {
+  color: var(--rd-accent);
+  background: rgba(88, 166, 255, 0.12);
+  border-color: rgba(88, 166, 255, 0.35);
+}

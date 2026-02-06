@@ -34,7 +34,10 @@ export default function Login() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       const isNetwork = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed');
-      setError(isNetwork ? t('auth.serverError') : (msg || t('auth.invalidCredentials')));
+      const isPending = msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval');
+      setError(
+        isNetwork ? t('auth.serverError') : isPending ? t('auth.pendingApproval') : (msg || t('auth.invalidCredentials')),
+      );
     }
   }
 
@@ -90,11 +93,10 @@ export default function Login() {
       <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }}>
         {t('auth.login')}
       </button>
-      <p style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+      <p style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', fontSize: '0.875rem' }}>
         <Link to="/forgot-password">{t('auth.forgotPassword')}</Link>
-      </p>
-      <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-        <Link to="/register">{t('auth.register')}</Link>
+        <span className="rd-text-muted">·</span>
+        <Link to="/register" style={{ fontWeight: 600 }}>{t('auth.register')}</Link>
       </p>
     </form>
   );

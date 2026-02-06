@@ -43,21 +43,17 @@ export default function CalendarMode() {
   const from = startOfDay(new Date(selectedDate));
   const to = view === 'day' ? endOfDay(from) : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  useEffect(() => {
-    let cancelled = false;
+  function loadCalendar() {
     setLoading(true);
     api
       .get<Order[]>(`/orders?from=${from.toISOString()}&to=${to.toISOString()}`)
-      .then((data) => {
-        if (!cancelled) setOrders(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setOrders([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+      .then((data) => setOrders(Array.isArray(data) ? data : []))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadCalendar();
   }, [from.toISOString(), to.toISOString()]);
 
   const ordersByDay = orders.reduce<Record<string, Order[]>>((acc, o) => {
@@ -110,11 +106,14 @@ export default function CalendarMode() {
             >
               {t('calendar.week')}
             </button>
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={loadCalendar} disabled={loading}>
+              {t('common.refresh')}
+            </button>
           </div>
         </div>
         <p className="rd-text-muted" style={{ marginBottom: 'var(--rd-space-md)' }}>{t('calendar.preOrder')}</p>
         {loading ? (
-          <p className="rd-text-muted">Loading…</p>
+          <p className="rd-text-muted">{t('common.loading')}</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--rd-space-lg)', marginTop: 'var(--rd-space-lg)' }}>
             {weekDays.map((dayKey) => (

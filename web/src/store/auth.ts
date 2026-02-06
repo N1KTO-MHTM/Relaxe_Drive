@@ -8,7 +8,14 @@ interface User {
   nickname: string;
   role: Role;
   locale: string;
-  available?: boolean; // driver: available for assignments
+  available?: boolean;
+  email?: string;
+  phone?: string;
+  driverId?: string;
+  carType?: string;
+  carPlateNumber?: string;
+  carCapacity?: number;
+  carModelAndYear?: string;
 }
 
 interface AuthState {

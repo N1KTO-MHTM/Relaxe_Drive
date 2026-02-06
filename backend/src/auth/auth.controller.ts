@@ -15,10 +15,21 @@ export class AuthController {
   async register(
     @Body('nickname') nickname: string,
     @Body('password') password: string,
-    @Body('role') role?: string,
     @Body('phone') phone?: string,
+    @Body('email') email?: string,
+    @Body('carPlateNumber') carPlateNumber?: string,
+    @Body('carType') carType?: string,
+    @Body('carCapacity') carCapacity?: number,
+    @Body('carModelAndYear') carModelAndYear?: string,
   ) {
-    return this.authService.register(nickname, password, role, phone);
+    return this.authService.register(nickname, password, {
+      phone,
+      email,
+      carPlateNumber,
+      carType,
+      carCapacity,
+      carModelAndYear,
+    });
   }
 
   @Public()

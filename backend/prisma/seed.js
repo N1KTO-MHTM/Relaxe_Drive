@@ -3,13 +3,15 @@ const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
+/**
+ * Seed creates only the ADMIN user. Everyone else must register (as driver)
+ * via the app and be approved by admin. No Disp1/Driver1 — registration required for all except admin.
+ */
 async function main() {
-  const defaultPassword = process.env.SEED_PASSWORD || 'Luka1Soso';
   const adminNick = process.env.ADMIN_NICKNAME || 'Admin';
   const adminPassword = process.env.ADMIN_PASSWORD || 'Luka1Soso';
 
   const adminHash = await bcrypt.hash(adminPassword, 10);
-  const dispHash = await bcrypt.hash(defaultPassword, 10);
 
   const admin = await prisma.user.upsert({
     where: { nickname: adminNick },
@@ -19,30 +21,6 @@ async function main() {
       email: null,
       passwordHash: adminHash,
       role: 'ADMIN',
-      locale: 'en',
-    },
-  });
-
-  const disp = await prisma.user.upsert({
-    where: { nickname: 'Disp1' },
-    update: { passwordHash: dispHash, role: 'DISPATCHER' },
-    create: {
-      nickname: 'Disp1',
-      email: null,
-      passwordHash: dispHash,
-      role: 'DISPATCHER',
-      locale: 'en',
-    },
-  });
-
-  const driver = await prisma.user.upsert({
-    where: { nickname: 'Driver1' },
-    update: { passwordHash: dispHash, role: 'DRIVER' },
-    create: {
-      nickname: 'Driver1',
-      email: null,
-      passwordHash: dispHash,
-      role: 'DRIVER',
       locale: 'en',
     },
   });
@@ -66,8 +44,8 @@ async function main() {
     console.log('Test order created (SCHEDULED).');
   }
 
-  console.log('Login: nickname =', adminNick, '| password =', adminPassword);
-  console.log('Disp1 / Driver1 password:', defaultPassword);
+  console.log('Admin login: nickname =', adminNick, '| password =', adminPassword);
+  console.log('All other users must register via the app and be approved by admin.');
 }
 
 main()

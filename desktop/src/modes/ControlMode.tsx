@@ -63,7 +63,7 @@ export default function ControlMode() {
   const isAdmin = user?.role === 'ADMIN';
   const notifiedOrderIds = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
+  function refreshData() {
     setLoading(true);
     setError(null);
     if (tab === 'orders') {
@@ -110,6 +110,10 @@ export default function ControlMode() {
     }
     if (tab === 'sessions' && !canSeeSessions) setLoading(false);
     if (tab === 'sessions' && canSeeSessions && sessionSubTab === 'accounts' && !isAdmin) setLoading(false);
+  }
+
+  useEffect(() => {
+    refreshData();
   }, [tab, sessionSubTab, canSeeDrivers, canSeeSessions, isAdmin, user?.id, user?.role, t]);
 
   useEffect(() => {
@@ -150,11 +154,14 @@ export default function ControlMode() {
                 {t('modes.ctrlSessions')}
               </button>
             )}
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={refreshData} disabled={loading} style={{ marginLeft: 'auto' }}>
+              {t('common.refresh')}
+            </button>
           </div>
           <div className="mode-content">
             {tab === 'orders' && (
               <>
-                {loading && <p className="logs-mode__muted">Loading…</p>}
+                {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
                 {error && <p className="logs-mode__error">{error}</p>}
                 {!loading && !error && orders.length === 0 && <p className="logs-mode__muted">{t('modes.noOrders')}</p>}
                 {!loading && orders.length > 0 && (
@@ -183,7 +190,7 @@ export default function ControlMode() {
             )}
             {tab === 'drivers' && canSeeDrivers && (
               <>
-                {loading && <p className="logs-mode__muted">Loading…</p>}
+                {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
                 {error && <p className="logs-mode__error">{error}</p>}
                 {!loading && !error && drivers.length === 0 && <p className="logs-mode__muted">{t('modes.noDrivers')}</p>}
                 {!loading && drivers.length > 0 && (
@@ -211,7 +218,7 @@ export default function ControlMode() {
                 )}
                 {sessionSubTab === 'sessions' && (
                   <>
-                    {loading && <p className="logs-mode__muted">Loading…</p>}
+                    {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
                     {error && <p className="logs-mode__error">{error}</p>}
                     {!loading && !error && sessions.length === 0 && <p className="logs-mode__muted">{t('modes.noSessions')}</p>}
                     {!loading && sessions.length > 0 && (
@@ -242,7 +249,7 @@ export default function ControlMode() {
                 )}
                 {sessionSubTab === 'accounts' && isAdmin && (
                   <>
-                    {loading && <p className="logs-mode__muted">Loading…</p>}
+                    {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
                     {error && <p className="logs-mode__error">{error}</p>}
                     {!loading && !error && accounts.length === 0 && <p className="logs-mode__muted">{t('modes.noAccounts')}</p>}
                     {!loading && accounts.length > 0 && (

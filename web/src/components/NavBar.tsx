@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface RouteStep {
   type: number;
@@ -22,18 +23,30 @@ const STEP_TYPE_ICON: Record<number, string> = {
   0: '↰', 1: '↱', 2: '⤴', 3: '⤵', 4: '←', 5: '→', 6: '↑', 9: '↻', 10: '●', 11: '▶',
 };
 
+/** Format distance for turn hint: "0.2 mi" or "500 ft" */
+function formatDistanceHint(m: number): string {
+  const mi = m / 1609.34;
+  if (mi >= 0.1) return `${mi < 1 ? mi.toFixed(1) : Math.round(mi * 10) / 10} mi`;
+  const ft = Math.round(m * 3.28084);
+  return ft >= 100 ? `${Math.round(ft / 100) * 100} ft` : `${ft} ft`;
+}
+
 export default function NavBar({ steps, durationMinutes, phaseLabel, eta }: NavBarProps) {
+  const { t } = useTranslation();
   const current = useMemo(() => {
     if (!steps.length) return null;
     const first = steps[0];
     const dist = first.distanceM;
     const distStr = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
+    const hintStr = formatDistanceHint(dist);
+    const instruction = first.instruction || (first.type === 11 ? t('dashboard.navHeadToDestination') : first.type === 10 ? t('dashboard.navArrive') : t('dashboard.navContinue'));
     return {
-      instruction: first.instruction || (first.type === 11 ? 'Head to destination' : first.type === 10 ? 'Arrive' : 'Continue'),
+      instruction,
       distance: distStr,
+      hintStr,
       icon: STEP_TYPE_ICON[first.type] ?? '↑',
     };
-  }, [steps]);
+  }, [steps, t]);
 
   if (!current && !phaseLabel) return null;
 
@@ -48,7 +61,7 @@ export default function NavBar({ steps, durationMinutes, phaseLabel, eta }: NavB
             {current?.instruction ?? phaseLabel}
           </div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--rd-text-muted)' }}>
-            {current?.distance && `${current.distance} · `}
+            {current?.hintStr ? t('dashboard.turnIn', { dist: current.hintStr }) + ' · ' : ''}
             {phaseLabel}
             {eta && ` · ETA ${eta}`}
           </div>

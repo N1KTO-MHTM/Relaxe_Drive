@@ -22,13 +22,13 @@ export default function LiveWallMode() {
   const [health, setHealth] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
+  function loadEtaOrders() {
+    setLoading(true);
+    api.get<Order[]>('/orders').then((data) => setOrders(Array.isArray(data) ? data : [])).catch(() => setOrders([])).finally(() => setLoading(false));
+  }
+
   useEffect(() => {
-    if (tab === 'eta') {
-      setLoading(true);
-      api.get<Order[]>('/orders').then((data) => {
-        setOrders(Array.isArray(data) ? data : []);
-      }).catch(() => setOrders([])).finally(() => setLoading(false));
-    }
+    if (tab === 'eta') loadEtaOrders();
     if (tab === 'alerts') {
       const url = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       fetch(`${url}/health`).then((r) => r.json()).then((d) => setHealth(d.services || {})).catch(() => setHealth({}));
@@ -48,6 +48,11 @@ export default function LiveWallMode() {
           <button type="button" className={`rd-btn ${tab === 'alerts' ? 'rd-btn-primary' : ''}`} onClick={() => setTab('alerts')}>
             {t('modes.wallAlerts')}
           </button>
+          {tab === 'eta' && (
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={loadEtaOrders} disabled={loading} style={{ marginLeft: 'auto' }}>
+              {t('common.refresh')}
+            </button>
+          )}
         </div>
         <div className="mode-content" style={{ padding: '1rem' }}>
           {tab === 'map' && (
@@ -58,7 +63,7 @@ export default function LiveWallMode() {
           {tab === 'eta' && (
             <div className="rd-panel">
               <h3>{t('modes.wallEta')}</h3>
-              {loading && <p className="logs-mode__muted">Loading…</p>}
+              {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
               {!loading && orders.length === 0 && <p className="logs-mode__muted">{t('modes.noOrders')}</p>}
               {!loading && orders.length > 0 && (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

@@ -21,7 +21,7 @@ export default function DashboardLayout() {
     if (!socket || !user?.id) return;
     const onUserUpdated = (data: { userId?: string }) => {
       if (data?.userId === user.id) {
-        api.get<{ id: string; nickname: string; role: string; locale: string; available?: boolean }>('/users/me').then((data) => setUser(data ? { ...data, role: data.role as import('../store/auth').Role } : null)).catch(() => {});
+        api.get<{ id: string; nickname: string; role: string; locale: string; available?: boolean; email?: string; phone?: string; driverId?: string; carType?: string; carPlateNumber?: string; carCapacity?: number; carModelAndYear?: string }>('/users/me').then((data) => setUser(data ? { ...data, role: data.role as import('../store/auth').Role } : null)).catch(() => {});
       }
     };
     socket.on('user.updated', onUserUpdated);
@@ -78,7 +78,9 @@ export default function DashboardLayout() {
             <option value="es">ES</option>
           </select>
           <span className="user-role-badge rd-badge">{user?.role ? t('roles.' + user.role.toLowerCase()) : ''}</span>
-          <span className="user-email">{user?.nickname ?? ''}</span>
+          <span className="user-info">
+            {[user?.nickname, user?.phone, user?.email].filter(Boolean).join(' • ') || ''}
+          </span>
           <button type="button" className="rd-btn rd-btn-danger" onClick={clearAuth}>
             {t('auth.logout')}
           </button>

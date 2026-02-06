@@ -93,6 +93,27 @@
   border: 1px solid var(--rd-border);
 }
 .dashboard-order-form label { font-size: 0.875rem; }
+
+.dashboard-form-row--compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-form-label--inline {
+  margin-bottom: 0;
+  font-size: 0.8125rem;
+  color: var(--rd-text-muted);
+}
+.dashboard-form-row--two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--rd-space-md);
+}
+@media (max-width: 420px) {
+  .dashboard-form-row--two { grid-template-columns: 1fr; }
+}
+
 .dashboard-orders-list {
   list-style: none;
   padding: 0;

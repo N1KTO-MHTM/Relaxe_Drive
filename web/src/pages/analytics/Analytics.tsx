@@ -69,9 +69,12 @@ export default function Analytics() {
           <button type="button" className="rd-btn rd-btn-primary" onClick={fetchStats}>
             {t('analytics.apply')}
           </button>
+          <button type="button" className="rd-btn rd-btn-secondary" onClick={fetchStats} disabled={loading}>
+            {t('common.refresh')}
+          </button>
         </div>
         {error && <p className="rd-error">{error}</p>}
-        {loading && <p>{t('analytics.loading')}</p>}
+        {loading && <p>{t('common.loading')}</p>}
         {!loading && !error && stats && (
           <>
             <div className="analytics-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -101,22 +104,67 @@ export default function Analytics() {
             {stats.heatmap.length === 0 ? (
               <p className="rd-muted">{t('analytics.noData')}</p>
             ) : (
-              <div className="analytics-heatmap" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {stats.heatmap.map(({ zone, count }) => (
-                  <span
-                    key={zone}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      borderRadius: 4,
-                      background: 'var(--rd-bg-elevated, #2a2a2a)',
-                      fontSize: '0.85rem',
-                    }}
-                    title={`${zone}: ${count}`}
-                  >
-                    {zone} <strong>{count}</strong>
-                  </span>
-                ))}
-              </div>
+              (() => {
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+                let maxCount = 0;
+                for (const { zone, count } of stats.heatmap) {
+                  const match = zone.match(/^(\w{3})\s+(\d{1,2})$/);
+                  if (match) {
+                    const dayIdx = dayNames.indexOf(match[1]);
+                    const hour = parseInt(match[2], 10);
+                    if (dayIdx >= 0 && dayIdx < 7 && hour >= 0 && hour < 24) {
+                      grid[dayIdx][hour] += count;
+                      if (grid[dayIdx][hour] > maxCount) maxCount = grid[dayIdx][hour];
+                    }
+                  }
+                }
+                return (
+                  <div className="analytics-heatmap-grid" style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', minWidth: 400 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}></th>
+                          {Array.from({ length: 24 }, (_, h) => (
+                            <th key={h} style={{ padding: '0.25rem 2px', fontWeight: 500 }}>
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dayNames.map((day, dayIdx) => (
+                          <tr key={day}>
+                            <td style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}>{day}</td>
+                            {Array.from({ length: 24 }, (_, hour) => {
+                              const value = grid[dayIdx][hour];
+                              const intensity = maxCount > 0 ? value / maxCount : 0;
+                              const bg = intensity > 0
+                                ? `rgba(79, 114, 158, ${0.2 + 0.7 * intensity})`
+                                : 'var(--rd-bg-elevated, #1e1e1e)';
+                              return (
+                                <td
+                                  key={hour}
+                                  style={{
+                                    padding: 2,
+                                    background: bg,
+                                    minWidth: 18,
+                                    textAlign: 'center',
+                                    borderRadius: 2,
+                                  }}
+                                  title={`${day} ${hour}:00 — ${value}`}
+                                >
+                                  {value > 0 ? value : ''}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()
             )}
           </>
         )}

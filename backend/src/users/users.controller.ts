@@ -24,8 +24,24 @@ export class UsersController {
       nickname: user.nickname,
       role: user.role,
       locale: user.locale,
-      ...(user.role === 'DRIVER' && { available: user.available ?? true }),
+      email: user.email ?? undefined,
+      phone: user.phone ?? undefined,
+      ...(user.role === 'DRIVER' && {
+        available: user.available ?? true,
+        driverId: user.driverId ?? undefined,
+        carType: user.carType ?? undefined,
+        carPlateNumber: user.carPlateNumber ?? undefined,
+        carCapacity: user.carCapacity ?? undefined,
+        carModelAndYear: user.carModelAndYear ?? undefined,
+      }),
     };
+  }
+
+  @Get('pending')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  getPending() {
+    return this.usersService.findPendingDrivers();
   }
 
   @Get()
@@ -35,6 +51,19 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Patch(':id/approve')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async approveDriver(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    const result = await this.usersService.approveDriver(id);
+    await this.audit.log(req.user.id, 'user.approve_driver', 'user', { targetUserId: id });
+    this.ws.emitUserUpdated(id);
+    return result;
+  }
+
   @Patch('me')
   async updateMe(@Request() req: { user: { id: string } }, @Body() body: { locale?: string }) {
     if (body.locale != null) {
@@ -42,6 +71,20 @@ export class UsersController {
       return { id: user.id, nickname: user.nickname, role: user.role, locale: user.locale };
     }
     return this.usersService.findById(req.user.id);
+  }
+
+  @Get('me/trip-history')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  getMyTripHistory(@Request() req: { user: { id: string } }) {
+    return this.usersService.getTripHistory(req.user.id);
+  }
+
+  @Get('me/stats')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  getMyStats(@Request() req: { user: { id: string } }) {
+    return this.usersService.getDriverStats(req.user.id);
   }
 
   @Patch('me/location')

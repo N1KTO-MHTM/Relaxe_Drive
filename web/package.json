@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check-locales": "node scripts/check-locales.js"
   },
   "dependencies": {
     "i18next": "^23.7.0",

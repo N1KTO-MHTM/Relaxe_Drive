@@ -66,22 +66,23 @@ export default function Passengers() {
     setPage(1);
   }, [searchQuery]);
 
-  useEffect(() => {
-    let cancelled = false;
+  function loadPassengers() {
+    setLoading(true);
+    setError(null);
     api
       .get<PassengerRow[]>('/passengers')
       .then((data) => {
-        if (!cancelled) setList(Array.isArray(data) ? data : []);
-        if (!cancelled) setError(null);
+        setList(Array.isArray(data) ? data : []);
       })
       .catch((e) => {
-        if (!cancelled) setError(parseApiError(e));
-        if (!cancelled) setList([]);
+        setError(parseApiError(e));
+        setList([]);
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadPassengers();
   }, [showForm]);
 
   async function handleAdd(e: React.FormEvent) {
@@ -102,8 +103,7 @@ export default function Passengers() {
       setFormPickupType('');
       setShowForm(false);
       toast.success(t('toast.clientAdded'));
-      const data = await api.get<PassengerRow[]>('/passengers');
-      setList(Array.isArray(data) ? data : []);
+      loadPassengers();
     } catch (e) {
       setError(parseApiError(e));
     } finally {
@@ -178,6 +178,9 @@ export default function Passengers() {
           <button type="button" className="rd-btn rd-btn-primary" onClick={() => setShowForm(!showForm)}>
             {t('passengers.addClient')}
           </button>
+          <button type="button" className="rd-btn rd-btn-secondary" onClick={loadPassengers} disabled={loading}>
+            {t('common.refresh')}
+          </button>
         </div>
       </div>
 
@@ -210,7 +213,7 @@ export default function Passengers() {
       <p className="rd-text-muted passengers-subtitle">{t('passengers.subtitle')}</p>
 
       {error && <p className="rd-text-critical passengers-error">{error}</p>}
-      {loading && <p className="rd-text-muted">Loading…</p>}
+      {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
       {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('passengers.noClients')}</p>}
       {!loading && !error && list.length > 0 && filteredList.length === 0 && <p className="rd-text-muted">{t('passengers.noMatch')}</p>}
       {!loading && !error && filteredList.length > 0 && (

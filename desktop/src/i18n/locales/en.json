@@ -1,5 +1,6 @@
 {
   "app": { "name": "RelaxDrive", "tagline": "Control Center" },
+  "common": { "refresh": "Refresh", "loading": "Loading…" },
   "modes": {
     "control": "Control Mode",
     "wall": "Live Wall",

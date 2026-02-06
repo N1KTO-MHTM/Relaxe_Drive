@@ -23,7 +23,8 @@ export default function WhiteLabel() {
   const [domain, setDomain] = useState('');
   const [locales, setLocales] = useState('en,ru,ka');
 
-  useEffect(() => {
+  function loadConfig() {
+    setLoading(true);
     setError(null);
     api
       .get<WhiteLabelConfig | null>('/white-label')
@@ -37,6 +38,10 @@ export default function WhiteLabel() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : t('whiteLabel.loadError')))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadConfig();
   }, [t]);
 
   function handleSubmit(e: React.FormEvent) {
@@ -64,7 +69,7 @@ export default function WhiteLabel() {
           <div className="rd-panel-header">
             <h1>{t('whiteLabel.title')}</h1>
           </div>
-          <p>{t('analytics.loading')}</p>
+          <p>{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -75,6 +80,9 @@ export default function WhiteLabel() {
       <div className="rd-panel">
         <div className="rd-panel-header">
           <h1>{t('whiteLabel.title')}</h1>
+          <button type="button" className="rd-btn rd-btn-secondary" onClick={loadConfig} disabled={loading}>
+            {t('common.refresh')}
+          </button>
         </div>
         <p className="rd-text-muted">
           {t('whiteLabel.logo')}, {t('whiteLabel.colors')}, {t('whiteLabel.domains')}, {t('whiteLabel.languages')}.

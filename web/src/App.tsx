@@ -15,6 +15,7 @@ const Drivers = lazy(() => import('./pages/drivers/Drivers'));
 const Translation = lazy(() => import('./pages/translation/Translation'));
 const Analytics = lazy(() => import('./pages/analytics/Analytics'));
 const Roles = lazy(() => import('./pages/roles/Roles'));
+const Pendings = lazy(() => import('./pages/pendings/Pendings'));
 const SessionMonitor = lazy(() => import('./pages/session-monitor/SessionMonitor'));
 const CostControl = lazy(() => import('./pages/cost-control/CostControl'));
 const WhiteLabel = lazy(() => import('./pages/white-label/WhiteLabel'));
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/translation" element={<Translation />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/roles" element={<Roles />} />
+        <Route path="/pendings" element={<Pendings />} />
         <Route path="/sessions" element={<SessionMonitor />} />
         <Route path="/cost-control" element={<CostControl />} />
         <Route path="/white-label" element={<WhiteLabel />} />

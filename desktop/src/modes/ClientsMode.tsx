@@ -129,6 +129,9 @@ export default function ClientsMode() {
             <button type="button" className="rd-btn rd-btn-primary" onClick={() => setShowForm(!showForm)}>
               {t('clients.addClient')}
             </button>
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={loadClients} disabled={loading}>
+              {t('common.refresh')}
+            </button>
           </div>
           {showForm && (
             <form onSubmit={handleAddClient} className="rd-panel" style={{ marginBottom: '1rem', padding: '1rem' }}>
@@ -167,7 +170,7 @@ export default function ClientsMode() {
             {isAdmin ? t('clients.subtitleAdmin') : t('clients.subtitleDispatcher')}
           </p>
           {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
-          {loading && <p className="logs-mode__muted">Loading…</p>}
+          {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
           {!loading && clients.length === 0 && <p className="logs-mode__muted">{t('clients.noClients')}</p>}
           {!loading && clients.length > 0 && (
             <div className="logs-mode__table-wrap">

@@ -143,6 +143,9 @@ export default function LogsAuditMode() {
                   <button type="button" className="rd-btn rd-btn-primary" onClick={handleExport}>
                     {t('logs.export')}
                   </button>
+                  <button type="button" className="rd-btn rd-btn-secondary" onClick={() => loadLogs()} disabled={loading}>
+                    {t('common.refresh')}
+                  </button>
                 </>
               )}
             </div>
@@ -165,7 +168,7 @@ export default function LogsAuditMode() {
 
               {error === 'accessDenied' && <p className="logs-mode__error">{t('logs.accessDenied')}</p>}
               {error && error !== 'accessDenied' && <p className="logs-mode__error">{error}</p>}
-              {loading && <p className="logs-mode__muted">Loading…</p>}
+              {loading && <p className="logs-mode__muted">{t('common.loading')}</p>}
               {!loading && !error && logs.length === 0 && <p className="logs-mode__muted">{t('logs.noData')}</p>}
               {!loading && logs.length > 0 && (
                 <div className="logs-mode__table-wrap">

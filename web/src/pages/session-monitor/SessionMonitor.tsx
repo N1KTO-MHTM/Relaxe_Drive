@@ -116,6 +116,14 @@ export default function SessionMonitor() {
       <div className="rd-panel">
         <div className="rd-panel-header">
           <h1>{t('sessions.title')}</h1>
+          <button
+            type="button"
+            className="rd-btn rd-btn-secondary"
+            onClick={() => { setLoading(true); if (tab === 'sessions') fetchSessions(false); else fetchAccounts(false); }}
+            disabled={loading}
+          >
+            {t('common.refresh')}
+          </button>
         </div>
         <p className="rd-text-muted">
           {t('sessions.online')}, {t('sessions.device')}, {t('sessions.ip')}, {t('sessions.lastActive')}.
@@ -140,7 +148,7 @@ export default function SessionMonitor() {
           </div>
         )}
 
-        {loading && <p className="rd-text-muted">Loading…</p>}
+        {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
         {error && <p className="rd-text-critical">{error}</p>}
 
         {tab === 'sessions' && !loading && !error && (

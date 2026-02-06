@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -23,10 +23,45 @@ export class AuthService {
     private audit: AuditService,
   ) {}
 
-  async register(nickname: string, password: string, role?: string, phone?: string) {
-    const r = (role === 'ADMIN' || role === 'DRIVER' ? role : 'DISPATCHER') as Role;
-    const created = await this.usersService.create({ nickname, password, role: r, phone });
-    await this.audit.log(created.id, 'user.create', 'user', { nickname: created.nickname, role: created.role });
+  async register(
+    nickname: string,
+    password: string,
+    opts?: {
+      role?: string;
+      phone?: string;
+      email?: string;
+      carPlateNumber?: string;
+      carType?: string;
+      carCapacity?: number;
+      carModelAndYear?: string;
+    },
+  ) {
+    // New registrations are DRIVER only; role override not accepted from public register
+    const role: Role = 'DRIVER';
+    // Drivers must fill phone and car type to submit for pending approval
+    if (!opts?.phone?.trim()) {
+      throw new BadRequestException('Phone is required for driver registration.');
+    }
+    if (!opts?.carType?.trim()) {
+      throw new BadRequestException('Car type is required for driver registration.');
+    }
+    const created = await this.usersService.create({
+      nickname,
+      password,
+      role,
+      phone: opts?.phone,
+      email: opts?.email,
+      carPlateNumber: opts?.carPlateNumber,
+      carType: opts?.carType,
+      carCapacity: opts?.carCapacity,
+      carModelAndYear: opts?.carModelAndYear,
+    });
+    await this.audit.log(created.id, 'user.create', 'user', {
+      nickname: created.nickname,
+      role: created.role,
+      email: created.email ?? undefined,
+      driverId: created.driverId ?? undefined,
+    });
     return created;
   }
 
@@ -43,6 +78,9 @@ export class AuthService {
     const user = await this.validateUser(nickname, password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (user.blocked) throw new UnauthorizedException('Account is blocked');
+    if (user.role === 'DRIVER' && user.approvedAt == null) {
+      throw new UnauthorizedException('Account pending approval. An administrator must approve your registration before you can sign in.');
+    }
     if (user.bannedUntil && user.bannedUntil > new Date()) {
       throw new UnauthorizedException(`Account temporarily banned. Reason: ${user.banReason || 'Not specified'}`);
     }
@@ -73,7 +111,21 @@ export class AuthService {
       accessToken,
       refreshToken,
       expiresIn: this.config.get('JWT_ACCESS_TTL', '15m'),
-      user: { id: user.id, nickname: user.nickname, role: user.role, locale: user.locale ?? 'en' },
+      user: {
+        id: user.id,
+        nickname: user.nickname,
+        role: user.role,
+        locale: user.locale ?? 'en',
+        email: user.email ?? undefined,
+        phone: user.phone ?? undefined,
+        ...(user.role === 'DRIVER' && {
+          driverId: user.driverId ?? undefined,
+          carType: user.carType ?? undefined,
+          carPlateNumber: user.carPlateNumber ?? undefined,
+          carCapacity: user.carCapacity ?? undefined,
+          carModelAndYear: user.carModelAndYear ?? undefined,
+        }),
+      },
       sessionId: sessionId ?? null,
     };
   }

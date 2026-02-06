@@ -24,7 +24,9 @@ export default function Roles() {
   const [generatedLinkFor, setGeneratedLinkFor] = useState<{ userId: string; link: string } | null>(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  function loadUsers() {
+    setLoading(true);
+    setError('');
     api.get<UserRow[]>('/users')
       .then((data) => setUsers(Array.isArray(data) ? data : []))
       .catch((e) => {
@@ -32,6 +34,10 @@ export default function Roles() {
         setUsers([]);
       })
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadUsers();
   }, []);
 
   async function handleRoleChange(userId: string, role: Role) {
@@ -87,11 +93,14 @@ export default function Roles() {
       <div className="rd-panel">
       <div className="rd-panel-header">
         <h1>{t('roles.title')}</h1>
+        <button type="button" className="rd-btn rd-btn-secondary" onClick={loadUsers} disabled={loading}>
+          {t('common.refresh')}
+        </button>
       </div>
       <p className="rd-text-muted">{t('roles.admin')}, {t('roles.dispatcher')}, {t('roles.driver')} — {t('roles.usersList')}.</p>
       {error && <p className="rd-text-critical">{error}</p>}
       {loading ? (
-        <p className="rd-text-muted">Loading…</p>
+        <p className="rd-text-muted">{t('common.loading')}</p>
       ) : (
         <div className="rd-table-wrapper">
         <table className="rd-table" style={{ width: '100%' }}>

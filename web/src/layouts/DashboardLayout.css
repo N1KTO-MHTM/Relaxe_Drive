@@ -85,9 +85,14 @@
   letter-spacing: 0.02em;
   opacity: 0.9;
 }
-.user-email {
+.user-email,
+.user-info {
   font-size: 0.8125rem;
   color: var(--rd-text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-layout__main {

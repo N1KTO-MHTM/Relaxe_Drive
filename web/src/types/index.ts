@@ -4,6 +4,7 @@ export interface Order {
   id: string;
   status: string;
   tripType?: string;
+  routeType?: string | null;  // LOCAL | LONG
   pickupAt: string;
   pickupAddress: string;
   middleAddress?: string | null;

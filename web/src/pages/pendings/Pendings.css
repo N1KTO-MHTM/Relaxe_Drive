@@ -1,0 +1,11 @@
+.pendings-page .pendings-subtitle {
+  margin-bottom: 1rem;
+}
+
+.pendings-page .pendings-error {
+  margin-bottom: 1rem;
+}
+
+.pendings-page .rd-table td {
+  vertical-align: middle;
+}

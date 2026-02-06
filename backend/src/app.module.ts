@@ -21,6 +21,7 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PassengersModule } from './passengers/passengers.module';
 import { ReportsModule } from './reports/reports.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   controllers: [AppController],
@@ -45,6 +46,7 @@ import { ReportsModule } from './reports/reports.module';
     WebSocketModule,
     HealthModule,
     ReportsModule,
+    SchedulerModule,
   ],
 })
 export class AppModule {}
