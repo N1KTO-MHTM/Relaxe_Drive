@@ -304,7 +304,7 @@ export class OrdersService {
   }
 
   async findByDateRange(from: Date, to: Date, driverId?: string) {
-    return this.prisma.order.findMany({
+    return this.prisma!.order.findMany({
       where: {
         pickupAt: { gte: from, lte: to },
         ...(driverId ? { driverId } : {}),
