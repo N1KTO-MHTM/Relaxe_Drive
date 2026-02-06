@@ -7,6 +7,13 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 export class GeoController {
   constructor(private readonly geo: GeoService) {}
 
+  @Get('geocode')
+  async geocode(@Query('address') address: string) {
+    if (!address?.trim()) return { lat: null, lng: null };
+    const result = await this.geo.geocode(address.trim());
+    return result ?? { lat: null, lng: null };
+  }
+
   @Get('reverse')
   async reverse(
     @Query('lat') latStr: string,

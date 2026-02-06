@@ -1,17 +1,35 @@
-/* Cost Control — sub-tabs and card UI (web) */
+/* Cost Control — sub-tabs and card UI (web), aligned with reference */
 .cost-control-page {
-  max-width: 900px;
+  max-width: 920px;
 }
 
-.cost-control-page__header {
+.cost-control-page__top {
+  margin-bottom: 1.5rem;
+}
+
+.cost-control-page__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cost-control-page__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--rd-text);
+}
+
+.cost-control-page__refresh {
+  flex-shrink: 0;
 }
 
 .cost-control-page__tabs {
   display: flex;
   gap: 0.25rem;
-  margin-bottom: 1.25rem;
   flex-wrap: wrap;
 }
 
@@ -66,44 +84,52 @@
 
 .cost-control-page__card {
   position: relative;
-  padding: 1.25rem;
-  background: var(--rd-surface);
+  padding: 1.5rem;
+  background: var(--rd-bg-elevated, var(--rd-surface));
   border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius-lg);
+  border-radius: var(--rd-radius-lg, 10px);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .cost-control-page__card:hover {
-  border-color: var(--rd-border-strong);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: var(--rd-border-strong, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .cost-control-page__card--exceeded {
-  border-color: rgba(248, 81, 73, 0.4);
-  background: rgba(248, 81, 73, 0.06);
+  border-color: rgba(248, 81, 73, 0.5);
+  background: rgba(248, 81, 73, 0.08);
 }
 
 .cost-control-page__card-title {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--rd-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 0.5rem;
-}
-
-.cost-control-page__card-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--rd-text);
+  letter-spacing: 0.06em;
+  margin: 0 0 0.75rem;
   line-height: 1.2;
 }
 
-.cost-control-page__card-limit,
-.cost-control-page__card-muted {
+.cost-control-page__card-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--rd-text);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.35rem;
+}
+
+.cost-control-page__card-limit {
   font-size: 0.875rem;
   color: var(--rd-text-muted);
   margin-top: 0.25rem;
+}
+
+.cost-control-page__card-muted {
+  font-size: 0.875rem;
+  color: var(--rd-text-muted);
+  margin: 0;
 }
 
 .cost-control-page__progress-wrap {
@@ -146,7 +172,8 @@
 }
 
 .cost-control-page__limits-panel {
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
 }
 
 .cost-control-page__table {
@@ -186,16 +213,17 @@
 }
 
 .cost-control-page__summary-panel {
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
 }
 
 .cost-control-page__summary-card {
   padding: 1.5rem;
-  background: var(--rd-surface);
+  background: var(--rd-bg-elevated, var(--rd-surface));
   border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius-lg);
-  margin-bottom: 1rem;
-  max-width: 320px;
+  border-radius: var(--rd-radius-lg, 10px);
+  margin-bottom: 1.25rem;
+  max-width: 360px;
 }
 
 .cost-control-page__summary-label {
@@ -222,11 +250,20 @@
 }
 
 .cost-control-page__summary-list li {
-  padding: 0.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
   border-bottom: 1px solid var(--rd-border);
   font-size: 0.9375rem;
+  gap: 1rem;
+}
+
+.cost-control-page__summary-list-label {
+  color: var(--rd-text-muted);
 }
 
 .cost-control-page__summary-list li strong {
-  margin-left: 0.5rem;
+  color: var(--rd-accent);
+  font-variant-numeric: tabular-nums;
 }

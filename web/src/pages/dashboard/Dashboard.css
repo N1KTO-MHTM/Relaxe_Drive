@@ -196,6 +196,57 @@
   .dashboard-form-row--two { grid-template-columns: 1fr; }
 }
 
+.dashboard-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.dashboard-form-section + .dashboard-form-section { margin-top: 0.5rem; }
+.dashboard-form-section--stops { margin-top: 0.75rem; }
+.dashboard-form-hint {
+  font-size: 0.8125rem;
+  margin: 0;
+  color: var(--rd-text-muted);
+}
+.dashboard-address-row,
+.dashboard-stop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.dashboard-address-input {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.dashboard-stop-row {
+  margin-bottom: 0.5rem;
+}
+.dashboard-stop-row .dashboard-address-input { flex: 1 1 140px; }
+.rd-btn--small {
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.dashboard-tel-link {
+  color: var(--rd-accent);
+  text-decoration: none;
+}
+.dashboard-tel-link:hover {
+  text-decoration: underline;
+}
+
+.dashboard-reconnecting {
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  background: var(--rd-bg-warning, rgba(234, 179, 8, 0.15));
+  color: var(--rd-text);
+  border-radius: var(--rd-radius);
+  border: 1px solid var(--rd-border);
+}
+
 .dashboard-orders-list {
   list-style: none;
   padding: 0;
@@ -455,8 +506,11 @@
 .dashboard-order-item--risk-medium { border-left: 3px solid var(--rd-warning, #d97706); }
 .dashboard-order-item--risk-high { border-left: 3px solid var(--rd-critical, #dc2626); }
 .dashboard-plan-panel h3 { font-weight: 600; }
-.dashboard-order-assign { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
-.dashboard-order-assign .rd-input { width: auto; min-width: 140px; }
+.dashboard-order-pickup-time { font-size: 0.9375rem; }
+.dashboard-assigned-driver { font-size: 0.9375rem; }
+.dashboard-order-assign { margin-top: 0.5rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+.dashboard-order-assign-label { display: block; }
+.dashboard-order-assign .rd-input { width: auto; min-width: 200px; }
 @media (max-width: 768px) {
   .dashboard-order-assign {
     flex-wrap: wrap;

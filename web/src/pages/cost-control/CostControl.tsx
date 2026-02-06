@@ -63,43 +63,50 @@ export default function CostControl() {
   return (
     <div className="rd-page">
       <div className="rd-panel cost-control-page">
-        <div className="rd-panel-header cost-control-page__header">
-          <h1>{t('costControl.title')}</h1>
-          <button
-            type="button"
-            className="rd-btn rd-btn-primary"
-            onClick={() => {
-              setLoading(true);
-              fetchCosts(false);
-            }}
-            disabled={loading}
-          >
-            {loading ? t('costControl.loading') : t('common.refresh')}
-          </button>
-        </div>
-
-        <div className="cost-control-page__tabs">
-          <button
-            type="button"
-            className={`cost-control-page__tab ${tab === 'overview' ? 'cost-control-page__tab--active' : ''}`}
-            onClick={() => setTab('overview')}
-          >
-            {t('costControl.tabOverview')}
-          </button>
-          <button
-            type="button"
-            className={`cost-control-page__tab ${tab === 'limits' ? 'cost-control-page__tab--active' : ''}`}
-            onClick={() => setTab('limits')}
-          >
-            {t('costControl.tabLimits')}
-          </button>
-          <button
-            type="button"
-            className={`cost-control-page__tab ${tab === 'summary' ? 'cost-control-page__tab--active' : ''}`}
-            onClick={() => setTab('summary')}
-          >
-            {t('costControl.tabSummary')}
-          </button>
+        <div className="cost-control-page__top">
+          <div className="cost-control-page__head">
+            <h1 className="cost-control-page__title">{t('costControl.title')}</h1>
+            <button
+              type="button"
+              className="rd-btn rd-btn-primary cost-control-page__refresh"
+              onClick={() => {
+                setLoading(true);
+                fetchCosts(false);
+              }}
+              disabled={loading}
+            >
+              {loading ? t('costControl.loading') : t('common.refresh')}
+            </button>
+          </div>
+          <nav className="cost-control-page__tabs" aria-label={t('costControl.title')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'overview'}
+              className={`cost-control-page__tab ${tab === 'overview' ? 'cost-control-page__tab--active' : ''}`}
+              onClick={() => setTab('overview')}
+            >
+              {t('costControl.tabOverview')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'limits'}
+              className={`cost-control-page__tab ${tab === 'limits' ? 'cost-control-page__tab--active' : ''}`}
+              onClick={() => setTab('limits')}
+            >
+              {t('costControl.tabLimits')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'summary'}
+              className={`cost-control-page__tab ${tab === 'summary' ? 'cost-control-page__tab--active' : ''}`}
+              onClick={() => setTab('summary')}
+            >
+              {t('costControl.tabSummary')}
+            </button>
+          </nav>
         </div>
 
         {loading && !data && <p className="rd-text-muted">{t('costControl.loading')}</p>}
@@ -113,48 +120,51 @@ export default function CostControl() {
         {!loading && !error && data && (
           <>
             {tab === 'overview' && (
-              <div className="cost-control-page__cards">
+              <div className="cost-control-page__cards" role="region" aria-label={t('costControl.tabOverview')}>
                 {CATEGORIES.map((key) => {
                   const value = data[key] ?? 0;
                   const limit = data.limits?.[key];
                   const isExceeded = data.exceeded?.[key];
                   const pct = limit != null && limit > 0 ? Math.min(100, (value / limit) * 100) : null;
+                  const label = key.toUpperCase();
                   return (
-                    <div
+                    <article
                       key={key}
                       className={`cost-control-page__card ${isExceeded ? 'cost-control-page__card--exceeded' : ''}`}
+                      aria-label={`${label}: ${value.toLocaleString()}, ${limit != null ? t('costControl.limit') + ' ' + limit.toLocaleString() : t('costControl.noLimitSet')}`}
                     >
-                      <div className="cost-control-page__card-title">{t('costControl.' + key)}</div>
+                      <h2 className="cost-control-page__card-title">{label}</h2>
                       <div className="cost-control-page__card-value">{value.toLocaleString()}</div>
-                      {limit != null && (
-                        <div className="cost-control-page__card-limit">
-                          {t('costControl.limit')}: {limit.toLocaleString()}
-                        </div>
+                      {limit != null ? (
+                        <>
+                          <div className="cost-control-page__card-limit">
+                            {t('costControl.limit')}: {limit.toLocaleString()}
+                          </div>
+                          {pct != null && (
+                            <div className="cost-control-page__progress-wrap">
+                              <div
+                                className={`cost-control-page__progress-bar ${isExceeded ? 'cost-control-page__progress-bar--exceeded' : ''}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          )}
+                          {isExceeded && (
+                            <span className="cost-control-page__badge cost-control-page__badge--exceeded">
+                              {t('costControl.exceeded')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <p className="cost-control-page__card-muted">{t('costControl.noLimitSet')}</p>
                       )}
-                      {limit == null && (
-                        <div className="cost-control-page__card-muted">{t('costControl.noLimitSet')}</div>
-                      )}
-                      {pct != null && (
-                        <div className="cost-control-page__progress-wrap">
-                          <div
-                            className={`cost-control-page__progress-bar ${isExceeded ? 'cost-control-page__progress-bar--exceeded' : ''}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                      )}
-                      {isExceeded && (
-                        <span className="cost-control-page__badge cost-control-page__badge--exceeded">
-                          {t('costControl.exceeded')}
-                        </span>
-                      )}
-                    </div>
+                    </article>
                   );
                 })}
               </div>
             )}
 
             {tab === 'limits' && (
-              <div className="cost-control-page__limits-panel">
+              <div className="cost-control-page__limits-panel" role="region" aria-label={t('costControl.tabLimits')}>
                 <div className="rd-table-wrapper">
                   <table className="rd-table cost-control-page__table">
                     <thead>
@@ -199,7 +209,7 @@ export default function CostControl() {
             )}
 
             {tab === 'summary' && (
-              <div className="cost-control-page__summary-panel">
+              <div className="cost-control-page__summary-panel" role="region" aria-label={t('costControl.tabSummary')}>
                 <div className="cost-control-page__summary-card">
                   <div className="cost-control-page__summary-label">{t('costControl.totalCalls')}</div>
                   <div className="cost-control-page__summary-value">{totalCalls.toLocaleString()}</div>
@@ -212,7 +222,8 @@ export default function CostControl() {
                 <ul className="cost-control-page__summary-list">
                   {CATEGORIES.map((key) => (
                     <li key={key}>
-                      {t('costControl.' + key)}: <strong>{(data[key] ?? 0).toLocaleString()}</strong>
+                      <span className="cost-control-page__summary-list-label">{t('costControl.' + key)}</span>
+                      <strong>{(data[key] ?? 0).toLocaleString()}</strong>
                     </li>
                   ))}
                 </ul>

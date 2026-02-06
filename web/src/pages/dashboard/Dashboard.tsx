@@ -66,7 +66,7 @@ export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { socket, connected } = useSocket();
+  const { socket, connected, reconnecting } = useSocket();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const toast = useToastStore();
@@ -101,8 +101,10 @@ export default function Dashboard() {
   const [routeData, setRouteData] = useState<OrderRouteData | null>(null);
   const [driverEtas, setDriverEtas] = useState<Record<string, { drivers: DriverEta[] }>>({});
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [pickMode, setPickMode] = useState<'pickup' | 'dropoff' | null>(null);
+  const [pickMode, setPickMode] = useState<'pickup' | 'dropoff' | `waypoint-${number}` | null>(null);
   const [pickPoint, setPickPoint] = useState<{ lat: number; lng: number } | null>(null);
+  /** Optional scheduled pickup date/time (empty = use "now" on backend). Format: datetime-local value (YYYY-MM-DDTHH:mm). */
+  const [pickupAtForm, setPickupAtForm] = useState('');
   const [pickupType, setPickupType] = useState('');
   const [dropoffType, setDropoffType] = useState('');
   const [preferredCarTypeForm, setPreferredCarTypeForm] = useState<string>('');
@@ -243,6 +245,17 @@ export default function Dashboard() {
     };
   }, [selectedOrderId, routeData, orders, driverEtas, drivers]);
 
+  /** Returns datetime-local value for default pickup (now + 30 min). */
+  function getDefaultPickupAtForm(): string {
+    const d = new Date(Date.now() + 30 * 60 * 1000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${h}:${min}`;
+  }
+
   const PLACE_TYPES = [
     { value: '', labelKey: 'dashboard.placeTypeNone' },
     { value: 'home', labelKey: 'dashboard.placeHome' },
@@ -335,6 +348,13 @@ export default function Dashboard() {
     const date = fromState ?? fromUrl;
     if (date && canCreateOrder) {
       setShowForm(true);
+      const d = new Date(date + 'T09:00:00');
+      if (!Number.isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        setPickupAtForm(`${y}-${m}-${day}T09:00`);
+      }
       if (fromState) navigate(location.pathname, { replace: true, state: {} });
       if (fromUrl) { const p = new URLSearchParams(searchParams); p.delete('createOrderDate'); setSearchParams(p, { replace: true }); }
     }
@@ -887,20 +907,28 @@ export default function Dashboard() {
     return min > 0 ? `${min} min ${sec} s` : `${sec} s`;
   }
 
-  async function setAddressFromCoords(lat: number, lng: number, which: 'pickup' | 'dropoff') {
+  async function setAddressFromCoords(lat: number, lng: number, which: 'pickup' | 'dropoff' | { type: 'waypoint'; index: number }) {
     setReverseGeocodeLoading(true);
     try {
       const res = await api.get<{ address: string | null }>(`/geo/reverse?lat=${lat}&lng=${lng}`);
       const addr = res?.address ?? '';
       if (which === 'pickup') {
         setPickupAddress(addr);
-      } else {
+      } else if (which === 'dropoff') {
         setDropoffAddress(addr);
+      } else {
+        setWaypointAddresses((prev) => {
+          const n = [...prev];
+          while (n.length <= which.index) n.push('');
+          n[which.index] = addr;
+          return n;
+        });
       }
       setPickPoint({ lat, lng });
     } catch {
       if (which === 'pickup') setPickupAddress('');
-      else setDropoffAddress('');
+      else if (which === 'dropoff') setDropoffAddress('');
+      else setWaypointAddresses((prev) => { const n = [...prev]; n[which.index] = ''; return n; });
     } finally {
       setReverseGeocodeLoading(false);
       setPickMode(null);
@@ -910,6 +938,10 @@ export default function Dashboard() {
   function handleMapClick(lat: number, lng: number) {
     if (pickMode === 'pickup') setAddressFromCoords(lat, lng, 'pickup');
     else if (pickMode === 'dropoff') setAddressFromCoords(lat, lng, 'dropoff');
+    else if (pickMode?.startsWith('waypoint-')) {
+      const idx = parseInt(pickMode.replace('waypoint-', ''), 10);
+      if (!Number.isNaN(idx)) setAddressFromCoords(lat, lng, { type: 'waypoint', index: idx });
+    }
   }
 
   function handleUseMyLocation(which: 'pickup' | 'dropoff') {
@@ -938,6 +970,15 @@ export default function Dashboard() {
       setSubmitError('Roundtrip requires at least one stop (second location or waypoints)');
       return;
     }
+    let pickupAtIso: string | undefined;
+    if (pickupAtForm.trim()) {
+      const d = new Date(pickupAtForm.trim());
+      if (Number.isNaN(d.getTime())) {
+        setSubmitError(t('dashboard.invalidPickupDateTime'));
+        return;
+      }
+      pickupAtIso = d.toISOString();
+    }
     try {
       const waypointsPayload = stopsList.length > 0 ? stopsList.map((address) => ({ address })) : undefined;
       await api.post('/orders', {
@@ -952,11 +993,13 @@ export default function Dashboard() {
         phone: orderPhone.trim() || undefined,
         passengerName: orderPassengerName.trim() || undefined,
         preferredCarType: preferredCarTypeForm.trim() || undefined,
+        ...(pickupAtIso ? { pickupAt: pickupAtIso } : {}),
       });
       setPickupAddress('');
       setMiddleAddress('');
       setWaypointAddresses([]);
       setDropoffAddress('');
+      setPickupAtForm('');
       setOrderPhone('');
       setOrderPassengerName('');
       setPickupType('');
@@ -1062,10 +1105,15 @@ export default function Dashboard() {
           )}
           <span className={`rd-ws-pill ${connected ? 'connected' : ''}`}>
             <span className="rd-ws-dot" />
-            {connected ? t('status.connected') : 'Offline'}
+            {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : 'Offline'}
           </span>
         </div>
       </div>
+      {reconnecting && (
+        <div className="dashboard-reconnecting" role="status" aria-live="polite">
+          {t('dashboard.reconnecting')}
+        </div>
+      )}
       {isDriver && routeData && (routeData.driverToPickupSteps?.length || routeData.steps?.length) && (() => {
         const toPickup = orders.some((o) => o.id === selectedOrderId && o.status === 'ASSIGNED');
         const altRoutes = routeData.alternativeRoutes ?? [];
@@ -1145,7 +1193,10 @@ export default function Dashboard() {
               <button
                 type="button"
                 className="rd-btn rd-btn-primary"
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => {
+                  if (!showForm) setPickupAtForm(getDefaultPickupAtForm());
+                  setShowForm(!showForm);
+                }}
               >
                 + {t('dashboard.newOrder')}
               </button>
@@ -1215,20 +1266,27 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
-              <p className="rd-text-muted" style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>{t('dashboard.driverArriveTimeHint')}</p>
-              <label>{tripTypeForm === 'ROUNDTRIP' ? t('dashboard.firstLocation') : t('dashboard.pickupAddress')}</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                <input type="text" className="rd-input" style={{ flex: '1 1 200px' }} value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} placeholder={t('dashboard.addressPlaceholder')} required />
-                <button type="button" className="rd-btn" disabled={!!reverseGeocodeLoading} onClick={() => setPickMode((m) => m === 'pickup' ? null : 'pickup')}>
-                  {pickMode === 'pickup' ? t('dashboard.cancelPick') : t('dashboard.pickOnMap')}
-                </button>
-                <button type="button" className="rd-btn" disabled={!!reverseGeocodeLoading} onClick={() => handleUseMyLocation('pickup')}>
-                  {t('dashboard.useMyLocation')}
-                </button>
+              <p className="rd-text-muted dashboard-form-hint">{t('dashboard.driverArriveTimeHint')}</p>
+              <div className="dashboard-form-section">
+                <label>{t('dashboard.pickupTimeOptional')}</label>
+                <input type="datetime-local" className="rd-input" value={pickupAtForm} onChange={(e) => setPickupAtForm(e.target.value)} aria-describedby="pickup-time-desc" />
+                <p id="pickup-time-desc" className="rd-text-muted dashboard-form-hint">{t('dashboard.pickupTimePlaceholder')}</p>
+              </div>
+              <div className="dashboard-form-section">
+                <label>{tripTypeForm === 'ROUNDTRIP' ? t('dashboard.firstLocation') : t('dashboard.pickupAddress')}</label>
+                <div className="dashboard-address-row">
+                  <input type="text" className="rd-input dashboard-address-input" value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} placeholder={t('dashboard.addressPlaceholder')} required />
+                  <button type="button" className="rd-btn rd-btn--small" disabled={!!reverseGeocodeLoading} onClick={() => setPickMode((m) => m === 'pickup' ? null : 'pickup')}>
+                    {pickMode === 'pickup' ? t('dashboard.cancelPick') : t('dashboard.pickOnMap')}
+                  </button>
+                  <button type="button" className="rd-btn rd-btn--small" disabled={!!reverseGeocodeLoading} onClick={() => handleUseMyLocation('pickup')}>
+                    {t('dashboard.useMyLocation')}
+                  </button>
+                </div>
               </div>
               <div className="dashboard-form-row dashboard-form-row--two">
                 <div>
-                  <label>{t('dashboard.placeType')} (pickup)</label>
+                  <label>{t('dashboard.placeTypePickup')}</label>
                   <select className="rd-input" value={pickupType} onChange={(e) => setPickupType(e.target.value)}>
                     {PLACE_TYPES.map((opt) => (
                       <option key={opt.value || 'none'} value={opt.value}>{t(opt.labelKey)}</option>
@@ -1236,7 +1294,7 @@ export default function Dashboard() {
                   </select>
                 </div>
                 <div>
-                  <label>{t('dashboard.placeType')} (dropoff)</label>
+                  <label>{t('dashboard.placeTypeDropoff')}</label>
                   <select className="rd-input" value={dropoffType} onChange={(e) => setDropoffType(e.target.value)}>
                     {PLACE_TYPES.map((opt) => (
                       <option key={opt.value || 'none'} value={opt.value}>{t(opt.labelKey)}</option>
@@ -1244,53 +1302,64 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
-              <label>{t('dashboard.numberOfStops')}</label>
-              <select
-                className="rd-input"
-                value={waypointAddresses.length}
-                onChange={(e) => setWaypointAddresses(Array(Number((e.target as HTMLSelectElement).value)).fill(''))}
-              >
-                {[0, 1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              <div className="dashboard-form-section">
+                <label>{t('dashboard.numberOfStops')}</label>
+                <select
+                  className="rd-input"
+                  value={waypointAddresses.length}
+                  onChange={(e) => setWaypointAddresses(Array(Number((e.target as HTMLSelectElement).value)).fill(''))}
+                >
+                  {[0, 1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
               {waypointAddresses.length > 0 && (
-                <>
+                <div className="dashboard-form-section dashboard-form-section--stops">
                   <label>{t('dashboard.additionalStops')}</label>
                   {waypointAddresses.map((addr, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.25rem' }}>
-                      <input type="text" className="rd-input" style={{ flex: 1 }} value={addr} onChange={(e) => setWaypointAddresses((prev) => { const n = [...prev]; n[idx] = e.target.value; return n; })} placeholder={t('dashboard.stopAddressPlaceholder')} />
-                      <button type="button" className="rd-btn" onClick={() => setWaypointAddresses((prev) => prev.filter((_, i) => i !== idx))} aria-label={t('dashboard.removeStop')}>−</button>
+                    <div key={idx} className="dashboard-stop-row">
+                      <input type="text" className="rd-input dashboard-address-input" value={addr} onChange={(e) => setWaypointAddresses((prev) => { const n = [...prev]; n[idx] = e.target.value; return n; })} placeholder={t('dashboard.stopAddressPlaceholder')} />
+                      <button type="button" className="rd-btn rd-btn--small" disabled={!!reverseGeocodeLoading} onClick={() => setPickMode((m) => m === `waypoint-${idx}` ? null : `waypoint-${idx}`)} title={t('dashboard.pickOnMap')}>
+                        {pickMode === `waypoint-${idx}` ? t('dashboard.cancelPick') : t('dashboard.pickOnMap')}
+                      </button>
+                      <button type="button" className="rd-btn rd-btn--small" onClick={() => setWaypointAddresses((prev) => prev.filter((_, i) => i !== idx))} aria-label={t('dashboard.removeStop')}>−</button>
                     </div>
                   ))}
                   <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setWaypointAddresses((prev) => [...prev, ''])}>+ {t('dashboard.addStop')}</button>
-                </>
+                </div>
               )}
               {tripTypeForm === 'ROUNDTRIP' && (
-                <>
+                <div className="dashboard-form-section">
                   <label>{t('dashboard.secondLocation')}</label>
                   <input type="text" className="rd-input" value={middleAddress} onChange={(e) => setMiddleAddress(e.target.value)} placeholder={t('dashboard.secondLocation')} />
-                </>
+                </div>
               )}
-              <label>{tripTypeForm === 'ROUNDTRIP' ? t('dashboard.finalLocation') : t('dashboard.dropoffAddress')}</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                <input type="text" className="rd-input" style={{ flex: '1 1 200px' }} value={dropoffAddress} onChange={(e) => setDropoffAddress(e.target.value)} placeholder={t('dashboard.addressPlaceholder')} required />
-                <button type="button" className="rd-btn" disabled={!!reverseGeocodeLoading} onClick={() => setPickMode((m) => m === 'dropoff' ? null : 'dropoff')}>
-                  {pickMode === 'dropoff' ? t('dashboard.cancelPick') : t('dashboard.pickOnMap')}
-                </button>
-                <button type="button" className="rd-btn" disabled={!!reverseGeocodeLoading} onClick={() => handleUseMyLocation('dropoff')}>
-                  {t('dashboard.useMyLocation')}
-                </button>
+              <div className="dashboard-form-section">
+                <label>{tripTypeForm === 'ROUNDTRIP' ? t('dashboard.finalLocation') : t('dashboard.dropoffAddress')}</label>
+                <div className="dashboard-address-row">
+                  <input type="text" className="rd-input dashboard-address-input" value={dropoffAddress} onChange={(e) => setDropoffAddress(e.target.value)} placeholder={t('dashboard.addressPlaceholder')} required />
+                  <button type="button" className="rd-btn rd-btn--small" disabled={!!reverseGeocodeLoading} onClick={() => setPickMode((m) => m === 'dropoff' ? null : 'dropoff')}>
+                    {pickMode === 'dropoff' ? t('dashboard.cancelPick') : t('dashboard.pickOnMap')}
+                  </button>
+                  <button type="button" className="rd-btn rd-btn--small" disabled={!!reverseGeocodeLoading} onClick={() => handleUseMyLocation('dropoff')}>
+                    {t('dashboard.useMyLocation')}
+                  </button>
+                </div>
               </div>
-              {reverseGeocodeLoading && <p className="rd-text-muted">{t('dashboard.detectingAddress')}</p>}
-              {pickMode && <p className="rd-text-muted">{pickMode === 'pickup' ? t('dashboard.clickMapPickup') : t('dashboard.clickMapDropoff')}</p>}
+              {reverseGeocodeLoading && <p className="rd-text-muted dashboard-form-hint">{t('dashboard.detectingAddress')}</p>}
+              {pickMode && (
+                <p className="rd-text-muted dashboard-form-hint">
+                  {pickMode === 'pickup' ? t('dashboard.clickMapPickup') : pickMode === 'dropoff' ? t('dashboard.clickMapDropoff') : pickMode.startsWith('waypoint-') ? t('dashboard.clickMapStop', { n: parseInt(pickMode.replace('waypoint-', ''), 10) + 1 }) : ''}
+                </p>
+              )}
               {submitError && <p className="rd-text-critical">{submitError}</p>}
               <button type="submit" className="rd-btn rd-btn-primary">{t('dashboard.createOrder')}</button>
             </form>
                 </>
               )}
               {!showForm && canCreateOrder && (
-                <button type="button" className="dashboard-order-form-toggle dashboard-order-form-toggle--closed" onClick={() => setShowForm(true)} aria-expanded="false">
+                <button type="button" className="dashboard-order-form-toggle dashboard-order-form-toggle--closed" onClick={() => { setPickupAtForm(getDefaultPickupAtForm()); setShowForm(true); }} aria-expanded="false">
                   <span>{t('dashboard.newOrderForm')}</span>
                   <span className="dashboard-order-form-chevron" aria-hidden>▼</span>
                 </button>
@@ -1401,12 +1470,27 @@ export default function Dashboard() {
                     </div>
                   )}
                   {(o.passenger?.name || o.passenger?.phone) && (
-                    <div>{t('dashboard.passenger')}: {[o.passenger?.name, o.passenger?.phone].filter(Boolean).join(' · ')}</div>
+                    <div>
+                      {t('dashboard.passenger')}: {o.passenger?.name}{o.passenger?.name && o.passenger?.phone ? ' · ' : ''}
+                      {o.passenger?.phone ? <a href={`tel:${o.passenger.phone}`} className="dashboard-tel-link">{o.passenger.phone}</a> : ''}
+                    </div>
                   )}
                   {o.preferredCarType && (
                     <div>{t('dashboard.preferredCarType')}: {o.preferredCarType === 'SEDAN' ? t('auth.carType_SEDAN') : o.preferredCarType === 'MINIVAN' ? t('auth.carType_MINIVAN') : o.preferredCarType === 'SUV' ? t('auth.carType_SUV') : o.preferredCarType}</div>
                   )}
                   <div>{t('dashboard.orderCreated')}: {o.createdAt ? new Date(o.createdAt).toLocaleString() : '—'}</div>
+                  <div className="dashboard-order-pickup-time">
+                    {t('dashboard.timeScheduled')}: <strong>{o.pickupAt ? new Date(o.pickupAt).toLocaleString() : '—'}</strong>
+                  </div>
+                  {o.driverId && (() => {
+                    const driver = drivers.find((d) => d.id === o.driverId);
+                    return (
+                      <div className="dashboard-assigned-driver" style={{ marginTop: '0.25rem', marginBottom: '0.25rem' }}>
+                        {t('dashboard.assignedDriver')}: <strong>{driver ? driver.nickname : o.driverId}</strong>
+                        {driver?.phone && <span className="rd-text-muted"> (<a href={`tel:${driver.phone}`} className="dashboard-tel-link">{driver.phone}</a>)</span>}
+                      </div>
+                    );
+                  })()}
                   {o.driverId && (
                     <div className="dashboard-route-times">
                       <div className="dashboard-route-times__leg">
@@ -1579,6 +1663,9 @@ export default function Dashboard() {
                   )}
                   {canAssign && (o.status === 'SCHEDULED' && !o.driverId || o.status === 'ASSIGNED') && (
                     <div className="dashboard-order-assign" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                      <label htmlFor={`driver-${o.id}`} className="dashboard-order-assign-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                        {o.status === 'ASSIGNED' ? t('dashboard.swapDriver') : t('dashboard.assignDriver')}
+                      </label>
                       {o.status === 'SCHEDULED' && (driverEtas[o.id]?.drivers?.length ?? 0) > 0 && (() => {
                         const best = driverEtas[o.id]!.drivers[0];
                         return (
@@ -1595,8 +1682,9 @@ export default function Dashboard() {
                           const v = e.target.value;
                           if (v) handleAssign(o.id, v);
                         }}
+                        aria-label={o.status === 'ASSIGNED' ? t('dashboard.swapDriver') : t('dashboard.assignDriver')}
                       >
-                        <option value="">{o.status === 'ASSIGNED' ? t('dashboard.swapDriver') : t('dashboard.assignDriver')}</option>
+                        <option value="">{drivers.length === 0 ? t('dashboard.noDriversToAssign') : (o.status === 'ASSIGNED' ? t('dashboard.swapDriver') : t('dashboard.selectDriver'))}</option>
                         {(driverEtas[o.id]?.drivers ?? (o.preferredCarType?.trim() ? drivers.filter((d) => (d as { carType?: string | null }).carType === o.preferredCarType!.trim().toUpperCase()) : drivers)).map((d) => {
                           const eta = driverEtas[o.id]?.drivers?.find((x) => x.id === d.id);
                           const toPickup = Math.round(Number(eta?.etaMinutesToPickup) || 0);
@@ -1611,6 +1699,9 @@ export default function Dashboard() {
                           );
                         })}
                       </select>
+                      {drivers.length === 0 && o.status === 'SCHEDULED' && !o.driverId && (
+                        <span className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>{t('dashboard.noDriversToAssignHint')}</span>
+                      )}
                       {assigningId === o.id && <span className="rd-text-muted">…</span>}
                     </div>
                   )}
@@ -1627,17 +1718,9 @@ export default function Dashboard() {
                       </button>
                     </div>
                   )}
-                  {o.driverId && (() => {
-                      if (isDriver && o.driverId === user?.id) {
-                        return <div className="rd-text-muted">{t('dashboard.yourAssignment')}</div>;
-                      }
-                      const driver = drivers.find((d) => d.id === o.driverId);
-                      return (
-                        <div className="rd-text-muted">
-                          {t('dashboard.assigned')}{driver ? `: ${driver.nickname}${driver.phone ? ` (${driver.phone})` : ''}` : ''}
-                        </div>
-                      );
-                    })()}
+                  {isDriver && o.driverId === user?.id && (
+                    <div className="rd-text-muted">{t('dashboard.yourAssignment')}</div>
+                  )}
                   {canChangeStatus && o.status === 'ASSIGNED' && (
                     <button type="button" className="rd-btn rd-btn-primary" disabled={!!statusUpdatingId} onClick={() => handleStatusChange(o.id, 'IN_PROGRESS')}>
                       {statusUpdatingId === o.id ? '…' : (o.arrivedAtPickupAt ? t('dashboard.startRide') : t('dashboard.accept'))}

@@ -1,0 +1,18 @@
+/* Live Wall — search bar, type filter, status */
+.live-wall-search {
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.live-wall-type-filter {
+  min-width: 120px;
+}
+
+.live-wall-status {
+  margin-left: 0.25rem;
+}
+
+.live-wall-types {
+  font-weight: 500;
+  color: var(--rd-text-muted);
+}

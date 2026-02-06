@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore } from '../../store/auth';
 import OrdersMap from '../../components/OrdersMap';
 import type { DriverForMap } from '../../components/OrdersMap';
+import './LiveWall.css';
+
+const CAR_TYPES = ['SEDAN', 'MINIVAN', 'SUV'] as const;
 
 interface Order {
   id: string;
@@ -12,6 +15,20 @@ interface Order {
   pickupAt: string;
   pickupAddress: string;
   dropoffAddress: string;
+}
+
+/** Parse "lat,lng" or "lat lng" or two numbers. Returns null if not valid geo. */
+function parseGeoQuery(q: string): { lat: number; lng: number } | null {
+  const s = q.trim().replace(/\s+/g, ',').replace(/[,，]+/g, ',');
+  const parts = s.split(',');
+  if (parts.length >= 2) {
+    const lat = parseFloat(parts[0]);
+    const lng = parseFloat(parts[1]);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng };
+    }
+  }
+  return null;
 }
 
 export default function LiveWall() {
@@ -24,6 +41,9 @@ export default function LiveWall() {
   const [reports, setReports] = useState<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null }>>([]);
   const [centerTrigger, setCenterTrigger] = useState(0);
   const [reportsTrigger, setReportsTrigger] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCarType, setFilterCarType] = useState<string>('');
+  const [focusCenter, setFocusCenter] = useState<{ lat: number; lng: number } | null>(null);
 
   const canAssign = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
 
@@ -86,31 +106,108 @@ export default function LiveWall() {
     pickupAt: f.pickupAt,
   }));
 
+  const filteredDrivers = useMemo(() => {
+    let list = drivers;
+    if (filterCarType && CAR_TYPES.includes(filterCarType as (typeof CAR_TYPES)[number])) {
+      list = list.filter((d) => d.carType === filterCarType);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    const byId = list.filter((d) => (d.id || '').toLowerCase().includes(q) || (d.driverId || '').toLowerCase().includes(q));
+    if (byId.length > 0) return byId;
+    return list;
+  }, [drivers, filterCarType, searchQuery]);
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredDrivers.forEach((d) => {
+      const key = d.carType || 'OTHER';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return counts;
+  }, [filteredDrivers]);
+
+  const activeCount = orders.filter((o) => o.status === 'SCHEDULED' || o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS').length;
+
+  function handleSearch() {
+    const q = searchQuery.trim();
+    if (!q) {
+      setFocusCenter(null);
+      setCenterTrigger((c) => c + 1);
+      return;
+    }
+    const geo = parseGeoQuery(q);
+    if (geo) {
+      setFocusCenter(geo);
+      setCenterTrigger((c) => c + 1);
+      return;
+    }
+    const match = drivers.find(
+      (d) =>
+        (d.id || '').toLowerCase().includes(q.toLowerCase()) ||
+        (d.driverId || '').toLowerCase().includes(q.toLowerCase())
+    );
+    if (match && match.lat != null && match.lng != null) {
+      setFocusCenter({ lat: match.lat, lng: match.lng });
+      setCenterTrigger((c) => c + 1);
+    } else {
+      setFocusCenter(null);
+    }
+  }
+
   return (
     <div className="live-wall-page" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 'calc(100vh - 120px)' }}>
-      <div style={{ flexShrink: 0, padding: '0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ flexShrink: 0, padding: '0.5rem 0', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>{t('nav.liveWall')}</h1>
-        <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setCenterTrigger((c) => c + 1)}>
+        <input
+          type="text"
+          className="rd-input live-wall-search"
+          placeholder={t('liveWall.searchPlaceholder')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          aria-label={t('liveWall.searchPlaceholder')}
+        />
+        <button type="button" className="rd-btn rd-btn-primary" onClick={handleSearch}>
+          {t('liveWall.go')}
+        </button>
+        <select
+          className="rd-input live-wall-type-filter"
+          value={filterCarType}
+          onChange={(e) => setFilterCarType(e.target.value)}
+          aria-label={t('liveWall.filterByType')}
+        >
+          <option value="">{t('liveWall.allTypes')}</option>
+          {CAR_TYPES.map((type) => (
+            <option key={type} value={type}>{t('auth.carType_' + type)}</option>
+          ))}
+        </select>
+        <button type="button" className="rd-btn rd-btn-secondary" onClick={() => { setFocusCenter(null); setCenterTrigger((c) => c + 1); }}>
           {t('dashboard.recenter')}
         </button>
         <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setReportsTrigger((r) => r + 1)}>
           {t('common.refresh')}
         </button>
-        <span className="rd-text-muted" style={{ fontSize: '0.875rem' }}>
-          {drivers.length} {t('dashboard.drivers')} · {orders.filter((o) => o.status === 'SCHEDULED' || o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS').length} active
+        <span className="rd-text-muted live-wall-status" style={{ fontSize: '0.875rem' }}>
+          {filteredDrivers.length} {t('dashboard.drivers')}
+          {Object.keys(typeCounts).length > 0 && (
+            <span className="live-wall-types"> ({Object.entries(typeCounts).map(([type, n]) => type === 'OTHER' ? `${n} ${t('liveWall.other')}` : `${n} ${t('auth.carType_' + type)}`).join(', ')})</span>
+          )}
+          {' · '}{activeCount} {t('liveWall.active')}
         </span>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: 'relative', borderRadius: 'var(--rd-radius-lg)', overflow: 'hidden' }}>
         <OrdersMap
-          drivers={drivers}
+          drivers={filteredDrivers}
           showDriverMarkers={canAssign}
           routeData={null}
           currentUserLocation={undefined}
           centerTrigger={centerTrigger}
-          onRecenter={() => setCenterTrigger((c) => c + 1)}
+          onRecenter={() => { setFocusCenter(null); setCenterTrigger((c) => c + 1); }}
           recenterLabel={t('dashboard.recenter')}
           reports={reports}
           futureOrderPickups={futurePickups}
+          focusCenter={focusCenter}
         />
       </div>
     </div>

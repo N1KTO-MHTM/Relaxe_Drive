@@ -29,14 +29,27 @@ export default function WhiteLabel() {
     api
       .get<WhiteLabelConfig | null>('/white-label')
       .then((data) => {
-        if (data) {
+        if (data && typeof data === 'object') {
           setLogoUrl(data.logoUrl ?? '');
           setPrimaryColor(data.primaryColor ?? '');
           setDomain(data.domain ?? '');
           setLocales(data.locales ?? 'en,ru,ka');
+        } else {
+          setDomain('');
+          setLogoUrl('');
+          setPrimaryColor('');
+          setLocales('en,ru,ka');
         }
       })
-      .catch((e) => setError(e instanceof Error ? e.message : t('whiteLabel.loadError')))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : t('whiteLabel.loadError');
+        if (msg.includes('JSON') || msg.includes('end of JSON')) {
+          setDomain('');
+          setLogoUrl('');
+          setPrimaryColor('');
+          setLocales('en,ru,ka');
+        } else setError(msg);
+      })
       .finally(() => setLoading(false));
   }
 

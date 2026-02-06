@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import type { Role } from '../../store/auth';
+import './Roles.css';
 
 interface UserRow {
   id: string;
@@ -39,6 +40,7 @@ export default function Roles() {
   const [banModal, setBanModal] = useState<{ user: UserRow } | null>(null);
   const [banUntil, setBanUntil] = useState('');
   const [banReason, setBanReason] = useState('');
+  const [banForever, setBanForever] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -63,10 +65,11 @@ export default function Roles() {
     const search = (filterSearch || '').trim().toLowerCase();
     if (search) {
       const match =
-        u.nickname.toLowerCase().includes(search) ||
+        (u.nickname || '').toLowerCase().includes(search) ||
+        (u.email || '').toLowerCase().includes(search) ||
+        (u.phone || '').toLowerCase().includes(search) ||
         (u.id || '').toLowerCase().includes(search) ||
-        (u.driverId || '').toLowerCase().includes(search) ||
-        (u.phone || '').includes(filterSearch.trim());
+        (u.driverId || '').toLowerCase().includes(search);
       if (!match) return false;
     }
     if (filterRole && u.role !== filterRole) return false;
@@ -140,6 +143,7 @@ export default function Roles() {
     d.setDate(d.getDate() + 7);
     setBanUntil(d.toISOString().slice(0, 16));
     setBanReason('');
+    setBanForever(false);
   }
 
   async function handleBanSubmit() {
@@ -147,7 +151,8 @@ export default function Roles() {
     setBusyId(banModal.user.id);
     try {
       await api.patch(`/users/${banModal.user.id}/ban`, {
-        until: new Date(banUntil).toISOString(),
+        forever: banForever || undefined,
+        until: banForever ? undefined : new Date(banUntil).toISOString(),
         reason: banReason.trim() || undefined,
       });
       setBanModal(null);
@@ -196,14 +201,14 @@ export default function Roles() {
         <p className="rd-text-muted">{t('roles.usersList')}</p>
         {error && <p className="rd-text-critical">{error}</p>}
         {!loading && users.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+          <div className="roles-search-bar">
             <input
               type="text"
-              className="rd-input"
+              className="rd-input roles-search-input"
               placeholder={t('roles.filterSearch')}
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
-              style={{ minWidth: 160 }}
+              aria-label={t('roles.filterSearch')}
             />
             <select
               className="rd-input"
@@ -239,8 +244,10 @@ export default function Roles() {
               <thead>
                 <tr>
                   <th>{t('auth.nickname')}</th>
+                  <th>{t('roles.email')}</th>
                   <th>{t('roles.phone')}</th>
                   <th>{t('roles.role')}</th>
+                  <th>{t('roles.userId')}</th>
                   <th>{t('roles.driverId')}</th>
                   <th>{t('roles.carType')}</th>
                   <th>{t('roles.carPlateNumber')}</th>
@@ -252,7 +259,8 @@ export default function Roles() {
                 {filteredUsers.map((u) => (
                   <tr key={u.id}>
                     <td>{u.nickname}</td>
-                    <td>{u.phone ?? '—'}</td>
+                    <td className="roles-cell-email">{u.email ? <a href={`mailto:${u.email}`}>{u.email}</a> : '—'}</td>
+                    <td className="roles-cell-phone">{u.phone ?? '—'}</td>
                     <td>
                       <select
                         className="rd-input"
@@ -265,6 +273,7 @@ export default function Roles() {
                         ))}
                       </select>
                     </td>
+                    <td className="roles-cell-id" title={u.id}>{u.id.slice(0, 8)}…</td>
                     <td>{u.role === 'DRIVER' ? (u.driverId ?? '—') : '—'}</td>
                     <td>{u.role === 'DRIVER' ? (u.carType ? t('auth.carType_' + u.carType) : '—') : '—'}</td>
                     <td>{u.carPlateNumber ?? '—'}</td>
@@ -392,14 +401,22 @@ export default function Roles() {
           <div className="rd-panel" style={{ maxWidth: 400, width: '100%' }}>
             <h3>{t('roles.banUser')}: {banModal.user.nickname}</h3>
             <div style={{ marginTop: '1rem' }}>
-              <label>{t('roles.banUntil')}</label>
-              <input
-                type="datetime-local"
-                className="rd-input"
-                value={banUntil}
-                onChange={(e) => setBanUntil(e.target.value)}
-                style={{ width: '100%', marginBottom: '0.75rem' }}
-              />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={banForever} onChange={(e) => setBanForever(e.target.checked)} />
+                <span>{t('roles.banForever')}</span>
+              </label>
+              {!banForever && (
+                <>
+                  <label>{t('roles.banUntil')}</label>
+                  <input
+                    type="datetime-local"
+                    className="rd-input"
+                    value={banUntil}
+                    onChange={(e) => setBanUntil(e.target.value)}
+                    style={{ width: '100%', marginBottom: '0.75rem' }}
+                  />
+                </>
+              )}
               <label>{t('roles.banReason')}</label>
               <input
                 type="text"

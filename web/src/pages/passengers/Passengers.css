@@ -31,3 +31,15 @@
 .passengers-error {
   margin-bottom: var(--rd-space-sm);
 }
+
+.passengers-search-input {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.passengers-cell-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--rd-text-muted);
+  cursor: help;
+}

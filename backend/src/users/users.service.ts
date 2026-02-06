@@ -306,11 +306,20 @@ export class UsersService {
     });
   }
 
-  /** Trip history for driver (last 7 days; older rows are purged on each completion). */
-  async getTripHistory(driverId: string) {
+  /** Trip history for driver. Optional from/to (ISO) filter; otherwise last 7 days. */
+  async getTripHistory(driverId: string, from?: string, to?: string) {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const completedAt: { gte?: Date; lte?: Date } = { gte: since };
+    if (from) {
+      const fromDate = new Date(from);
+      if (!Number.isNaN(fromDate.getTime())) completedAt.gte = fromDate;
+    }
+    if (to) {
+      const toDate = new Date(to);
+      if (!Number.isNaN(toDate.getTime())) completedAt.lte = toDate;
+    }
     return this.prisma.driverTripSummary.findMany({
-      where: { driverId, completedAt: { gte: since } },
+      where: { driverId, completedAt },
       orderBy: { completedAt: 'desc' },
     });
   }

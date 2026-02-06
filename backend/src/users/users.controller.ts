@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, Body, UseGuards, Request, HttpException, HttpStatus, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Body, Query, UseGuards, Request, HttpException, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuditService } from '../audit/audit.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -88,8 +88,8 @@ export class UsersController {
   @Get('me/trip-history')
   @UseGuards(RolesGuard)
   @Roles('DRIVER')
-  getMyTripHistory(@Request() req: { user: { id: string } }) {
-    return this.usersService.getTripHistory(req.user.id);
+  getMyTripHistory(@Request() req: { user: { id: string } }, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.usersService.getTripHistory(req.user.id, from, to);
   }
 
   @Get('me/stats')
@@ -111,10 +111,14 @@ export class UsersController {
   @Get(':id/trip-history')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'DISPATCHER')
-  async getDriverTripHistoryById(@Param('id') id: string) {
+  async getDriverTripHistoryById(
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
     const user = await this.usersService.findById(id);
     if (!user || user.role !== 'DRIVER') throw new ForbiddenException('Not a driver');
-    return this.usersService.getTripHistory(id);
+    return this.usersService.getTripHistory(id, from, to);
   }
 
   @Patch('me/location')
@@ -176,10 +180,15 @@ export class UsersController {
   @Roles('ADMIN')
   async setBan(
     @Param('id') id: string,
-    @Body() body: { until?: string; reason?: string },
+    @Body() body: { until?: string; reason?: string; forever?: boolean },
     @Request() req: { user: { id: string } },
   ) {
-    const until = body.until ? new Date(body.until) : null;
+    let until: Date | null = null;
+    if (body.forever) {
+      until = new Date('2099-12-31T23:59:59.000Z');
+    } else if (body.until) {
+      until = new Date(body.until);
+    }
     const updated = await this.usersService.setBan(id, until, body.reason ?? null);
     await this.audit.log(req.user.id, 'user.ban', 'user', {
       targetUserId: id,

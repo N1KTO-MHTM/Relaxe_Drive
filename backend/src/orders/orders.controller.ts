@@ -105,7 +105,7 @@ export class OrdersController {
     if (!pickupCoords || !dropoffCoords) {
       return { pickupCoords: pickupCoords ?? null, dropoffCoords: dropoffCoords ?? null, polyline: '', durationMinutes: 0, distanceKm: 0 };
     }
-    const waypointsRaw = (order as { waypoints?: { address: string }[] }).waypoints;
+    const waypointsRaw = (order as unknown as { waypoints?: { address: string }[] }).waypoints;
     const stopAddresses = Array.isArray(waypointsRaw) ? waypointsRaw.map((w) => w?.address).filter(Boolean) as string[] : [];
     let pickupToDropoff: { polyline: string; durationMinutes: number; distanceKm: number; steps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }> };
     if (stopAddresses.length > 0) {
@@ -188,8 +188,13 @@ export class OrdersController {
       });
       if (passenger) passengerId = passenger.id;
     }
+    const pickupAtDate = (() => {
+      if (!body.pickupAt) return new Date();
+      const d = new Date(body.pickupAt);
+      return Number.isNaN(d.getTime()) ? new Date() : d;
+    })();
     const created = await this.ordersService.create({
-      pickupAt: body.pickupAt ? new Date(body.pickupAt) : new Date(),
+      pickupAt: pickupAtDate,
       pickupAddress: body.pickupAddress,
       dropoffAddress: body.dropoffAddress,
       tripType: body.tripType ?? 'ONE_WAY',

@@ -92,6 +92,8 @@ interface OrdersMapProps {
   futureOrderPickups?: { orderId: string; lat: number; lng: number; pickupAt: string }[];
   /** Problem zones for heatmap: late pickups and cancelled (from GET /planning/problem-zones) */
   problemZones?: { late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] };
+  /** When set, Re-center / centerTrigger will move map to this point (e.g. search by geo or driver location) */
+  focusCenter?: { lat: number; lng: number } | null;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -196,7 +198,7 @@ declare global {
   }
 }
 
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -337,7 +339,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
       const exitLabel = escapeHtml(t('common.close'));
       const popupContent = rows.join('<br/>') + `<br/><button type="button" class="orders-map-popup-close rd-btn rd-btn-primary" style="margin-top:0.5rem;cursor:pointer">${exitLabel}</button>`;
-      marker.bindPopup(popupContent, { closeOnClick: false, autoClose: false });
+      marker.bindPopup(popupContent, { closeOnClick: true, autoClose: true });
       clusterGroup.addLayer(marker);
     });
     clusterGroup.addTo(map);
@@ -551,6 +553,11 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   useEffect(() => {
     if (centerTrigger <= 0 || !mapRef.current) return;
     const map = mapRef.current;
+    if (focusCenter && Number.isFinite(focusCenter.lat) && Number.isFinite(focusCenter.lng)) {
+      map.invalidateSize();
+      map.setView([focusCenter.lat, focusCenter.lng], 14);
+      return;
+    }
     const allLatLngs: L.LatLng[] = [];
     if (currentUserLocation && Number.isFinite(currentUserLocation.lat) && Number.isFinite(currentUserLocation.lng)) {
       allLatLngs.push(L.latLng(currentUserLocation.lat, currentUserLocation.lng));
@@ -565,7 +572,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       map.fitBounds(L.latLngBounds(allLatLngs).pad(0.2), { maxZoom: 15 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-center on button click (centerTrigger), not when drivers/route update
-  }, [centerTrigger]);
+  }, [centerTrigger, focusCenter?.lat, focusCenter?.lng]);
 
   // Nav mode: only for this session (driver's own map). Driver pan/zoom/rotate is never sent to or applied on dispatcher map.
   useEffect(() => {

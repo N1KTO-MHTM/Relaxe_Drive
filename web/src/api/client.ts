@@ -14,7 +14,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' });
+  } catch (err) {
+    const isNetwork = err instanceof TypeError && (err.message === 'Failed to fetch' || (err as Error).message?.includes('fetch'));
+    if (isNetwork && (options.method === undefined || (options.method as string).toUpperCase() === 'GET')) {
+      await new Promise((r) => setTimeout(r, 1000));
+      res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' });
+    } else {
+      throw err;
+    }
+  }
   if (res.status === 401) {
     const isAuthRequest = path === '/auth/login' || path === '/auth/register' || path === '/auth/forgot-password';
     if (isAuthRequest) {
@@ -57,9 +68,38 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       if (text) message = text;
     }
+    const isRetryable = res.status >= 500 || res.status === 408;
+    if (isRetryable && (options.method === undefined || (options.method as string).toUpperCase() === 'GET')) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const retryRes = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' });
+      if (!retryRes.ok) {
+        const retryText = await retryRes.text().catch(() => '');
+        let retryMsg = retryRes.statusText;
+        try {
+          const body = retryText ? JSON.parse(retryText) : null;
+          if (body?.message) retryMsg = Array.isArray(body.message) ? body.message[0] : body.message;
+        } catch {
+          if (retryText) retryMsg = retryText;
+        }
+        throw new Error(retryMsg);
+      }
+      const retryText = await retryRes.text().catch(() => '');
+      if (!retryText || retryText.trim() === '') return null as T;
+      try {
+        return JSON.parse(retryText) as T;
+      } catch {
+        throw new Error('Invalid JSON in response');
+      }
+    }
     throw new Error(message);
   }
-  return res.json();
+  const text = await res.text().catch(() => '');
+  if (!text || text.trim() === '') return null as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error('Invalid JSON in response');
+  }
 }
 
 export const api = {

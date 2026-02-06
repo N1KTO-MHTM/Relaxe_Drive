@@ -1,6 +1,18 @@
 .drivers-page {
   max-width: 900px;
 }
+
+.drivers-search-input {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.drivers-cell-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--rd-text-muted);
+  cursor: help;
+}
 .drivers-subtitle {
   margin-top: 0.25rem;
   margin-bottom: 1rem;
@@ -108,6 +120,20 @@ tbody tr[role="button"] {
 .drivers-trip-history {
   margin-top: 0.25rem;
 }
+.drivers-trip-history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+.drivers-trip-history-filter-label {
+  font-size: 0.875rem;
+  color: var(--rd-text-muted);
+}
+.drivers-trip-history-filters .rd-input {
+  width: auto;
+}
 .drivers-trip-list {
   list-style: none;
   padding: 0;
@@ -123,10 +149,32 @@ tbody tr[role="button"] {
   background: var(--rd-bg-elevated);
   position: relative;
 }
+.drivers-trip-card--with-map {
+  padding: 0;
+  overflow: hidden;
+}
+.drivers-trip-card-map {
+  width: 100%;
+  display: block;
+}
+.drivers-trip-card-map.leaflet-container {
+  font-family: inherit;
+}
+.drivers-trip-card-body {
+  padding: 1rem;
+}
 .drivers-trip-route {
   font-weight: 600;
   font-size: 0.95rem;
   margin-bottom: 0.35rem;
+  line-height: 1.3;
+}
+.drivers-trip-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 .drivers-trip-meta {
   font-size: 0.875rem;
@@ -134,23 +182,54 @@ tbody tr[role="button"] {
 }
 .drivers-trip-time { font-weight: 500; }
 .drivers-trip-sep { opacity: 0.7; }
-.drivers-trip-extra {
+.drivers-trip-vehicle-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.drivers-trip-card-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  margin-top: 0.35rem;
+  margin-top: 0.5rem;
   font-size: 0.8rem;
 }
 .drivers-trip-avg-speed {
   color: var(--rd-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.drivers-trip-speed-icon {
+  opacity: 0.8;
+}
+.drivers-trip-risky-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(147, 51, 234, 0.2);
+  color: rgba(199, 210, 254, 0.95);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.drivers-trip-risky-lock {
+  font-size: 0.7rem;
+  opacity: 0.9;
 }
 .drivers-trip-route-link {
   color: var(--rd-accent);
   text-decoration: none;
+  margin-left: auto;
 }
 .drivers-trip-route-link:hover {
   text-decoration: underline;
+}
+.drivers-trip-earnings {
+  font-weight: 700;
+  color: var(--rd-accent);
+  font-size: 1rem;
 }
 .drivers-trip-risky {
   display: inline-flex;
@@ -163,16 +242,33 @@ tbody tr[role="button"] {
   font-size: 0.75rem;
   font-weight: 600;
 }
-.drivers-trip-earnings {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  font-weight: 700;
-  color: var(--rd-accent);
-  font-size: 1rem;
-}
 .drivers-trip-history-actions {
   margin-bottom: 0.75rem;
+}
+
+/* Trip card map markers */
+.trip-card-marker-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 1rem;
+}
+.trip-card-marker-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #9333ea;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.trip-card-marker-start .trip-card-marker-inner {
+  font-size: 1.1rem;
+}
+.trip-card-marker.leaflet-div-icon {
+  border: none;
+  background: transparent;
 }
 
 .drivers-earnings-total {

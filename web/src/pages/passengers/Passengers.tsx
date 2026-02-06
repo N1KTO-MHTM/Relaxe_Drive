@@ -53,7 +53,8 @@ export default function Passengers() {
     ? list.filter(
         (p) =>
           (p.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (p.name ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+          (p.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : list;
 
@@ -162,11 +163,11 @@ export default function Passengers() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             type="text"
-            className="rd-input"
+            className="rd-input passengers-search-input"
             placeholder={t('passengers.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 200 }}
+            aria-label={t('passengers.search')}
           />
           <button type="button" className="rd-btn" onClick={() => downloadCsv(filteredList, 'clients.csv', [
             { key: 'phone', label: t('passengers.phone') },
@@ -221,6 +222,7 @@ export default function Passengers() {
           <table className="rd-table" style={{ width: '100%' }}>
             <thead>
               <tr>
+                <th>{t('passengers.id')}</th>
                 <th>{t('passengers.phone')}</th>
                 <th>{t('passengers.name')}</th>
                 <th>{t('passengers.type')}</th>
@@ -234,7 +236,7 @@ export default function Passengers() {
                 <tr key={p.id}>
                   {editingClient?.id === p.id ? (
                     <>
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <form onSubmit={(e) => handleEdit(e, p.id)} className="passengers-form" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
                           <label style={{ width: '100%' }}>{t('passengers.editClient')}</label>
                           <input type="text" className="rd-input" placeholder={t('passengers.phone')} value={editingClient.phone ?? ''} onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })} />
@@ -257,6 +259,7 @@ export default function Passengers() {
                     </>
                   ) : (
                     <>
+                      <td className="passengers-cell-id" title={p.id}>{p.id.slice(0, 8)}…</td>
                       <td>{p.phone ?? '—'}</td>
                       <td>{p.name ?? '—'}</td>
                       <td>{p.userId ? <span className="rd-badge rd-badge-ok">{t('passengers.driver')}</span> : '—'}</td>

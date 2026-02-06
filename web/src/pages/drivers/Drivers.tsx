@@ -5,6 +5,7 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { downloadCsv } from '../../utils/exportCsv';
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
+import { TripCardMap } from '../../components/TripCardMap';
 import './Drivers.css';
 
 const CAR_TYPES = ['SEDAN', 'MINIVAN', 'SUV'] as const;
@@ -66,6 +67,10 @@ export default function Drivers() {
   const [driverStats, setDriverStats] = useState<DriverStats | null>(null);
   const [tripHistory, setTripHistory] = useState<TripSummary[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [tripHistoryFrom, setTripHistoryFrom] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10);
+  });
+  const [tripHistoryTo, setTripHistoryTo] = useState(() => new Date().toISOString().slice(0, 10));
   const showPhone = canSeeDriverPhones(user?.role);
   const canViewDriverDetail = showPhone;
 
@@ -81,7 +86,8 @@ export default function Drivers() {
           (d.nickname ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+          (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (d.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : listByCarType;
 
@@ -129,14 +135,20 @@ export default function Drivers() {
       return;
     }
     setDetailLoading(true);
+    const fromParam = tripHistoryFrom ? `${tripHistoryFrom}T00:00:00.000Z` : undefined;
+    const toParam = tripHistoryTo ? `${tripHistoryTo}T23:59:59.999Z` : undefined;
+    const query = new URLSearchParams();
+    if (fromParam) query.set('from', fromParam);
+    if (toParam) query.set('to', toParam);
+    const qs = query.toString() ? `?${query.toString()}` : '';
     Promise.all([
       api.get<DriverStats>(`/users/${selectedDriver.id}/stats`).catch(() => null),
-      api.get<TripSummary[]>(`/users/${selectedDriver.id}/trip-history`).catch(() => []),
+      api.get<TripSummary[]>(`/users/${selectedDriver.id}/trip-history${qs}`).catch(() => []),
     ]).then(([stats, trips]) => {
       setDriverStats(stats ?? null);
       setTripHistory(Array.isArray(trips) ? trips : []);
     }).finally(() => setDetailLoading(false));
-  }, [selectedDriver?.id, canViewDriverDetail]);
+  }, [selectedDriver?.id, canViewDriverDetail, tripHistoryFrom, tripHistoryTo]);
 
   function formatTripTime(start: string, end: string): string {
     const s = new Date(start);
@@ -149,12 +161,14 @@ export default function Drivers() {
     return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
   }
 
-  /** Average speed in mph from distance (km) and time (ms). */
+  /** Average speed in mph from distance (km) and time. Returns 0 if duration < 1 min or speed > 120 mph (bad data). */
   function tripAvgSpeedMph(distanceKm: number, startedAt: string, completedAt: string): number {
-    const hours = (new Date(completedAt).getTime() - new Date(startedAt).getTime()) / (1000 * 60 * 60);
-    if (hours <= 0) return 0;
+    const durationMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+    const hours = durationMs / (1000 * 60 * 60);
+    if (hours < 1 / 60) return 0; // require at least 1 minute
     const kmh = distanceKm / hours;
-    return Math.round(kmh / 1.60934);
+    const mph = Math.round(kmh / 1.60934);
+    return mph > 120 ? 0 : mph; // hide unrealistic speeds
   }
 
   function googleMapsRouteUrl(origin: string, destination: string): string {
@@ -173,11 +187,11 @@ export default function Drivers() {
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
-              className="rd-input"
-              placeholder={t('drivers.search')}
+              className="rd-input drivers-search-input"
+              placeholder={t('drivers.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: 180 }}
+              aria-label={t('drivers.search')}
             />
             <button type="button" className="rd-btn" onClick={() => downloadCsv(filteredList, 'drivers.csv', [
               { key: 'nickname', label: t('drivers.nickname') },
@@ -248,6 +262,7 @@ export default function Drivers() {
                 <th>{t('drivers.nickname')}</th>
                 {showPhone && <th>{t('drivers.phone')}</th>}
                 {showPhone && <th>{t('auth.email')}</th>}
+                {showPhone && <th>{t('drivers.userId')}</th>}
                 <th>{t('drivers.driverId')}</th>
                 <th>{t('auth.carType')}</th>
                 <th>{t('auth.carPlateNumber')}</th>
@@ -271,7 +286,8 @@ export default function Drivers() {
                     >
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
-                      {showPhone && <td>{d.email ?? '—'}</td>}
+                      {showPhone && <td>{d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}</td>}
+                      {showPhone && <td className="drivers-cell-id" title={d.id}>{d.id.slice(0, 8)}…</td>}
                       <td>{d.driverId ?? '—'}</td>
                       <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
                       <td>{d.carPlateNumber ?? '—'}</td>
@@ -328,6 +344,12 @@ export default function Drivers() {
                 )}
                 {detailTab === 'trips' && (
                   <div className="drivers-trip-history">
+                    <div className="drivers-trip-history-filters">
+                      <label className="drivers-trip-history-filter-label">{t('drivers.tripHistoryFrom')}</label>
+                      <input type="date" className="rd-input" value={tripHistoryFrom} onChange={(e) => setTripHistoryFrom(e.target.value)} />
+                      <label className="drivers-trip-history-filter-label">{t('drivers.tripHistoryTo')}</label>
+                      <input type="date" className="rd-input" value={tripHistoryTo} onChange={(e) => setTripHistoryTo(e.target.value)} />
+                    </div>
                     {tripHistory.length > 0 && (
                       <div className="drivers-trip-history-actions">
                         <button
@@ -368,22 +390,48 @@ export default function Drivers() {
                         {tripHistory.map((trip) => {
                           const avgMph = tripAvgSpeedMph(trip.distanceKm, trip.startedAt, trip.completedAt);
                           const riskyCount = 0; // placeholder until backend supports risky events
+                          const distanceMi = (trip.distanceKm / 1.60934).toFixed(1);
                           return (
-                            <li key={trip.id} className="drivers-trip-card">
-                              <div className="drivers-trip-route">{trip.pickupAddress} → {trip.dropoffAddress}</div>
-                              <div className="drivers-trip-meta">
-                                <span className="drivers-trip-time">{formatTripTime(trip.startedAt, trip.completedAt)}</span>
-                                <span className="drivers-trip-sep"> · </span>
-                                <span className="drivers-trip-distance">{(trip.distanceKm / 1.60934).toFixed(1)} mi</span>
-                                <span className="drivers-trip-sep"> · </span>
-                                <span>{formatTripDuration(trip.startedAt, trip.completedAt)}</span>
+                            <li key={trip.id} className="drivers-trip-card drivers-trip-card--with-map">
+                              <TripCardMap
+                                pickupAddress={trip.pickupAddress}
+                                dropoffAddress={trip.dropoffAddress}
+                                className="drivers-trip-card-map"
+                              />
+                              <div className="drivers-trip-card-body">
+                                <div className="drivers-trip-route">{trip.pickupAddress} → {trip.dropoffAddress}</div>
+                                <div className="drivers-trip-meta-row">
+                                  <span className="drivers-trip-meta">
+                                    <span className="drivers-trip-time">{formatTripTime(trip.startedAt, trip.completedAt)}</span>
+                                    <span className="drivers-trip-sep"> · </span>
+                                    <span className="drivers-trip-distance">{distanceMi} mi</span>
+                                  </span>
+                                  <span className="drivers-trip-vehicle-icon" aria-hidden>🚗</span>
+                                </div>
+                                <div className="drivers-trip-card-footer">
+                                  {avgMph > 0 && (
+                                    <span className="drivers-trip-avg-speed">
+                                      <span className="drivers-trip-speed-icon" aria-hidden>⏱</span>
+                                      {avgMph} mph
+                                    </span>
+                                  )}
+                                  <span className="drivers-trip-risky-pill">
+                                    {riskyCount === 0
+                                      ? t('drivers.riskyEvents', { count: 0 })
+                                      : t('drivers.riskyEvents', { count: riskyCount })}
+                                    <span className="drivers-trip-risky-lock" aria-hidden>🔒</span>
+                                  </span>
+                                  <a
+                                    href={googleMapsRouteUrl(trip.pickupAddress, trip.dropoffAddress)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="drivers-trip-route-link"
+                                  >
+                                    {t('drivers.viewRoute')}
+                                  </a>
+                                  <div className="drivers-trip-earnings">${(trip.earningsCents / 100).toFixed(2)}</div>
+                                </div>
                               </div>
-                              <div className="drivers-trip-extra">
-                                {avgMph > 0 && <span className="drivers-trip-avg-speed">{t('drivers.avgSpeed')}: {avgMph} mph</span>}
-                                <a href={googleMapsRouteUrl(trip.pickupAddress, trip.dropoffAddress)} target="_blank" rel="noopener noreferrer" className="drivers-trip-route-link">{t('drivers.viewRoute')}</a>
-                              </div>
-                              {riskyCount > 0 && <span className="drivers-trip-risky">{t('drivers.riskyEvents', { count: riskyCount })}</span>}
-                              <div className="drivers-trip-earnings">${(trip.earningsCents / 100).toFixed(2)}</div>
                             </li>
                           );
                         })}
