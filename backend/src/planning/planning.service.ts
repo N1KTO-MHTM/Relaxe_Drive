@@ -87,8 +87,8 @@ export class PlanningService implements OnModuleInit {
         u.role === 'DRIVER' &&
         u.available !== false &&
         !(u as { blocked?: boolean }).blocked &&
-        (!(u as { bannedUntil?: string | null }).bannedUntil ||
-          new Date((u as { bannedUntil?: string }).bannedUntil!) <= now) &&
+        (!(u as { bannedUntil?: Date | null }).bannedUntil ||
+          (u as { bannedUntil?: Date | null }).bannedUntil! <= now) &&
         (u as { lat?: number | null }).lat != null &&
         (u as { lng?: number | null }).lng != null &&
         Number.isFinite((u as { lat?: number }).lat) &&
