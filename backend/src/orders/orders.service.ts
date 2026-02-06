@@ -21,15 +21,15 @@ export function computeWaitCharge(arrivedAt: Date, leftAt: Date): { totalMinutes
   return { totalMinutes, chargeCents };
 }
 
+/** Waypoint item for multiple stops: { address: string } */
+export type OrderWaypoint = { address: string };
+
 @Injectable()
 export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private passengersService: PassengersService,
   ) {}
-
-  /** Waypoint item for multiple stops: { address: string } */
-export type OrderWaypoint = { address: string };
 
   async create(data: {
     pickupAt: Date;
