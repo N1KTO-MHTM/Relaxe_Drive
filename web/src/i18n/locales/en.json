@@ -5,6 +5,7 @@
     "login": "Sign in",
     "staffOnly": "Staff only — drivers, dispatchers, administrators.",
     "register": "Register",
+    "noAccount": "Don't have an account?",
     "nickname": "Nickname",
     "phone": "Phone",
     "email": "Email",

@@ -45,7 +45,7 @@ async function main() {
     data: { driverId: null },
   });
 
-  // Break links so we can delete users
+  // Break links so we can delete users. Audit logs are KEPT (only userId set to null).
   await prisma.auditLog.updateMany({
     where: { userId: { in: ids } },
     data: { userId: null },

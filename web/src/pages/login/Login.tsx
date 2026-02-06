@@ -93,10 +93,14 @@ export default function Login() {
       <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }}>
         {t('auth.login')}
       </button>
-      <p style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', fontSize: '0.875rem' }}>
+      <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
         <Link to="/forgot-password">{t('auth.forgotPassword')}</Link>
-        <span className="rd-text-muted">·</span>
-        <Link to="/register" style={{ fontWeight: 600 }}>{t('auth.register')}</Link>
+      </p>
+      <p style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--rd-border, #333)', fontSize: '0.9rem' }}>
+        <span className="rd-text-muted" style={{ marginRight: '0.5rem' }}>{t('auth.noAccount')}</span>
+        <Link to="/register" className="rd-btn rd-btn-secondary" style={{ display: 'inline-block', padding: '0.5rem 1rem', textDecoration: 'none' }}>
+          {t('auth.register')}
+        </Link>
       </p>
     </form>
   );
