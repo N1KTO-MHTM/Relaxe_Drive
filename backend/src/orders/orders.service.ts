@@ -28,6 +28,9 @@ export class OrdersService {
     private passengersService: PassengersService,
   ) {}
 
+  /** Waypoint item for multiple stops: { address: string } */
+export type OrderWaypoint = { address: string };
+
   async create(data: {
     pickupAt: Date;
     pickupAddress: string;
@@ -35,18 +38,32 @@ export class OrdersService {
     tripType?: 'ONE_WAY' | 'ROUNDTRIP';
     routeType?: string | null;
     middleAddress?: string | null;
+    waypoints?: OrderWaypoint[] | null;
     pickupType?: string | null;
     dropoffType?: string | null;
     passengerId?: string;
+    preferredCarType?: string | null;
     createdById: string;
     bufferMinutes?: number;
   }) {
+    const waypointsJson =
+      data.waypoints && data.waypoints.length > 0
+        ? (data.waypoints as unknown as object)
+        : null;
     return this.prisma.order.create({
       data: {
-        ...data,
+        pickupAt: data.pickupAt,
+        pickupAddress: data.pickupAddress,
+        dropoffAddress: data.dropoffAddress,
         tripType: data.tripType ?? 'ONE_WAY',
         routeType: data.routeType ?? null,
         middleAddress: data.tripType === 'ROUNDTRIP' ? data.middleAddress ?? null : null,
+        waypoints: waypointsJson,
+        pickupType: data.pickupType ?? null,
+        dropoffType: data.dropoffType ?? null,
+        passengerId: data.passengerId ?? null,
+        preferredCarType: data.preferredCarType ?? null,
+        createdById: data.createdById,
         status: 'SCHEDULED',
         bufferMinutes: data.bufferMinutes ?? 15,
       },
@@ -54,7 +71,10 @@ export class OrdersService {
   }
 
   async findById(id: string) {
-    return this.prisma.order.findUnique({ where: { id } });
+    return this.prisma.order.findUnique({
+      where: { id },
+      include: { passenger: true },
+    });
   }
 
   async findActiveAndScheduled(driverId?: string) {
@@ -64,6 +84,7 @@ export class OrdersService {
         ...(driverId ? { driverId } : {}),
       },
       orderBy: { pickupAt: 'asc' },
+      include: { passenger: true },
     });
   }
 
@@ -94,6 +115,18 @@ export class OrdersService {
     return this.prisma.order.update({
       where: { id: orderId },
       data: { driverId: null, status: 'SCHEDULED' },
+    });
+  }
+
+  /** Driver stops the trip while underway (IN_PROGRESS). Order becomes CANCELLED. */
+  async stopUnderway(orderId: string, driverId: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.driverId !== driverId) throw new BadRequestException('This order is not assigned to you');
+    if (order.status !== 'IN_PROGRESS') throw new BadRequestException('Only in-progress trips can be stopped');
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'CANCELLED' },
     });
   }
 
@@ -167,8 +200,11 @@ export class OrdersService {
           }
         }
       }
-      await this.prisma.order.delete({ where: { id: orderId } });
-      return { deleted: true };
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: 'COMPLETED', completedAt: now },
+      });
+      return this.prisma.order.findUnique({ where: { id: orderId } });
     }
     const now = new Date();
     const data: { status: string; startedAt?: Date; leftPickupAt?: Date; waitChargeAtPickupCents?: number; leftMiddleAt?: Date; waitChargeAtMiddleCents?: number } = {
@@ -244,6 +280,7 @@ export class OrdersService {
         ...(driverId ? { driverId } : {}),
       },
       orderBy: { pickupAt: 'asc' },
+      include: { passenger: true },
     });
   }
 }

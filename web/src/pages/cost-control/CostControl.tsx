@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
+import './CostControl.css';
 
 type CostControlResponse = {
   maps: number;
@@ -13,19 +14,29 @@ type CostControlResponse = {
 
 const CATEGORIES: ('maps' | 'translation' | 'ai' | 'tts')[] = ['maps', 'translation', 'ai', 'tts'];
 
+type CostControlTab = 'overview' | 'limits' | 'summary';
+
 export default function CostControl() {
   const { t } = useTranslation();
   const [data, setData] = useState<CostControlResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<CostControlTab>('overview');
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
   function fetchCosts(silent = false) {
     if (!silent) setError(null);
     return api
       .get<CostControlResponse>('/cost-control')
-      .then((res) => { setData(res); setError(null); })
+      .then((res) => {
+        setData(res);
+        setError(null);
+        setLastFetched(new Date());
+      })
       .catch((err) => setError(err?.message || t('costControl.loadError')))
-      .finally(() => { if (!silent) setLoading(false); });
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -45,56 +56,169 @@ export default function CostControl() {
   }, [t]);
 
   const hasExceeded = data?.exceeded && Object.values(data.exceeded).some(Boolean);
+  const totalCalls = data
+    ? (data.maps ?? 0) + (data.translation ?? 0) + (data.ai ?? 0) + (data.tts ?? 0)
+    : 0;
 
   return (
     <div className="rd-page">
-      <div className="rd-panel">
-        <div className="rd-panel-header">
+      <div className="rd-panel cost-control-page">
+        <div className="rd-panel-header cost-control-page__header">
           <h1>{t('costControl.title')}</h1>
+          <button
+            type="button"
+            className="rd-btn rd-btn-primary"
+            onClick={() => {
+              setLoading(true);
+              fetchCosts(false);
+            }}
+            disabled={loading}
+          >
+            {loading ? t('costControl.loading') : t('common.refresh')}
+          </button>
         </div>
-        <p className="rd-muted">
-          {t('costControl.maps')}, {t('costControl.translation')}, {t('costControl.ai')}, {t('costControl.tts')}.
-        </p>
-        {loading && <p>{t('costControl.loading')}</p>}
-        {error && <p className="rd-error">{error}</p>}
+
+        <div className="cost-control-page__tabs">
+          <button
+            type="button"
+            className={`cost-control-page__tab ${tab === 'overview' ? 'cost-control-page__tab--active' : ''}`}
+            onClick={() => setTab('overview')}
+          >
+            {t('costControl.tabOverview')}
+          </button>
+          <button
+            type="button"
+            className={`cost-control-page__tab ${tab === 'limits' ? 'cost-control-page__tab--active' : ''}`}
+            onClick={() => setTab('limits')}
+          >
+            {t('costControl.tabLimits')}
+          </button>
+          <button
+            type="button"
+            className={`cost-control-page__tab ${tab === 'summary' ? 'cost-control-page__tab--active' : ''}`}
+            onClick={() => setTab('summary')}
+          >
+            {t('costControl.tabSummary')}
+          </button>
+        </div>
+
+        {loading && !data && <p className="rd-text-muted">{t('costControl.loading')}</p>}
+        {error && <p className="rd-text-critical cost-control-page__error">{error}</p>}
         {hasExceeded && (
-          <div className="rd-alert rd-alert-error" role="alert" style={{ marginTop: '1rem', padding: '0.75rem 1rem', borderRadius: 6, background: 'var(--rd-error-bg, rgba(220,50,50,0.15))', color: 'var(--rd-error, #e66)' }}>
+          <div role="alert" className="cost-control-page__alert">
             {t('costControl.limitExceeded')}
           </div>
         )}
+
         {!loading && !error && data && (
-          <div className="cost-control-usage" style={{ marginTop: '1rem' }}>
-            <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem' }}>{t('costControl.usage')}</h3>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {CATEGORIES.map((key) => {
-                const limit = data.limits?.[key];
-                const isExceeded = data.exceeded?.[key];
-                return (
-                  <li
-                    key={key}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.5rem 0',
-                      borderBottom: '1px solid var(--rd-border, #333)',
-                      ...(isExceeded ? { background: 'var(--rd-error-bg, rgba(220,50,50,0.1))', margin: '0 -0.5rem', paddingLeft: '0.5rem', paddingRight: '0.5rem', borderRadius: 4 } : {}),
-                    }}
-                  >
-                    <span>{t('costControl.' + key)}</span>
-                    <span>
-                      <strong>{data[key] ?? 0}</strong>
+          <>
+            {tab === 'overview' && (
+              <div className="cost-control-page__cards">
+                {CATEGORIES.map((key) => {
+                  const value = data[key] ?? 0;
+                  const limit = data.limits?.[key];
+                  const isExceeded = data.exceeded?.[key];
+                  const pct = limit != null && limit > 0 ? Math.min(100, (value / limit) * 100) : null;
+                  return (
+                    <div
+                      key={key}
+                      className={`cost-control-page__card ${isExceeded ? 'cost-control-page__card--exceeded' : ''}`}
+                    >
+                      <div className="cost-control-page__card-title">{t('costControl.' + key)}</div>
+                      <div className="cost-control-page__card-value">{value.toLocaleString()}</div>
                       {limit != null && (
-                        <span className="rd-muted" style={{ marginLeft: '0.5rem', fontSize: '0.9rem' }}>
-                          / {limit} {t('costControl.limit')}
+                        <div className="cost-control-page__card-limit">
+                          {t('costControl.limit')}: {limit.toLocaleString()}
+                        </div>
+                      )}
+                      {limit == null && (
+                        <div className="cost-control-page__card-muted">{t('costControl.noLimitSet')}</div>
+                      )}
+                      {pct != null && (
+                        <div className="cost-control-page__progress-wrap">
+                          <div
+                            className={`cost-control-page__progress-bar ${isExceeded ? 'cost-control-page__progress-bar--exceeded' : ''}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      )}
+                      {isExceeded && (
+                        <span className="cost-control-page__badge cost-control-page__badge--exceeded">
+                          {t('costControl.exceeded')}
                         </span>
                       )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {tab === 'limits' && (
+              <div className="cost-control-page__limits-panel">
+                <div className="rd-table-wrapper">
+                  <table className="rd-table cost-control-page__table">
+                    <thead>
+                      <tr>
+                        <th>{t('costControl.category')}</th>
+                        <th>{t('costControl.usage').replace(' (API calls)', '')}</th>
+                        <th>{t('costControl.limit')}</th>
+                        <th>{t('costControl.status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {CATEGORIES.map((key) => {
+                        const value = data[key] ?? 0;
+                        const limit = data.limits?.[key];
+                        const isExceeded = data.exceeded?.[key];
+                        return (
+                          <tr key={key} className={isExceeded ? 'cost-control-page__row-exceeded' : ''}>
+                            <td>{t('costControl.' + key)}</td>
+                            <td>{value.toLocaleString()}</td>
+                            <td>{limit != null ? limit.toLocaleString() : '—'}</td>
+                            <td>
+                              {limit == null ? (
+                                <span className="rd-text-muted">{t('costControl.noLimitSet')}</span>
+                              ) : isExceeded ? (
+                                <span className="cost-control-page__badge cost-control-page__badge--exceeded">
+                                  {t('costControl.exceeded')}
+                                </span>
+                              ) : (
+                                <span className="cost-control-page__badge cost-control-page__badge--ok">
+                                  {t('costControl.statusOk')}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="rd-text-muted cost-control-page__hint">{t('costControl.limitsHint')}</p>
+              </div>
+            )}
+
+            {tab === 'summary' && (
+              <div className="cost-control-page__summary-panel">
+                <div className="cost-control-page__summary-card">
+                  <div className="cost-control-page__summary-label">{t('costControl.totalCalls')}</div>
+                  <div className="cost-control-page__summary-value">{totalCalls.toLocaleString()}</div>
+                </div>
+                {lastFetched && (
+                  <p className="rd-text-muted cost-control-page__last-updated">
+                    {t('costControl.lastUpdated')}: {lastFetched.toLocaleString()}
+                  </p>
+                )}
+                <ul className="cost-control-page__summary-list">
+                  {CATEGORIES.map((key) => (
+                    <li key={key}>
+                      {t('costControl.' + key)}: <strong>{(data[key] ?? 0).toLocaleString()}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

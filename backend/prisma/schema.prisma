@@ -57,10 +57,13 @@ model Order {
   pickupAt                DateTime  @map("pickup_at")
   pickupAddress           String    @map("pickup_address")   // first location (A)
   middleAddress           String?   @map("middle_address")   // second location (B) for roundtrip
+  waypoints               Json?    @map("waypoints")       // optional multiple stops: [{ "address": "..." }, ...]
   dropoffAddress          String    @map("dropoff_address")  // final location (C)
   pickupType              String?   @map("pickup_type")
   dropoffType             String?   @map("dropoff_type")
   passengerId             String?   @map("passenger_id")
+  passenger               Passenger? @relation(fields: [passengerId], references: [id])
+  preferredCarType        String?   @map("preferred_car_type")  // SEDAN | MINIVAN | SUV — when set, only show/assign this type
   driverId                String?   @map("driver_id")
   createdById             String   @map("created_by_id")
   createdBy               User     @relation("OrderCreator", fields: [createdById], references: [id])
@@ -74,6 +77,7 @@ model Order {
   arrivedAtMiddleAt      DateTime? @map("arrived_at_middle_at")  // roundtrip: at second stop
   leftMiddleAt           DateTime? @map("left_middle_at")
   waitChargeAtMiddleCents Int?      @map("wait_charge_at_middle_cents")
+  completedAt            DateTime? @map("completed_at")  // when driver clicked dropped off
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
 }
@@ -90,6 +94,7 @@ model Passenger {
   tenantId     String?  @map("tenant_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  orders       Order[]
 }
 
 model AuditLog {

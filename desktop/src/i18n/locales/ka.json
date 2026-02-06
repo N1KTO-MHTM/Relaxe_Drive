@@ -5,8 +5,8 @@
   "pendings": { "title": "მოლოდინის მძღოლები", "subtitle": "მძღოლები ელოდებიან დამტკიცებას. დამტკიცებამდე ვერ შედიან.", "noPending": "მოლოდინის მძღოლები არ არის.", "approve": "დამტკიცება", "reject": "უარყოფა", "rejectConfirm": "უარვაყოთ ეს მძღოლი? ანგარიში წაიშლება; ხელახლა რეგისტრაცია შეიძლება.", "registered": "რეგისტრაცია" },
   "translation": { "title": "თარგმანი", "voiceToText": "ხმა → ტექსტი", "autoLanguage": "ენის ავტო გამოცნობა", "history": "ისტორია" },
   "analytics": { "title": "ანალიტიკა", "from": "საწყისი", "to": "საბოლოო", "apply": "გამოყენება", "ordersCreated": "შექმნილი შეკვეთები", "ordersCompleted": "შესრულებული შეკვეთები", "scheduled": "დაგეგმილი", "assigned": "მინიჭებული", "inProgress": "პროცესში", "heatmap": "სითბური რუკა", "heatmapHint": "აქტივობა დღე და საათის მიხედვით.", "noData": "აქტივობა არ არის პერიოდში." },
-  "costControl": { "title": "ხარჯების კონტროლი", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS", "usage": "გამოყენება (API)", "loadError": "ვერ ჩაიტვირთა.", "limit": "ლიმიტი", "limitExceeded": "ერთი ან მეტი ლიმიტი გადაჭარბებულია." },
-  "order": { "pickupAt": "პიკაპის დრო", "pickupAddress": "პიკაპის მისამართი", "dropoffAddress": "დასაშვები მისამართი", "phone": "ტელეფონი", "passengerName": "მგზავრის სახელი", "create": "შექმნა", "cancel": "გაუქმება" },
+  "costControl": { "title": "ხარჯების კონტროლი", "tabOverview": "მიმოხილვა", "tabLimits": "ლიმიტები და შეტყობინებები", "tabSummary": "შეჯამება", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "tts": "TTS", "usage": "გამოყენება (API)", "loadError": "ვერ ჩაიტვირთა.", "limit": "ლიმიტი", "limitExceeded": "ერთი ან მეტი ლიმიტი გადაჭარბებულია.", "noLimitSet": "ლიმიტი არ არის", "lastUpdated": "განახლდა", "totalCalls": "სულ API გამოძახება", "limitsHint": "ლიმიტები env-ში (COST_LIMIT_*). გადაჭარბებისას იგზავნება ალერტი.", "category": "კატეგორია", "status": "სტატუსი", "exceeded": "გადაჭარბება", "statusOk": "OK" },
+  "order": { "pickupAt": "პიკაპის დრო", "pickupAddress": "პიკაპის მისამართი", "dropoffAddress": "დასაშვები მისამართი", "phone": "ტელეფონი", "passengerName": "მგზავრის სახელი", "preferredCarType": "მანქანის ტიპი", "preferredCarTypeNone": "ნებისმიერი", "create": "შექმნა", "cancel": "გაუქმება" },
   "whiteLabel": { "title": "White Label", "logo": "ლოგო", "colors": "ფერები", "domains": "დომენები", "languages": "ენები", "logoUrl": "ლოგოს URL", "primaryColor": "ძირითადი ფერი", "domain": "დომენი", "locales": "ლოკალები (მძიმით)", "save": "შენახვა", "saved": "შენახულია", "loadError": "ვერ ჩაიტვირთა" },
   "health": { "title": "სისტემის მდგომარეობა", "api": "API", "websocket": "WebSocket", "redis": "Redis", "database": "მონაცემთა ბაზა", "maps": "რუკები", "translation": "თარგმანი", "ai": "AI", "queues": "წყობები", "latency": "ჩავარდნა" },
   "logs": { "title": "ლოგები და აუდიტი", "filter": "ფილტრი", "export": "ექსპორტი", "exportAuto": "ავტო-ექსპორტი (ყოველ 5 წთ)", "tabAll": "ყველა", "tabAuth": "ავტორიზაცია", "tabOrders": "შეკვეთები", "tabUsers": "მომხმარებლები", "time": "დრო", "user": "მომხმარებელი", "device": "მოწყობილობა", "phone": "ტელეფონი", "action": "მოქმედება", "resource": "რესურსი", "payload": "მონაცემები", "noData": "ჩანაწერები არ არის", "accessDenied": "წვდომა მხოლოდ ადმინისტრატორებისთვის" },
@@ -44,10 +44,18 @@
     "role": "როლი",
     "status": "სტატუსი",
     "actions": "მოქმედებები",
+    "driverId": "მძღოლის ID",
+    "carType": "მანქანის ტიპი",
+    "carPlateNumber": "ნომერი",
+    "filterSearch": "ძებნა (სახელი ან ID)",
+    "filterRole": "როლი",
+    "filterCarType": "მანქანის ტიპი",
     "block": "დაბლოკვა",
     "unblock": "განბლოკვა",
     "ban": "ბანი",
     "unban": "ბანის მოხსნა",
+    "delete": "წაშლა",
+    "deleteConfirm": "მომხმარებელი სამუდამოდ წავშალოთ? ის წაიშლება და ხელახლა რეგისტრაცია შეიძლება.",
     "bannedUntil": "დაბანილია עד",
     "banReason": "მიზეზი",
     "banReasonPlaceholder": "ბანის მიზეზი (არასავალდებულო)",
@@ -102,5 +110,13 @@
     "exportCsv": "CSV ექსპორტი",
     "noMatch": "შედეგები არ არის",
     "page": "გვ."
+  },
+  "dashboard": {
+    "available": "პასუხისმგებელი",
+    "onTrip": "მგზავრობაში",
+    "offline": "ოფლაინი",
+    "currentTrip": "მიმდინარე ტური",
+    "etaToPickup": "ETA ასაღებამდე",
+    "etaTotal": "ETA სულ"
   }
 }

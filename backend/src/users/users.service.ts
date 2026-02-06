@@ -322,4 +322,27 @@ export class UsersService {
       updatedAt: row?.updatedAt ?? null,
     };
   }
+
+  /** Delete a user (admin only). Cannot delete self or the last admin. */
+  async deleteUser(targetUserId: string, requestingAdminId: string) {
+    if (targetUserId === requestingAdminId) {
+      throw new ConflictException('Cannot delete your own account');
+    }
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException('User not found');
+    const adminCount = await this.prisma.user.count({ where: { role: 'ADMIN' } });
+    if (target.role === 'ADMIN' && adminCount <= 1) {
+      throw new ConflictException('Cannot delete the last administrator');
+    }
+    await this.prisma.order.updateMany({ where: { createdById: targetUserId }, data: { createdById: requestingAdminId } });
+    await this.prisma.order.updateMany({ where: { driverId: targetUserId }, data: { driverId: null } });
+    await this.prisma.auditLog.deleteMany({ where: { userId: targetUserId } });
+    await this.prisma.passenger.updateMany({ where: { userId: targetUserId }, data: { userId: null } });
+    await this.prisma.translationRecord.updateMany({ where: { userId: targetUserId }, data: { userId: null } });
+    await this.prisma.driverReport.deleteMany({ where: { userId: targetUserId } });
+    await this.prisma.driverTripSummary.deleteMany({ where: { driverId: targetUserId } });
+    await this.prisma.driverStats.deleteMany({ where: { driverId: targetUserId } });
+    await this.prisma.user.delete({ where: { id: targetUserId } });
+    return { deleted: true };
+  }
 }

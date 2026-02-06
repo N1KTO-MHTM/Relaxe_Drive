@@ -36,3 +36,38 @@ jobs:
         run: npm run prisma:generate --prefix backend
       - name: Build (backend)
         run: npm run build --prefix backend
+
+  # Сборка веб + десктоп и загрузка артефактов (обновления везде)
+  build-web-and-desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Build web
+        run: npm ci --prefix web && npm run build --prefix web
+      - name: Upload web dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+
+  build-desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install (desktop)
+        run: npm ci --prefix desktop
+      - name: Build desktop (Windows)
+        run: npm run build --prefix desktop
+      - name: Upload RelaxDrive-Desktop.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: RelaxDrive-Desktop-Windows
+          path: desktop/dist-electron/RelaxDrive-Desktop.exe

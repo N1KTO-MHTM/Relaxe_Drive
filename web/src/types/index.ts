@@ -8,8 +8,13 @@ export interface Order {
   pickupAt: string;
   pickupAddress: string;
   middleAddress?: string | null;
+  /** Multiple stops between pickup and dropoff. When present, use this instead of middleAddress for display. */
+  waypoints?: { address: string }[] | null;
   dropoffAddress: string;
   driverId?: string | null;
+  passengerId?: string | null;
+  passenger?: { id: string; phone: string; name: string | null } | null;
+  preferredCarType?: string | null;
   createdAt?: string;
   startedAt?: string | null;
   arrivedAtPickupAt?: string | null;
@@ -18,6 +23,7 @@ export interface Order {
   arrivedAtMiddleAt?: string | null;
   leftMiddleAt?: string | null;
   waitChargeAtMiddleCents?: number | null;
+  completedAt?: string | null;
 }
 
 export interface Driver {

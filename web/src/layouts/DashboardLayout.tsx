@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/auth';
@@ -29,6 +29,11 @@ export default function DashboardLayout() {
   }, [socket, user?.id, setUser]);
 
   const nav = getAllowedNavItems(user?.role ?? null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   if (!canAccessPath(user?.role ?? null, location.pathname)) {
     return <Navigate to="/dashboard" replace />;
@@ -37,16 +42,27 @@ export default function DashboardLayout() {
   return (
     <div className="dashboard-layout">
       <header className="dashboard-layout__header">
-        <div className="dashboard-layout__brand">
-          <span className="brand-name">{t('app.name')}</span>
-          <span className="brand-tagline">{t('app.tagline')} <span className="app-version">v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0'}</span></span>
+        <div className="dashboard-layout__brand-row">
+          <button
+            type="button"
+            className="dashboard-layout__menu-btn"
+            onClick={() => setMobileNavOpen((o) => !o)}
+            aria-label={mobileNavOpen ? t('nav.closeMenu') : t('nav.openMenu')}
+          >
+            {mobileNavOpen ? '✕' : '☰'}
+          </button>
+          <div className="dashboard-layout__brand">
+            <span className="brand-name">{t('app.name')}</span>
+            <span className="brand-tagline">{t('app.tagline')} <span className="app-version">v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0'}</span></span>
+          </div>
         </div>
-        <nav className="dashboard-layout__nav">
+        <nav className={`dashboard-layout__nav ${mobileNavOpen ? 'dashboard-layout__nav--open' : ''}`}>
           {nav.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               className={location.pathname === item.path ? 'active' : ''}
+              onClick={() => setMobileNavOpen(false)}
             >
               {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
             </Link>

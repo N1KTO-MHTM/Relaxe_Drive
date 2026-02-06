@@ -16,6 +16,10 @@ interface Driver {
   lat?: number | null;
   lng?: number | null;
   role: string;
+  available?: boolean;
+  carType?: string | null;
+  carPlateNumber?: string | null;
+  driverId?: string | null;
 }
 
 interface DriverReport {
@@ -33,6 +37,14 @@ interface Order {
   pickupAt?: string;
   pickupAddress: string;
   dropoffAddress: string;
+  driverId?: string | null;
+}
+
+interface DriverEta {
+  id: string;
+  etaMinutesToPickup: number;
+  etaMinutesPickupToDropoff: number;
+  etaMinutesTotal: number;
 }
 
 interface RouteData {
@@ -88,6 +100,18 @@ const reportIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+/** SVG car icon for driver markers (green = available, red = on trip, gray = offline) */
+const CAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
+
+function driverCarIcon(bgColor: string): L.DivIcon {
+  return L.divIcon({
+    className: 'wall-map-driver-car',
+    html: `<span style="background:${bgColor};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);">${CAR_ICON_SVG}</span>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+}
+
 export default function WallMap() {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,6 +123,7 @@ export default function WallMap() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [reports, setReports] = useState<DriverReport[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [driverEtasByOrder, setDriverEtasByOrder] = useState<Record<string, { drivers: DriverEta[] }>>({});
   const [routeData, setRouteData] = useState<RouteData | null>(null);
 
   useEffect(() => {
@@ -151,6 +176,24 @@ export default function WallMap() {
     return () => clearInterval(t);
   }, [loadWallData]);
 
+  // Fetch driver ETAs for active orders so map popups can show ETA
+  useEffect(() => {
+    const active = orders.filter((o) => o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS');
+    const toFetch = active.map((o) => o.id).filter((id) => !driverEtasByOrder[id]);
+    if (toFetch.length === 0) return;
+    Promise.all(
+      toFetch.map((id) =>
+        api.get<{ drivers: DriverEta[] }>(`/orders/${id}/driver-etas`).then((data) => ({ id, drivers: data.drivers || [] }))
+      )
+    ).then((results) => {
+      setDriverEtasByOrder((prev) => {
+        const next = { ...prev };
+        results.forEach(({ id, drivers }) => { next[id] = { drivers }; });
+        return next;
+      });
+    }).catch(() => {});
+  }, [orders, driverEtasByOrder]);
+
   const fetchReports = useCallback((bounds: L.LatLngBounds | null) => {
     const map = mapRef.current;
     if (!map || !bounds) return;
@@ -188,13 +231,36 @@ export default function WallMap() {
     markersRef.current = [];
     const withCoords = drivers.filter((d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng));
     withCoords.forEach((driver) => {
-      const marker = L.marker([driver.lat!, driver.lng!], { icon: defaultIcon }).addTo(map);
+      const onTripOrder = orders.find((o) => o.driverId === driver.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
+      const onTrip = !!onTripOrder;
+      const available = driver.available !== false;
+      const bgColor = onTrip ? '#ef4444' : (available ? '#22c55e' : '#6b7280');
+      const etaData = onTripOrder && driverEtasByOrder[onTripOrder.id]?.drivers?.find((x) => x.id === driver.id);
+      const marker = L.marker([driver.lat!, driver.lng!], { icon: driverCarIcon(bgColor) }).addTo(map);
+      const esc = (s: string) => String(s).replace(/</g, '&lt;').replace(/"/g, '&quot;');
       const name = driver.nickname || 'Driver';
-      const phone = driver.phone ? `<br/>${String(driver.phone).replace(/</g, '&lt;')}` : '';
-      marker.bindPopup(`<strong>${String(name).replace(/</g, '&lt;')}</strong>${phone}`);
+      const rows: string[] = [`<strong>${esc(name)}</strong>`];
+      if (driver.phone) rows.push(`${t('clients.phone')}: ${esc(driver.phone)}`);
+      if (driver.driverId) rows.push(`${t('drivers.driverId')}: ${esc(driver.driverId)}`);
+      if (driver.carType) rows.push(`${t('auth.carType')}: ${esc(driver.carType)}`);
+      if (driver.carPlateNumber) rows.push(`${t('auth.carPlateNumber')}: ${esc(driver.carPlateNumber)}`);
+      const statusLabel = onTrip ? t('dashboard.onTrip') : (available ? t('dashboard.available') : t('dashboard.offline'));
+      rows.push(`${t('drivers.status')}: ${esc(statusLabel)}`);
+      if (onTripOrder && (onTripOrder.pickupAddress || onTripOrder.dropoffAddress)) {
+        const pickup = (onTripOrder.pickupAddress ?? '').trim() || '—';
+        const dropoff = (onTripOrder.dropoffAddress ?? '').trim() || '—';
+        rows.push(`${esc(t('dashboard.currentTrip'))}: ${esc(pickup)} → ${esc(dropoff)}`);
+      }
+      if (etaData && Number.isFinite(etaData.etaMinutesToPickup)) {
+        rows.push(`${esc(t('dashboard.etaToPickup'))}: ${etaData.etaMinutesToPickup} min`);
+      }
+      if (etaData && Number.isFinite(etaData.etaMinutesTotal)) {
+        rows.push(`${esc(t('dashboard.etaTotal'))}: ${etaData.etaMinutesTotal} min`);
+      }
+      marker.bindPopup(rows.join('<br/>'));
       markersRef.current.push(marker);
     });
-  }, [drivers]);
+  }, [drivers, orders, driverEtasByOrder, t]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -56,10 +56,13 @@ model Order {
   pickupAt                 DateTime  @map("pickup_at")
   pickupAddress            String    @map("pickup_address")
   middleAddress           String?   @map("middle_address")
+  waypoints               Json?    @map("waypoints")
   dropoffAddress           String    @map("dropoff_address")
   pickupType               String?   @map("pickup_type")
   dropoffType              String?   @map("dropoff_type")
   passengerId              String?   @map("passenger_id")
+  passenger                Passenger? @relation(fields: [passengerId], references: [id])
+  preferredCarType         String?   @map("preferred_car_type")
   driverId                 String?  @map("driver_id")
   createdById              String    @map("created_by_id")
   createdBy                User     @relation("OrderCreator", fields: [createdById], references: [id])
@@ -73,6 +76,7 @@ model Order {
   arrivedAtMiddleAt       DateTime? @map("arrived_at_middle_at")
   leftMiddleAt            DateTime? @map("left_middle_at")
   waitChargeAtMiddleCents Int?       @map("wait_charge_at_middle_cents")
+  completedAt             DateTime? @map("completed_at")
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 }
@@ -89,6 +93,7 @@ model Passenger {
   tenantId     String?  @map("tenant_id")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  orders      Order[]
 }
 
 model AuditLog {

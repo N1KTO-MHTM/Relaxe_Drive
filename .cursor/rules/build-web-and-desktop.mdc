@@ -1,0 +1,35 @@
+---
+description: Always build both web and desktop when applying or loading frontend updates
+alwaysApply: true
+---
+
+# Сборка и загрузка обновлений на веб и десктоп
+
+Когда нужно **загрузить или применить обновления** на веб и десктоп (по запросу пользователя или после изменений фронтенда):
+
+## 1. Локальная сборка (всегда оба)
+
+Из корня репозитория:
+
+```bash
+npm run build:web-and-desktop
+```
+
+или:
+
+```bash
+npm run deploy:frontends
+```
+
+- **Веб:** результат в `web/dist/`
+- **Десктоп:** результат в `desktop/dist-electron/` (например `RelaxDrive-Desktop.exe` на Windows)
+
+Не собирай только веб или только десктоп — всегда оба.
+
+## 2. Загрузка (деплой) обновлений
+
+- **Веб и API на Render:** после пуша в `main`/`master` Render по `render.yaml` сам пересобирает и деплоит `relaxdrive-web` и `relaxdrive-api`. То есть обновления веб загружаются на Render при `git push`.
+- **Десктоп:** при пуше в `main`/`master`/`develop` CI (GitHub Actions) собирает десктоп на Windows и загружает артефакт `RelaxDrive-Desktop-Windows` (exe). Скачать можно в run workflow → Artifacts.
+- Локально собранный exe в `desktop/dist-electron/` можно синхронизировать (OneDrive и т.п.) или выложить вручную.
+
+Итого: сборка — всегда веб и десктоп; загрузка веб — пуш на Render, загрузка десктоп — пуш даёт артефакт в CI или используется локальный exe.

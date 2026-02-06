@@ -33,8 +33,8 @@
   "pendings": { "title": "Conductores pendientes", "subtitle": "Conductores esperando aprobación. Hasta entonces no pueden iniciar sesión.", "noPending": "No hay conductores pendientes.", "approve": "Aprobar", "reject": "Rechazar", "rejectConfirm": "¿Rechazar a este conductor? Se eliminará la cuenta; podrá registrarse de nuevo.", "registered": "Registrado" },
   "translation": { "title": "Traducción", "voiceToText": "Voz → Texto", "autoLanguage": "Detección automática de idioma", "history": "Historial" },
   "analytics": { "title": "Analíticas", "from": "Desde", "to": "Hasta", "apply": "Aplicar", "ordersCreated": "Órdenes creadas", "ordersCompleted": "Órdenes completadas", "scheduled": "Programadas", "assigned": "Asignadas", "inProgress": "En curso", "heatmap": "Mapa de calor", "heatmapHint": "Actividad por día y hora.", "noData": "Sin actividad en el periodo." },
-  "costControl": { "title": "Control de costes", "maps": "Mapas", "translation": "Traducción", "ai": "IA", "tts": "TTS", "usage": "Uso (llamadas API)", "loadError": "No se pudo cargar el uso.", "limit": "límite", "limitExceeded": "Se ha superado uno o más límites." },
-  "order": { "pickupAt": "Hora de recogida", "pickupAddress": "Dirección de recogida", "dropoffAddress": "Dirección de destino", "phone": "Teléfono", "passengerName": "Nombre del pasajero", "create": "Crear", "cancel": "Cancelar" },
+  "costControl": { "title": "Control de costes", "tabOverview": "Resumen", "tabLimits": "Límites y alertas", "tabSummary": "Resumen total", "maps": "Mapas", "translation": "Traducción", "ai": "IA", "tts": "TTS", "usage": "Uso (llamadas API)", "loadError": "No se pudo cargar el uso.", "limit": "límite", "limitExceeded": "Se ha superado uno o más límites.", "noLimitSet": "Sin límite", "lastUpdated": "Actualizado", "totalCalls": "Total llamadas API", "limitsHint": "Límites en variables de entorno (COST_LIMIT_*). Al superarse se envía alerta al panel.", "category": "Categoría", "status": "Estado", "exceeded": "Superado", "statusOk": "OK" },
+  "order": { "pickupAt": "Hora de recogida", "pickupAddress": "Dirección de recogida", "dropoffAddress": "Dirección de destino", "phone": "Teléfono", "passengerName": "Nombre del pasajero", "preferredCarType": "Tipo de coche", "preferredCarTypeNone": "Cualquiera", "create": "Crear", "cancel": "Cancelar" },
   "whiteLabel": { "title": "White Label", "logo": "Logo", "colors": "Colores", "domains": "Dominios", "languages": "Idiomas", "logoUrl": "URL del logo", "primaryColor": "Color primario", "domain": "Dominio", "locales": "Idiomas (separados por comas)", "save": "Guardar", "saved": "Configuración guardada", "loadError": "No se pudo cargar la configuración" },
   "health": {
     "title": "Panel de estado del sistema",
@@ -82,6 +82,36 @@
     "dispatcherAccess": "Como despachador tienes acceso a: Panel, Calendario, Clientes, Traducción, Analíticas, Monitor de sesiones.",
     "dispatcherDetail": "Panel: crear órdenes (recogida, destino, hora, cliente); ver todas las órdenes en el mapa; asignar conductores; ver ubicación y ETA de conductores; alertas. Calendario: planificar por día/semana, conflictos. Clientes: añadir y buscar por teléfono/nombre, exportar CSV, crear orden desde cliente en un clic. Traducción y Analíticas. Monitor de sesiones: quién está en línea. Control del flujo de órdenes y conductores.",
     "adminAccess": "Como administrador tienes acceso completo: todo lo del despachador más Roles, Control de costos, White label, Auditoría, Estado del sistema."
+  },
+  "admin": {
+    "title": "Roles y usuarios",
+    "subtitle": "Cambiar rol, bloquear o banear temporalmente.",
+    "nickname": "Usuario",
+    "phone": "Teléfono",
+    "role": "Rol",
+    "status": "Estado",
+    "actions": "Acciones",
+    "driverId": "ID conductor",
+    "carType": "Tipo de coche",
+    "carPlateNumber": "Matrícula",
+    "filterSearch": "Buscar (nombre o ID)",
+    "filterRole": "Rol",
+    "filterCarType": "Tipo de coche",
+    "block": "Bloquear",
+    "unblock": "Desbloquear",
+    "ban": "Banear",
+    "unban": "Desbanear",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Eliminar este usuario? Se borrará y podrá registrarse de nuevo.",
+    "bannedUntil": "Baneado hasta",
+    "banReason": "Motivo",
+    "banReasonPlaceholder": "Motivo del ban (opcional)",
+    "banUser": "Banear usuario",
+    "banUntil": "Banear hasta (fecha y hora)",
+    "noUsers": "Sin usuarios",
+    "accessDenied": "Solo administradores",
+    "active": "Activo",
+    "cancel": "Cancelar"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -147,5 +177,13 @@
     "exportCsv": "Exportar CSV",
     "noMatch": "Sin coincidencias",
     "page": "Pág."
+  },
+  "dashboard": {
+    "available": "Disponible",
+    "onTrip": "En viaje",
+    "offline": "Desconectado",
+    "currentTrip": "Viaje actual",
+    "etaToPickup": "ETA a recogida",
+    "etaTotal": "ETA total"
   }
 }

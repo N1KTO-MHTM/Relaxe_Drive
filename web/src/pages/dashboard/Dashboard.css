@@ -195,6 +195,110 @@
   padding: var(--rd-space-md);
   margin-top: var(--rd-space-sm);
 }
+
+.dashboard-completed-trip-info {
+  background: rgba(88, 166, 255, 0.06);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  border-radius: var(--rd-radius);
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  margin-top: var(--rd-space-sm);
+}
+
+/* Wait timer card — small UI with started time, live/ended state, note */
+.dashboard-wait-timer-card {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--rd-bg-panel);
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  font-size: 0.8125rem;
+}
+
+.dashboard-wait-timer-card--second {
+  margin-top: 0.5rem;
+  border-left: 3px solid var(--rd-warning);
+}
+
+.dashboard-wait-timer-card__title {
+  font-weight: 600;
+  color: var(--rd-text-muted);
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dashboard-wait-timer-card__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.dashboard-wait-timer-card__row--live {
+  color: var(--rd-text);
+}
+
+.dashboard-wait-timer-card__row--result {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--rd-border);
+}
+
+.dashboard-wait-timer-card__note {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--rd-text-muted);
+}
+
+.dashboard-wait-timer-card__btn {
+  margin-top: 0.5rem;
+}
+
+/* Route times — when driver assigned: pickup | stop (if roundtrip) | dropoff with times */
+.dashboard-route-times {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--rd-bg-panel);
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  font-size: 0.8125rem;
+}
+
+.dashboard-route-times__leg {
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-route-times__leg:last-child {
+  margin-bottom: 0;
+}
+
+.dashboard-route-times__leg--stop {
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--rd-warning);
+  margin-left: 0.25rem;
+}
+
+.dashboard-route-times__label {
+  font-weight: 600;
+  color: var(--rd-text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.15rem;
+}
+
+.dashboard-route-times__address {
+  color: var(--rd-text);
+  margin-bottom: 0.2rem;
+}
+
+.dashboard-route-times__row {
+  color: var(--rd-text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.1rem;
+}
 .dashboard-stats-card .stat-row, .dashboard-alerts-card .alert-item {
   display: flex;
   justify-content: space-between;
@@ -209,6 +313,21 @@
 .dashboard-order-item { display: flex; flex-direction: column; gap: 0.375rem; }
 .dashboard-order-assign { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
 .dashboard-order-assign .rd-input { width: auto; min-width: 140px; }
+@media (max-width: 768px) {
+  .dashboard-order-assign {
+    flex-wrap: wrap;
+  }
+  .dashboard-order-assign .rd-input,
+  .dashboard-order-assign select.rd-input {
+    min-width: 100%;
+    width: 100%;
+  }
+  .dashboard-orders-list .rd-btn {
+    min-height: 44px;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
 .dashboard-order-duration { font-size: 0.875rem; color: var(--rd-status-ok, #4ade80); margin-top: 0.25rem; }
 .rd-text-critical { color: var(--rd-status-critical); font-size: 0.875rem; }
 .rd-panel-header {
@@ -249,4 +368,31 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+/* Driver status: big green "Start online" / red "Go offline" button */
+.dashboard-status-btn {
+  border: none;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+.dashboard-status-btn:hover {
+  filter: brightness(1.1);
+}
+.dashboard-status-btn:active {
+  transform: scale(0.98);
+}
+.dashboard-status-btn--online {
+  background: var(--rd-ok, #22c55e);
+  color: #fff;
+}
+.dashboard-status-btn--online:hover {
+  filter: brightness(1.15);
+}
+.dashboard-status-btn--offline {
+  background: var(--rd-critical, #ef4444);
+  color: #fff;
+}
+.dashboard-status-btn--offline:hover {
+  filter: brightness(1.1);
 }

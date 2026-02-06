@@ -38,6 +38,8 @@
     "dropoffAddress": "Dropoff address",
     "phone": "Phone",
     "passengerName": "Passenger name",
+    "preferredCarType": "Car type",
+    "preferredCarTypeNone": "Any",
     "create": "Create",
     "cancel": "Cancel"
   },
@@ -72,6 +74,9 @@
   },
   "costControl": {
     "title": "Cost Control",
+    "tabOverview": "Overview",
+    "tabLimits": "Limits & Alerts",
+    "tabSummary": "Summary",
     "maps": "Maps",
     "translation": "Translation",
     "ai": "AI",
@@ -79,7 +84,15 @@
     "usage": "Usage (API calls)",
     "loadError": "Could not load usage data.",
     "limit": "limit",
-    "limitExceeded": "One or more usage limits have been exceeded."
+    "limitExceeded": "One or more usage limits have been exceeded.",
+    "noLimitSet": "No limit set",
+    "lastUpdated": "Last updated",
+    "totalCalls": "Total API calls",
+    "limitsHint": "Limits are configured via environment variables (COST_LIMIT_MAPS, COST_LIMIT_TRANSLATION, COST_LIMIT_AI, COST_LIMIT_TTS). When exceeded, an alert is sent to the dashboard.",
+    "category": "Category",
+    "status": "Status",
+    "exceeded": "Exceeded",
+    "statusOk": "OK"
   },
   "whiteLabel": {
     "title": "White Label",
@@ -150,10 +163,18 @@
     "role": "Role",
     "status": "Status",
     "actions": "Actions",
+    "driverId": "Driver ID",
+    "carType": "Car type",
+    "carPlateNumber": "Car plate",
+    "filterSearch": "Search (name or ID)",
+    "filterRole": "Role",
+    "filterCarType": "Car type",
     "block": "Block",
     "unblock": "Unblock",
     "ban": "Ban",
     "unban": "Unban",
+    "delete": "Delete",
+    "deleteConfirm": "Permanently delete this user? They will be removed and can register again.",
     "bannedUntil": "Banned until",
     "banReason": "Reason",
     "banReasonPlaceholder": "Reason for ban (optional)",
@@ -208,5 +229,13 @@
     "search": "Search",
     "exportCsv": "Export CSV",
     "page": "Page"
+  },
+  "dashboard": {
+    "available": "Available",
+    "onTrip": "On trip",
+    "offline": "Offline",
+    "currentTrip": "Current trip",
+    "etaToPickup": "ETA to pickup",
+    "etaTotal": "ETA total"
   }
 }

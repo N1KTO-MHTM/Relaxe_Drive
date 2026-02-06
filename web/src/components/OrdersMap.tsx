@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 import L from './leafletWithCluster';
 
@@ -13,8 +14,19 @@ export interface DriverForMap {
   phone?: string | null;
   lat?: number | null;
   lng?: number | null;
-  /** For map: green=available, orange=busy, gray=offline (offline drivers with coords still shown as gray) */
+  /** For map: green=available, red=on trip (busy), gray=offline */
   status?: DriverMapStatus;
+  carType?: string | null;
+  carPlateNumber?: string | null;
+  driverId?: string | null;
+  /** Optional label for popup e.g. "Available" / "On trip" / "Offline" */
+  statusLabel?: string;
+  /** When on trip: ETA and current order info for popup */
+  etaMinutesToPickup?: number;
+  etaMinutesTotal?: number;
+  etaMinutesPickupToDropoff?: number;
+  assignedOrderPickup?: string | null;
+  assignedOrderDropoff?: string | null;
 }
 
 export interface RouteStep {
@@ -101,17 +113,21 @@ L.Marker.prototype.options.icon = defaultIcon;
 
 const DRIVER_COLORS: Record<DriverMapStatus, string> = {
   available: '#22c55e',
-  busy: '#f97316',
+  busy: '#ef4444',
   offline: '#6b7280',
 };
 
+/** SVG car icon (top-down) for consistent look across devices */
+const CAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
+
+/** Driver marker: green = available, red = on trip, gray = offline. Map view is never synced between driver and dispatcher. */
 function driverIcon(status: DriverMapStatus): L.DivIcon {
   const color = DRIVER_COLORS[status];
   return L.divIcon({
-    className: 'orders-map-driver-marker',
-    html: `<span style="background:${color};border:2px solid #fff;border-radius:50%;width:16px;height:16px;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></span>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    className: 'orders-map-driver-marker orders-map-driver-car',
+    html: `<span style="background:${color};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);" title="Driver">${CAR_ICON_SVG}</span>`,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
   });
 }
 
@@ -135,6 +151,7 @@ function reportIcon(type: string): L.DivIcon {
 }
 
 export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center' }: OrdersMapProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const driverClusterRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -224,15 +241,32 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       const status: DriverMapStatus = driver.status ?? (driver.lat != null && driver.lng != null ? 'available' : 'offline');
       const marker = L.marker([driver.lat!, driver.lng!], { icon: driverIcon(status) });
       const name = driver.nickname || 'Driver';
-      const phone = driver.phone ? `<br/><span>${escapeHtml(driver.phone)}</span>` : '';
-      marker.bindPopup(`<strong>${escapeHtml(name)}</strong>${phone}`);
+      const rows: string[] = [`<strong>${escapeHtml(name)}</strong>`];
+      if (driver.phone) rows.push(`Phone: ${escapeHtml(driver.phone)}`);
+      if (driver.driverId) rows.push(`Driver ID: ${escapeHtml(driver.driverId)}`);
+      if (driver.carType) rows.push(`Car type: ${escapeHtml(driver.carType)}`);
+      if (driver.carPlateNumber) rows.push(`Plate: ${escapeHtml(driver.carPlateNumber)}`);
+      const statusLabel = driver.statusLabel ?? (status === 'busy' ? 'On trip' : status === 'available' ? 'Available' : 'Offline');
+      rows.push(`Status: ${escapeHtml(statusLabel)}`);
+      if (driver.assignedOrderPickup != null || driver.assignedOrderDropoff != null) {
+        const pickup = (driver.assignedOrderPickup ?? '').trim() || '—';
+        const dropoff = (driver.assignedOrderDropoff ?? '').trim() || '—';
+        rows.push(`${escapeHtml(t('dashboard.currentTrip'))}: ${escapeHtml(pickup)} → ${escapeHtml(dropoff)}`);
+      }
+      if (driver.etaMinutesToPickup != null && Number.isFinite(driver.etaMinutesToPickup)) {
+        rows.push(`${escapeHtml(t('dashboard.etaToPickup'))}: ${driver.etaMinutesToPickup} min`);
+      }
+      if (driver.etaMinutesTotal != null && Number.isFinite(driver.etaMinutesTotal)) {
+        rows.push(`${escapeHtml(t('dashboard.etaTotal'))}: ${driver.etaMinutesTotal} min`);
+      }
+      marker.bindPopup(rows.join('<br/>'));
       clusterGroup.addLayer(marker);
     });
     clusterGroup.addTo(map);
     driverClusterRef.current = clusterGroup;
     if (withCoords.length > 0) {
       map.invalidateSize();
-      map.fitBounds(clusterGroup.getBounds().pad(0.15), { maxZoom: 15 });
+      // Do not auto-fit: user can click Re-center to fit. Stops map jumping when driver locations update.
     }
     return () => {
       if (driverClusterRef.current) {
@@ -240,7 +274,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         driverClusterRef.current = null;
       }
     };
-  }, [drivers, showDriverMarkers]);
+  }, [drivers, showDriverMarkers, t]);
 
   // "You" marker for driver view
   useEffect(() => {
@@ -335,10 +369,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         }
       }
     });
-    if (allLatLngs.length > 0 && !navMode) {
+    if (allLatLngs.length > 0) {
       map.invalidateSize();
-      const bounds = L.latLngBounds(allLatLngs);
-      map.fitBounds(bounds.pad(0.2), { maxZoom: 15 });
+      // Do not auto-fit when route/order changes: user can click Re-center to fit. Stops map jumping for dispatcher.
     }
     return () => {
       routeLayersRef.current.forEach((layer) => map.removeLayer(layer));
@@ -362,7 +395,8 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     };
   }, [reports]);
 
-  // centerTrigger: re-fit map to route/drivers when "Center on map" is clicked
+  // Re-fit map only when user clicks Re-center (centerTrigger). Do NOT re-run when drivers/route
+  // update — that would make the dispatcher map follow driver movements; dispatcher map is independent.
   useEffect(() => {
     if (centerTrigger <= 0 || !mapRef.current) return;
     const map = mapRef.current;
@@ -379,9 +413,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       map.invalidateSize();
       map.fitBounds(L.latLngBounds(allLatLngs).pad(0.2), { maxZoom: 15 });
     }
-  }, [centerTrigger, routeData, currentUserLocation, showDriverMarkers, drivers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-center on button click (centerTrigger), not when drivers/route update
+  }, [centerTrigger]);
 
-  // Nav mode: keep car in lower third, center on point ahead on route, update every 2s
+  // Nav mode: only for this session (driver's own map). Driver pan/zoom/rotate is never sent to or applied on dispatcher map.
   useEffect(() => {
     if (!navMode || !mapRef.current || !currentUserLocation || !routeData) return;
     const map = mapRef.current;
@@ -418,7 +453,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   return (
     <div className="orders-map-container" style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480 }} />
-      {navMode && onRecenter && (
+      {onRecenter && (navMode || showDriverMarkers || routeData) && (
         <button
           type="button"
           className="rd-btn orders-map-recenter"

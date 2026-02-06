@@ -47,7 +47,11 @@ export class OrdersController {
       this.geo.geocode(order.dropoffAddress),
     ]);
     const drivers = await this.usersService.findAll();
-    const driverList = drivers.filter((u) => u.role === 'DRIVER' && u.available !== false && u.lat != null && u.lng != null && Number.isFinite(u.lat) && Number.isFinite(u.lng));
+    let driverList = drivers.filter((u) => u.role === 'DRIVER' && u.available !== false && u.lat != null && u.lng != null && Number.isFinite(u.lat) && Number.isFinite(u.lng));
+    if (order.preferredCarType && order.preferredCarType.trim()) {
+      const preferred = order.preferredCarType.trim().toUpperCase();
+      driverList = driverList.filter((d) => (d as { carType?: string | null }).carType === preferred);
+    }
     const results: Array<{
       id: string;
       nickname: string;
@@ -153,12 +157,14 @@ export class OrdersController {
       tripType?: 'ONE_WAY' | 'ROUNDTRIP';
       routeType?: 'LOCAL' | 'LONG';
       middleAddress?: string;
+      waypoints?: { address: string }[];
       pickupType?: string;
       dropoffType?: string;
       passengerId?: string;
       phone?: string;
       passengerName?: string;
       bufferMinutes?: number;
+      preferredCarType?: string | null;
     },
   ) {
     let passengerId = body.passengerId;
@@ -179,9 +185,11 @@ export class OrdersController {
       tripType: body.tripType ?? 'ONE_WAY',
       routeType: body.routeType ?? null,
       middleAddress: body.tripType === 'ROUNDTRIP' ? (body.middleAddress ?? null) : null,
+      waypoints: body.waypoints?.length ? body.waypoints : null,
       pickupType: body.pickupType ?? null,
       dropoffType: body.dropoffType ?? null,
       passengerId: passengerId ?? undefined,
+      preferredCarType: body.preferredCarType ?? null,
       bufferMinutes: body.bufferMinutes,
       createdById: req.user.id,
     });
@@ -255,6 +263,21 @@ export class OrdersController {
     const updated = await this.ordersService.setLeftMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
+    return updated;
+  }
+
+  @Patch(':id/stop-underway')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  async stopUnderway(
+    @Param('id') orderId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    const updated = await this.ordersService.stopUnderway(orderId, req.user.id);
+    await this.audit.log(req.user.id, 'order.stop_underway', 'order', { orderId });
+    const list = await this.ordersService.findActiveAndScheduled();
+    this.ws.broadcastOrders(list);
+    this.alerts.emitAlert('order.stopped_underway', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
     return updated;
   }
 

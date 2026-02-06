@@ -183,6 +183,19 @@ export class UsersController {
     return updated;
   }
 
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async deleteUser(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    const result = await this.usersService.deleteUser(id, req.user.id);
+    await this.audit.log(req.user.id, 'user.delete', 'user', { targetUserId: id });
+    this.ws.emitUserUpdated(id);
+    return result;
+  }
+
   @Get('with-session-status')
   @UseGuards(RolesGuard)
   @Roles('ADMIN')

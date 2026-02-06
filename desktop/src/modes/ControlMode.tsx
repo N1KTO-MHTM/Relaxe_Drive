@@ -24,6 +24,8 @@ interface Order {
   pickupAddress: string;
   dropoffAddress: string;
   driverId?: string | null;
+  passenger?: { id: string; phone?: string | null; name?: string | null } | null;
+  preferredCarType?: string | null;
 }
 
 interface User {
@@ -72,28 +74,47 @@ export default function ControlMode() {
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [formPickupAt, setFormPickupAt] = useState('');
-  const [formPickupAddress, setFormPickupAddress] = useState('');
-  const [formDropoffAddress, setFormDropoffAddress] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formPassengerName, setFormPassengerName] = useState('');
+  const formPickupAtRef = useRef<HTMLInputElement>(null);
+  const formPickupAddressRef = useRef<HTMLInputElement>(null);
+  const formDropoffAddressRef = useRef<HTMLInputElement>(null);
+  const formPhoneRef = useRef<HTMLInputElement>(null);
+  const formPassengerNameRef = useRef<HTMLInputElement>(null);
+  const formPreferredCarTypeRef = useRef<HTMLSelectElement>(null);
+  const pendingPrefillRef = useRef<PassengerPrefill | null>(null);
 
   const canSeeDrivers = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const canCreateOrder = canSeeDrivers;
 
-  // Prefill from Clients "New order" link
+  // Prefill from Clients "New order" link — store in ref and open form; refs filled when form mounts
   useEffect(() => {
     const prefill = (location.state as { passengerPrefill?: PassengerPrefill })?.passengerPrefill;
     if (prefill) {
+      pendingPrefillRef.current = prefill;
       setTab('orders');
       setShowCreateOrder(true);
-      setFormPhone(prefill.phone ?? '');
-      setFormPassengerName(prefill.name ?? '');
-      setFormPickupAddress(prefill.pickupAddr ?? '');
-      setFormDropoffAddress(prefill.dropoffAddr ?? '');
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
+
+  // Apply pending prefill or reset when create form is shown
+  useEffect(() => {
+    if (!showCreateOrder) return;
+    const p = pendingPrefillRef.current;
+    pendingPrefillRef.current = null;
+    if (p) {
+      if (formPhoneRef.current) formPhoneRef.current.value = p.phone ?? '';
+      if (formPassengerNameRef.current) formPassengerNameRef.current.value = p.name ?? '';
+      if (formPickupAddressRef.current) formPickupAddressRef.current.value = p.pickupAddr ?? '';
+      if (formDropoffAddressRef.current) formDropoffAddressRef.current.value = p.dropoffAddr ?? '';
+    } else {
+      if (formPickupAtRef.current) formPickupAtRef.current.value = '';
+      if (formPickupAddressRef.current) formPickupAddressRef.current.value = '';
+      if (formDropoffAddressRef.current) formDropoffAddressRef.current.value = '';
+      if (formPhoneRef.current) formPhoneRef.current.value = '';
+      if (formPassengerNameRef.current) formPassengerNameRef.current.value = '';
+      if (formPreferredCarTypeRef.current) formPreferredCarTypeRef.current.value = '';
+    }
+  }, [showCreateOrder]);
   const canSeeSessions = canSeeDrivers;
   const isAdmin = user?.role === 'ADMIN';
   const notifiedOrderIds = useRef<Set<string>>(new Set());
@@ -169,7 +190,13 @@ export default function ControlMode() {
 
   async function handleCreateOrder(e: React.FormEvent) {
     e.preventDefault();
-    if (!formPickupAt || !formPickupAddress.trim() || !formDropoffAddress.trim()) {
+    const pickupAt = formPickupAtRef.current?.value ?? '';
+    const pickupAddress = (formPickupAddressRef.current?.value ?? '').trim();
+    const dropoffAddress = (formDropoffAddressRef.current?.value ?? '').trim();
+    const phone = (formPhoneRef.current?.value ?? '').trim();
+    const passengerName = (formPassengerNameRef.current?.value ?? '').trim();
+    const preferredCarType = (formPreferredCarTypeRef.current?.value ?? '').trim().toUpperCase() || undefined;
+    if (!pickupAt || !pickupAddress || !dropoffAddress) {
       setCreateError('Fill pickup time and addresses');
       return;
     }
@@ -177,18 +204,20 @@ export default function ControlMode() {
     setCreateError(null);
     try {
       await api.post('/orders', {
-        pickupAt: new Date(formPickupAt).toISOString(),
+        pickupAt: new Date(pickupAt).toISOString(),
         tripType: 'ONE_WAY',
-        pickupAddress: formPickupAddress.trim(),
-        dropoffAddress: formDropoffAddress.trim(),
-        phone: formPhone.trim() || undefined,
-        passengerName: formPassengerName.trim() || undefined,
+        pickupAddress,
+        dropoffAddress,
+        phone: phone || undefined,
+        passengerName: passengerName || undefined,
+        preferredCarType,
       });
-      setFormPickupAt('');
-      setFormPickupAddress('');
-      setFormDropoffAddress('');
-      setFormPhone('');
-      setFormPassengerName('');
+      if (formPickupAtRef.current) formPickupAtRef.current.value = '';
+      if (formPickupAddressRef.current) formPickupAddressRef.current.value = '';
+      if (formDropoffAddressRef.current) formDropoffAddressRef.current.value = '';
+      if (formPhoneRef.current) formPhoneRef.current.value = '';
+      if (formPassengerNameRef.current) formPassengerNameRef.current.value = '';
+      if (formPreferredCarTypeRef.current) formPreferredCarTypeRef.current.value = '';
       setShowCreateOrder(false);
       if (tab === 'orders') refreshData();
     } catch (err) {
@@ -236,15 +265,22 @@ export default function ControlMode() {
                       <form onSubmit={handleCreateOrder} style={{ marginTop: '1rem', padding: '1rem', background: 'var(--rd-bg-elevated, #252525)', borderRadius: 8, maxWidth: 480 }}>
                         {createError && <p className="rd-text-critical" style={{ marginBottom: '0.5rem' }}>{createError}</p>}
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.pickupAt')} *</label>
-                        <input type="datetime-local" className="rd-input" value={formPickupAt} onChange={(e) => setFormPickupAt(e.target.value)} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <input ref={formPickupAtRef} type="datetime-local" className="rd-input" required style={{ width: '100%', marginBottom: '0.75rem' }} />
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.pickupAddress')} *</label>
-                        <input type="text" className="rd-input" value={formPickupAddress} onChange={(e) => setFormPickupAddress(e.target.value)} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <input ref={formPickupAddressRef} type="text" className="rd-input" required style={{ width: '100%', marginBottom: '0.75rem' }} />
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.dropoffAddress')} *</label>
-                        <input type="text" className="rd-input" value={formDropoffAddress} onChange={(e) => setFormDropoffAddress(e.target.value)} required style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <input ref={formDropoffAddressRef} type="text" className="rd-input" required style={{ width: '100%', marginBottom: '0.75rem' }} />
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.phone')}</label>
-                        <input type="text" className="rd-input" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <input ref={formPhoneRef} type="text" className="rd-input" style={{ width: '100%', marginBottom: '0.75rem' }} />
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.passengerName')}</label>
-                        <input type="text" className="rd-input" value={formPassengerName} onChange={(e) => setFormPassengerName(e.target.value)} style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <input ref={formPassengerNameRef} type="text" className="rd-input" style={{ width: '100%', marginBottom: '0.75rem' }} />
+                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>{t('order.preferredCarType')}</label>
+                        <select ref={formPreferredCarTypeRef} className="rd-input" style={{ width: '100%', marginBottom: '0.75rem' }}>
+                          <option value="">{t('order.preferredCarTypeNone')}</option>
+                          <option value="SEDAN">{t('auth.carType_SEDAN')}</option>
+                          <option value="MINIVAN">{t('auth.carType_MINIVAN')}</option>
+                          <option value="SUV">{t('auth.carType_SUV')}</option>
+                        </select>
                         <button type="submit" className="rd-btn rd-btn-primary" disabled={createSubmitting}>{createSubmitting ? '…' : t('order.create')}</button>
                       </form>
                     )}
@@ -260,6 +296,8 @@ export default function ControlMode() {
                         <tr>
                           <th>Status</th>
                           <th>Pickup</th>
+                          <th>Passenger</th>
+                          <th>{t('order.preferredCarType')}</th>
                           <th>Route</th>
                         </tr>
                       </thead>
@@ -268,6 +306,8 @@ export default function ControlMode() {
                           <tr key={o.id}>
                             <td><span className="rd-badge">{o.status}</span></td>
                             <td>{new Date(o.pickupAt).toLocaleString()}</td>
+                            <td>{(o.passenger?.name || o.passenger?.phone) ? [o.passenger?.name, o.passenger?.phone].filter(Boolean).join(' · ') : '—'}</td>
+                            <td>{o.preferredCarType ? (o.preferredCarType === 'SEDAN' ? t('auth.carType_SEDAN') : o.preferredCarType === 'MINIVAN' ? t('auth.carType_MINIVAN') : o.preferredCarType === 'SUV' ? t('auth.carType_SUV') : o.preferredCarType) : '—'}</td>
                             <td>{o.pickupAddress} → {o.dropoffAddress}</td>
                           </tr>
                         ))}

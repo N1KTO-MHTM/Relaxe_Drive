@@ -5,8 +5,10 @@ import { PrismaService } from '../prisma/prisma.service';
 export class PassengersService {
   constructor(private prisma: PrismaService) {}
 
+  /** List only clients (passengers not linked to a driver account). Drivers who registered with phone have userId set and are excluded. */
   async findAll() {
     return this.prisma.passenger.findMany({
+      where: { userId: null },
       orderBy: { createdAt: 'desc' },
     });
   }

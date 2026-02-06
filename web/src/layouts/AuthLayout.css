@@ -1,11 +1,22 @@
 .auth-layout {
   min-height: 100vh;
+  min-height: calc(100vh - env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--rd-space-lg);
+  padding-left: max(var(--rd-space-lg), env(safe-area-inset-left));
+  padding-right: max(var(--rd-space-lg), env(safe-area-inset-right));
   position: relative;
   background: var(--rd-bg);
+}
+
+@media (max-width: 480px) {
+  .auth-layout {
+    padding: var(--rd-space-md);
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
 }
 
 .auth-layout__lang {
@@ -17,13 +28,17 @@
 }
 
 .auth-layout__lang button {
-  padding: var(--rd-space-xs) var(--rd-space-sm);
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  min-height: 44px;
+  min-width: 44px;
   background: transparent;
   border: 1px solid var(--rd-border);
   border-radius: var(--rd-radius);
   color: var(--rd-text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .auth-layout__lang button.active {

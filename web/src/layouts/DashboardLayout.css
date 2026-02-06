@@ -99,4 +99,121 @@
   flex: 1;
   padding: var(--rd-space-lg);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ----- Mobile: hamburger + overlay nav ----- */
+.dashboard-layout__menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  background: var(--rd-surface);
+  color: var(--rd-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dashboard-layout__brand-row {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-md);
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout__menu-btn {
+    display: inline-flex;
+  }
+
+  .dashboard-layout__nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 3.5rem var(--rd-space-lg) var(--rd-space-lg);
+    background: var(--rd-bg-elevated);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: visibility 0.2s ease, opacity 0.2s ease;
+  }
+
+  .dashboard-layout__nav--open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .dashboard-layout__nav a {
+    display: block;
+    padding: var(--rd-space-md) var(--rd-space-lg);
+    min-height: 44px;
+    line-height: 1.4;
+    font-size: 1rem;
+  }
+
+  .dashboard-layout__header {
+    flex-wrap: wrap;
+    gap: var(--rd-space-sm);
+  }
+
+  .dashboard-layout__right {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .dashboard-layout__right .rd-btn,
+  .dashboard-layout__right .lang-select {
+    min-height: 44px;
+  }
+
+  .dashboard-layout__new-order {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .user-info {
+    max-width: 100%;
+  }
+
+  .dashboard-layout__main {
+    padding: var(--rd-space-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-layout__header {
+    padding: var(--rd-space-sm) var(--rd-space-md);
+  }
+
+  .dashboard-layout__right {
+    gap: var(--rd-space-sm);
+  }
+
+  .brand-tagline {
+    font-size: 0.7rem;
+  }
+
+  .user-role-badge,
+  .user-info {
+    font-size: 0.75rem;
+  }
 }

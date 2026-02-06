@@ -28,6 +28,13 @@ function getTotalWaitMinutes(arrivedAt: string, leftAt: string | null): number {
   return Math.floor((end - arrived) / 60_000);
 }
 
+/** Ordered list of stop addresses for an order (from waypoints or single middleAddress). Always use this for display/links so data is from current order. */
+function getOrderStops(order: Order): { address: string }[] {
+  if (order.waypoints && order.waypoints.length > 0) return order.waypoints;
+  if (order.middleAddress?.trim()) return [{ address: order.middleAddress.trim() }];
+  return [];
+}
+
 /** Distance in meters (approximate). */
 function distanceMeters(
   lat1: number, lng1: number,
@@ -68,6 +75,8 @@ export default function Dashboard() {
   const [routeTypeForm, setRouteTypeForm] = useState<'LOCAL' | 'LONG'>('LOCAL');
   const [pickupAddress, setPickupAddress] = useState('');
   const [middleAddress, setMiddleAddress] = useState('');
+  /** Multiple stops (between pickup and dropoff). When non-empty, sent as waypoints; else roundtrip uses middleAddress. */
+  const [waypointAddresses, setWaypointAddresses] = useState<string[]>([]);
   const [dropoffAddress, setDropoffAddress] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [arrivingId, setArrivingId] = useState<string | null>(null);
@@ -75,6 +84,7 @@ export default function Dashboard() {
   const [drivers, setDrivers] = useState<User[]>([]);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [stopUnderwayId, setStopUnderwayId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [sharingLocation, setSharingLocation] = useState(false);
@@ -87,12 +97,14 @@ export default function Dashboard() {
   const [pickPoint, setPickPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [pickupType, setPickupType] = useState('');
   const [dropoffType, setDropoffType] = useState('');
+  const [preferredCarTypeForm, setPreferredCarTypeForm] = useState<string>('');
   const [reverseGeocodeLoading, setReverseGeocodeLoading] = useState(false);
   const [passengersSuggestions, setPassengersSuggestions] = useState<Array<{ id: string; phone?: string; name: string | null; pickupAddr: string | null; dropoffAddr: string | null; pickupType: string | null; dropoffType: string | null }>>([]);
   const [orderPhone, setOrderPhone] = useState('');
   const [orderPassengerName, setOrderPassengerName] = useState('');
   const [orderTab, setOrderTab] = useState<'active' | 'completed'>('active');
   const [orderStatusFilter, setOrderStatusFilter] = useState('');
+  const [orderSortBy, setOrderSortBy] = useState<'scheduled' | 'arrived' | 'pickedUp' | 'droppedOff'>('scheduled');
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
@@ -105,6 +117,13 @@ export default function Dashboard() {
     distanceKm: number;
     durationMinutes: number;
     earningsCents: number;
+    startedAt?: string | null;
+    leftPickupAt?: string | null;
+    completedAt: string;
+    arrivedAtPickupAt?: string | null;
+    pickupAt: string;
+    waitChargeAtPickupCents?: number | null;
+    waitChargeAtMiddleCents?: number | null;
   } | null>(null);
   const [driverStats, setDriverStats] = useState<{ totalEarningsCents: number; totalMiles: number } | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -112,6 +131,7 @@ export default function Dashboard() {
   const [reportDescription, setReportDescription] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
+  const [reportsRefreshTrigger, setReportsRefreshTrigger] = useState(0);
   const autoStopSentForOrderIdRef = useRef<string | null>(null);
 
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
@@ -137,17 +157,47 @@ export default function Dashboard() {
       ? list.filter((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED')
       : list.filter((o) => o.status === 'COMPLETED' || o.status === 'CANCELLED');
     if (orderStatusFilter) out = out.filter((o) => o.status === orderStatusFilter);
-    return out.sort((a, b) => new Date(b.pickupAt).getTime() - new Date(a.pickupAt).getTime());
-  }, [orders, completedOrders, orderTab, orderStatusFilter]);
+    const getSortTime = (o: Order) => {
+      switch (orderSortBy) {
+        case 'arrived': return o.arrivedAtPickupAt ? new Date(o.arrivedAtPickupAt).getTime() : new Date(o.pickupAt).getTime();
+        case 'pickedUp': return o.leftPickupAt ? new Date(o.leftPickupAt).getTime() : new Date(o.pickupAt).getTime();
+        case 'droppedOff': return o.completedAt ? new Date(o.completedAt).getTime() : new Date(o.pickupAt).getTime();
+        default: return new Date(o.pickupAt).getTime();
+      }
+    };
+    return out.sort((a, b) => getSortTime(b) - getSortTime(a));
+  }, [orders, completedOrders, orderTab, orderStatusFilter, orderSortBy]);
 
-  const driversForMap: DriverForMap[] = useMemo(() => drivers.map((d) => ({
-    id: d.id,
-    nickname: d.nickname,
-    phone: d.phone,
-    lat: d.lat,
-    lng: d.lng,
-    status: orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS')) ? 'busy' : (d.lat != null && d.lng != null ? 'available' : 'offline'),
-  })), [drivers, orders]);
+  const driversForMap: DriverForMap[] = useMemo(() => {
+    const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : null;
+    const preferredCar = selectedOrder?.preferredCarType?.trim().toUpperCase();
+    const driverList = preferredCar
+      ? drivers.filter((d) => (d as { carType?: string | null }).carType === preferredCar)
+      : drivers;
+    return driverList.map((d) => {
+      const onTripOrder = orders.find((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
+      const onTrip = !!onTripOrder;
+      const status: 'busy' | 'available' | 'offline' = onTrip ? 'busy' : (d.lat != null && d.lng != null ? 'available' : 'offline');
+      const etaData = onTripOrder && driverEtas[onTripOrder.id]?.drivers?.find((x) => x.id === d.id);
+      return {
+        id: d.id,
+        nickname: d.nickname,
+        phone: d.phone,
+        lat: d.lat,
+        lng: d.lng,
+        status,
+        carType: (d as { carType?: string | null }).carType ?? null,
+        carPlateNumber: (d as { carPlateNumber?: string | null }).carPlateNumber ?? null,
+        driverId: (d as { driverId?: string | null }).driverId ?? null,
+        statusLabel: status === 'busy' ? t('dashboard.onTrip') : (status === 'available' ? t('dashboard.available') : t('dashboard.offline')),
+        etaMinutesToPickup: etaData?.etaMinutesToPickup,
+        etaMinutesTotal: etaData?.etaMinutesTotal,
+        etaMinutesPickupToDropoff: etaData?.etaMinutesPickupToDropoff,
+        assignedOrderPickup: onTripOrder?.pickupAddress ?? null,
+        assignedOrderDropoff: onTripOrder?.dropoffAddress ?? null,
+      };
+    });
+  }, [drivers, orders, driverEtas, selectedOrderId, t]);
 
   const PLACE_TYPES = [
     { value: '', labelKey: 'dashboard.placeTypeNone' },
@@ -173,9 +223,51 @@ export default function Dashboard() {
     });
   }
 
+  /** Refresh all data: orders, drivers, reports, route, and completed list if on that tab. */
+  function refreshAll() {
+    loadOrders();
+    if (canAssign) {
+      api.get<User[]>('/users').then((data) => {
+        setDrivers(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []);
+      }).catch(() => {});
+    }
+    setReportsRefreshTrigger((prev) => prev + 1);
+    setRouteRefreshKey((prev) => prev + 1);
+    setMapCenterTrigger((prev) => prev + 1);
+    if (orderTab === 'completed') {
+      setCompletedLoading(true);
+      const to = new Date();
+      const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+      api.get<Order[]>(`/orders?from=${from.toISOString()}&to=${to.toISOString()}`)
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setCompletedOrders(isDriver ? list.filter((o) => o.driverId === user?.id) : list);
+        })
+        .catch(() => setCompletedOrders([]))
+        .finally(() => setCompletedLoading(false));
+    }
+  }
+
   useEffect(() => {
     loadOrders();
   }, [showForm]);
+
+  const refreshAllRef = useRef(refreshAll);
+  refreshAllRef.current = refreshAll;
+
+  /** Load all data everywhere when dashboard opens (and when user changes). */
+  useEffect(() => {
+    if (user) refreshAllRef.current();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshAllRef.current();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   useEffect(() => {
     if (user?.role !== 'DRIVER') return;
@@ -337,6 +429,27 @@ export default function Dashboard() {
     }).catch(() => {});
   }, [selectedOrderId, canAssign, driverEtas]);
 
+  // Preload driver ETAs for all active orders (ASSIGNED/IN_PROGRESS) so map popups show ETA
+  useEffect(() => {
+    if (!canAssign) return;
+    const activeOrderIds = orders
+      .filter((o) => o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS')
+      .map((o) => o.id)
+      .filter((id) => !driverEtas[id]);
+    if (activeOrderIds.length === 0) return;
+    Promise.all(
+      activeOrderIds.map((id) =>
+        api.get<{ drivers: DriverEta[] }>(`/orders/${id}/driver-etas`).then((data) => ({ id, drivers: data.drivers || [] }))
+      )
+    ).then((results) => {
+      setDriverEtas((prev) => {
+        const next = { ...prev };
+        results.forEach(({ id, drivers }) => { next[id] = { drivers }; });
+        return next;
+      });
+    }).catch(() => {});
+  }, [canAssign, orders, driverEtas]);
+
   useEffect(() => {
     if (!selectedOrderId) {
       setRouteData(null);
@@ -381,20 +494,20 @@ export default function Dashboard() {
         const lats = [routeData.pickupCoords.lat, routeData.dropoffCoords.lat];
         const lngs = [routeData.pickupCoords.lng, routeData.dropoffCoords.lng];
         if (driverLocation) { lats.push(driverLocation.lat); lngs.push(driverLocation.lng); }
-        const pad = 0.02;
+        const pad = 0.25;
         return { minLat: Math.min(...lats) - pad, maxLat: Math.max(...lats) + pad, minLng: Math.min(...lngs) - pad, maxLng: Math.max(...lngs) + pad };
       }
       if (driverLocation) {
-        const pad = 0.05;
+        const pad = 0.3;
         return { minLat: driverLocation.lat - pad, maxLat: driverLocation.lat + pad, minLng: driverLocation.lng - pad, maxLng: driverLocation.lng + pad };
       }
-      return null;
+      const pad = 2;
+      return { minLat: 41.1112 - pad, maxLat: 41.1112 + pad, minLng: -74.0438 - pad, maxLng: -74.0438 + pad };
     })();
-    if (!bbox) return;
     api.get<DriverReportMap[]>(`/reports?minLat=${bbox.minLat}&maxLat=${bbox.maxLat}&minLng=${bbox.minLng}&maxLng=${bbox.maxLng}&sinceMinutes=120`)
       .then((data) => setReports(Array.isArray(data) ? data : []))
       .catch(() => setReports([]));
-  }, [routeData?.pickupCoords, routeData?.dropoffCoords, driverLocation?.lat, driverLocation?.lng]);
+  }, [routeData?.pickupCoords, routeData?.dropoffCoords, driverLocation?.lat, driverLocation?.lng, reportsRefreshTrigger]);
 
   useEffect(() => {
     if (!socket) return;
@@ -495,12 +608,23 @@ export default function Dashboard() {
       if (status === 'COMPLETED' && order && !silent) {
         const distanceKm = body.distanceKm ?? 0;
         const durationMinutes = selectedOrderId === orderId && routeData ? (routeData.durationMinutes ?? 0) : 0;
+        const completedAt = new Date().toISOString();
+        const tripDurationMin = order.leftPickupAt
+          ? Math.round((Date.now() - new Date(order.leftPickupAt).getTime()) / 60_000)
+          : durationMinutes;
         setPostTripSummary({
           pickupAddress: order.pickupAddress ?? '',
           dropoffAddress: order.dropoffAddress ?? '',
           distanceKm,
-          durationMinutes,
+          durationMinutes: tripDurationMin || durationMinutes,
           earningsCents: body.earningsCents ?? 0,
+          startedAt: order.startedAt ?? undefined,
+          leftPickupAt: order.leftPickupAt ?? undefined,
+          completedAt,
+          arrivedAtPickupAt: order.arrivedAtPickupAt ?? undefined,
+          pickupAt: order.pickupAt ?? '',
+          waitChargeAtPickupCents: order.waitChargeAtPickupCents ?? undefined,
+          waitChargeAtMiddleCents: order.waitChargeAtMiddleCents ?? undefined,
         });
         api.get<{ totalEarningsCents: number; totalMiles: number }>('/users/me/stats').then((data) => {
           setDriverStats({ totalEarningsCents: data.totalEarningsCents, totalMiles: data.totalMiles });
@@ -514,6 +638,20 @@ export default function Dashboard() {
       if (!silent) toast.error(t('toast.statusUpdateFailed'));
     } finally {
       setStatusUpdatingId(null);
+    }
+  }
+
+  async function handleStopUnderway(orderId: string) {
+    setStopUnderwayId(orderId);
+    try {
+      await api.patch(`/orders/${orderId}/stop-underway`, {});
+      toast.success(t('dashboard.stoppedUnderway'));
+      const data = await api.get<Order[]>('/orders');
+      setOrders(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error(t('toast.statusUpdateFailed'));
+    } finally {
+      setStopUnderwayId(null);
     }
   }
 
@@ -548,6 +686,36 @@ export default function Dashboard() {
     if (!routeData?.dropoffCoords) return;
     const dest = `${routeData.dropoffCoords.lat},${routeData.dropoffCoords.lng}`;
     window.open(`https://waze.com/ul?ll=${dest}&navigate=yes`, '_blank');
+  }
+
+  function openAddressInGoogleMaps(address: string) {
+    if (!address?.trim()) return;
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address.trim())}`, '_blank');
+  }
+
+  function openAddressInWaze(address: string) {
+    if (!address?.trim()) return;
+    window.open(`https://waze.com/ul?q=${encodeURIComponent(address.trim())}&navigate=yes`, '_blank');
+  }
+
+  /** Open full route (pickup → stops → dropoff) in Google Maps. Uses addresses so data is always current. */
+  function openFullRouteInGoogleMaps(order: Order) {
+    const origin = order.pickupAddress.trim();
+    const dest = order.dropoffAddress.trim();
+    const stops = getOrderStops(order);
+    const waypointsParam = stops.length > 0
+      ? '&waypoints=' + stops.map((s) => encodeURIComponent(s.address.trim())).join('|')
+      : '';
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}${waypointsParam}`,
+      '_blank',
+    );
+  }
+
+  /** Open full route in Waze. Waze URL supports one destination; we use dropoff so driver can navigate to final. */
+  function openFullRouteInWaze(order: Order) {
+    const dest = order.dropoffAddress.trim();
+    window.open(`https://waze.com/ul?q=${encodeURIComponent(dest)}&navigate=yes`, '_blank');
   }
 
   async function handleShareLocation() {
@@ -644,31 +812,37 @@ export default function Dashboard() {
       setSubmitError('Fill pickup time and addresses');
       return;
     }
-    if (isRoundtrip && !middleAddress.trim()) {
-      setSubmitError('Roundtrip requires second location');
+    const stopsList = waypointAddresses.map((a) => a.trim()).filter(Boolean);
+    if (isRoundtrip && !middleAddress.trim() && stopsList.length === 0) {
+      setSubmitError('Roundtrip requires at least one stop (second location or waypoints)');
       return;
     }
     try {
+      const waypointsPayload = stopsList.length > 0 ? stopsList.map((address) => ({ address })) : undefined;
       await api.post('/orders', {
         pickupAt: new Date(pickupAt).toISOString(),
         tripType: tripTypeForm,
         routeType: routeTypeForm,
         pickupAddress: pickupAddress.trim(),
-        middleAddress: isRoundtrip ? middleAddress.trim() : undefined,
+        middleAddress: isRoundtrip && !waypointsPayload ? middleAddress.trim() || undefined : undefined,
+        waypoints: waypointsPayload,
         dropoffAddress: dropoffAddress.trim(),
         pickupType: pickupType || undefined,
         dropoffType: dropoffType || undefined,
         phone: orderPhone.trim() || undefined,
         passengerName: orderPassengerName.trim() || undefined,
+        preferredCarType: preferredCarTypeForm.trim() || undefined,
       });
       setPickupAt('');
       setPickupAddress('');
       setMiddleAddress('');
+      setWaypointAddresses([]);
       setDropoffAddress('');
       setOrderPhone('');
       setOrderPassengerName('');
       setPickupType('');
       setDropoffType('');
+      setPreferredCarTypeForm('');
       setRouteTypeForm('LOCAL');
       setPickPoint(null);
       setShowForm(false);
@@ -745,7 +919,10 @@ export default function Dashboard() {
             <button type="button" className="rd-btn" onClick={() => { downloadCsv(filteredOrders, 'orders.csv', [
               { key: 'id', label: 'ID' },
               { key: 'status', label: t('dashboard.orderStatus') },
-              { key: 'pickupAt', label: t('dashboard.pickupAt') },
+              { key: 'pickupAt', label: t('dashboard.timeScheduled') },
+              { key: 'arrivedAtPickupAt', label: t('dashboard.timeArrived') },
+              { key: 'leftPickupAt', label: t('dashboard.timePickedUp') },
+              { key: 'completedAt', label: t('dashboard.timeDroppedOff') },
               { key: 'pickupAddress', label: t('dashboard.pickupAddress') },
               { key: 'dropoffAddress', label: t('dashboard.dropoffAddress') },
             ]); toast.success(t('toast.exportDone')); }}>
@@ -803,6 +980,33 @@ export default function Dashboard() {
                   <button type="button" className="rd-btn" onClick={openInWaze}>{t('dashboard.openInWaze')}</button>
                 </>
               )}
+              {(() => {
+                const sel = orders.find((o) => o.id === selectedOrderId);
+                if (sel && (getOrderStops(sel).length > 0 || sel.pickupAddress)) {
+                  return (
+                    <>
+                      <button type="button" className="rd-btn" onClick={() => openFullRouteInGoogleMaps(sel)}>{t('dashboard.openRouteInGoogleMaps')}</button>
+                      <button type="button" className="rd-btn" onClick={() => openFullRouteInWaze(sel)}>{t('dashboard.openRouteInWaze')}</button>
+                    </>
+                  );
+                }
+                return null;
+              })()}
+              {(() => {
+                const sel = orders.find((o) => o.id === selectedOrderId);
+                const stops = sel ? getOrderStops(sel) : [];
+                if (stops.length === 0) return null;
+                return stops.map((stop, idx) => (
+                  <span key={idx} style={{ display: 'inline-flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                    <button type="button" className="rd-btn" onClick={() => openAddressInGoogleMaps(stop.address)}>
+                      {stops.length > 1 ? t('dashboard.openStopInGoogleMapsN', { n: idx + 1 }) : t('dashboard.openStopInGoogleMaps')}
+                    </button>
+                    <button type="button" className="rd-btn" onClick={() => openAddressInWaze(stop.address)}>
+                      {stops.length > 1 ? t('dashboard.openStopInWazeN', { n: idx + 1 }) : t('dashboard.openStopInWaze')}
+                    </button>
+                  </span>
+                ));
+              })()}
             </div>
           </div>
         );
@@ -871,6 +1075,15 @@ export default function Dashboard() {
                     <option value="LONG">{t('dashboard.routeLong')}</option>
                   </select>
                 </div>
+                <div>
+                  <label>{t('dashboard.preferredCarType')}</label>
+                  <select className="rd-input" value={preferredCarTypeForm} onChange={(e) => setPreferredCarTypeForm(e.target.value)}>
+                    <option value="">{t('dashboard.preferredCarTypeNone')}</option>
+                    <option value="SEDAN">{t('auth.carType_SEDAN')}</option>
+                    <option value="MINIVAN">{t('auth.carType_MINIVAN')}</option>
+                    <option value="SUV">{t('auth.carType_SUV')}</option>
+                  </select>
+                </div>
               </div>
               <label>{t('dashboard.pickupAt')}</label>
               <input type="datetime-local" className="rd-input" value={pickupAt} onChange={(e) => setPickupAt(e.target.value)} required />
@@ -905,7 +1118,15 @@ export default function Dashboard() {
               {tripTypeForm === 'ROUNDTRIP' && (
                 <>
                   <label>{t('dashboard.secondLocation')}</label>
-                  <input type="text" className="rd-input" value={middleAddress} onChange={(e) => setMiddleAddress(e.target.value)} placeholder={t('dashboard.secondLocation')} required={tripTypeForm === 'ROUNDTRIP'} />
+                  <input type="text" className="rd-input" value={middleAddress} onChange={(e) => setMiddleAddress(e.target.value)} placeholder={t('dashboard.secondLocation')} />
+                  <label>{t('dashboard.additionalStops')}</label>
+                  {waypointAddresses.map((addr, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.25rem' }}>
+                      <input type="text" className="rd-input" style={{ flex: 1 }} value={addr} onChange={(e) => setWaypointAddresses((prev) => { const n = [...prev]; n[idx] = e.target.value; return n; })} placeholder={t('dashboard.stopAddressPlaceholder')} />
+                      <button type="button" className="rd-btn" onClick={() => setWaypointAddresses((prev) => prev.filter((_, i) => i !== idx))} aria-label={t('dashboard.removeStop')}>−</button>
+                    </div>
+                  ))}
+                  <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setWaypointAddresses((prev) => [...prev, ''])}>+ {t('dashboard.addStop')}</button>
                 </>
               )}
               <label>{tripTypeForm === 'ROUNDTRIP' ? t('dashboard.finalLocation') : t('dashboard.dropoffAddress')}</label>
@@ -950,8 +1171,14 @@ export default function Dashboard() {
                 <option value="CANCELLED">CANCELLED</option>
               </select>
             )}
-            <button type="button" className="rd-btn rd-btn-secondary" onClick={() => { if (orderTab === 'completed') { setCompletedLoading(true); const to = new Date(); const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000); api.get<Order[]>(`/orders?from=${from.toISOString()}&to=${to.toISOString()}`).then((data) => { const list = Array.isArray(data) ? data : []; setCompletedOrders(isDriver ? list.filter((o) => o.driverId === user?.id) : list); }).catch(() => setCompletedOrders([])).finally(() => setCompletedLoading(false)); } else loadOrders(); }} disabled={loading || (orderTab === 'completed' && completedLoading)}>
-              {t('common.refresh')}
+            <select className="rd-input" value={orderSortBy} onChange={(e) => setOrderSortBy(e.target.value as 'scheduled' | 'arrived' | 'pickedUp' | 'droppedOff')} style={{ width: 'auto', minWidth: 140 }}>
+              <option value="scheduled">{t('dashboard.sortByScheduled')}</option>
+              <option value="arrived">{t('dashboard.sortByArrived')}</option>
+              <option value="pickedUp">{t('dashboard.sortByPickedUp')}</option>
+              <option value="droppedOff">{t('dashboard.sortByDroppedOff')}</option>
+            </select>
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={refreshAll} disabled={loading || (orderTab === 'completed' && completedLoading)} title={t('dashboard.refreshAllTitle')}>
+              {t('dashboard.refreshAll')}
             </button>
           </div>
           {(loading || (orderTab === 'completed' && completedLoading)) ? (
@@ -970,88 +1197,164 @@ export default function Dashboard() {
               {filteredOrders.map((o) => (
                 <li key={o.id} className="dashboard-order-item">
                   <span className={`rd-badge ${o.status === 'ASSIGNED' ? 'rd-badge-assigned' : o.status === 'IN_PROGRESS' ? 'rd-badge-ok' : o.status === 'SCHEDULED' ? 'rd-badge-pending' : ''}`}>{o.status}</span>
+                  {getOrderStops(o).length > 0 && (
+                    <span className="rd-badge rd-badge-pending" style={{ marginLeft: '0.25rem', fontSize: '0.75rem' }}>{t('dashboard.stopsCount', { count: getOrderStops(o).length })}</span>
+                  )}
+                  {(o.passenger?.name || o.passenger?.phone) && (
+                    <div>{t('dashboard.passenger')}: {[o.passenger?.name, o.passenger?.phone].filter(Boolean).join(' · ')}</div>
+                  )}
+                  {o.preferredCarType && (
+                    <div>{t('dashboard.preferredCarType')}: {o.preferredCarType === 'SEDAN' ? t('auth.carType_SEDAN') : o.preferredCarType === 'MINIVAN' ? t('auth.carType_MINIVAN') : o.preferredCarType === 'SUV' ? t('auth.carType_SUV') : o.preferredCarType}</div>
+                  )}
                   <div>{t('dashboard.orderCreated')}: {o.createdAt ? new Date(o.createdAt).toLocaleString() : '—'}</div>
-                  {(o.driverId || driverEtas[o.id]) && (
-                    <div>{t('dashboard.pickupAt')}: {new Date(o.pickupAt).toLocaleString()}</div>
+                  {o.driverId && (
+                    <div className="dashboard-route-times">
+                      <div className="dashboard-route-times__leg">
+                        <div className="dashboard-route-times__label">{t('dashboard.pickupAddress')}</div>
+                        <div className="dashboard-route-times__address">{o.pickupAddress}</div>
+                        <div className="dashboard-route-times__row">{t('dashboard.timeScheduled')}: {new Date(o.pickupAt).toLocaleString()}</div>
+                        {o.arrivedAtPickupAt && <div className="dashboard-route-times__row">{t('dashboard.timeArrived')}: {new Date(o.arrivedAtPickupAt).toLocaleString()}</div>}
+                        {o.leftPickupAt && <div className="dashboard-route-times__row">{t('dashboard.timePickedUp')}: {new Date(o.leftPickupAt).toLocaleString()}</div>}
+                      </div>
+                      {getOrderStops(o).map((stop, idx) => (
+                        <div key={idx} className="dashboard-route-times__leg dashboard-route-times__leg--stop">
+                          <div className="dashboard-route-times__label">{getOrderStops(o).length > 1 ? t('dashboard.stopLocationN', { n: idx + 1 }) : t('dashboard.stopLocation')}</div>
+                          <div className="dashboard-route-times__address">{stop.address}</div>
+                          {idx === 0 && o.arrivedAtMiddleAt && <div className="dashboard-route-times__row">{t('dashboard.timeArrivedAtStop')}: {new Date(o.arrivedAtMiddleAt).toLocaleString()}</div>}
+                          {idx === 0 && o.leftMiddleAt && <div className="dashboard-route-times__row">{t('dashboard.timeLeftStop')}: {new Date(o.leftMiddleAt).toLocaleString()}</div>}
+                        </div>
+                      ))}
+                      <div className="dashboard-route-times__leg">
+                        <div className="dashboard-route-times__label">{t('dashboard.dropoffAddress')}</div>
+                        <div className="dashboard-route-times__address">{o.dropoffAddress}</div>
+                        {o.completedAt && <div className="dashboard-route-times__row">{t('dashboard.timeDroppedOff')}: {new Date(o.completedAt).toLocaleString()}</div>}
+                      </div>
+                    </div>
+                  )}
+                  {!o.driverId && (
+                    <>
+                      <div>{t('dashboard.timeScheduled')}: {new Date(o.pickupAt).toLocaleString()}</div>
+                      <div className="rd-text-muted" style={{ fontSize: '0.875rem' }}>{o.pickupAddress}{getOrderStops(o).length > 0 ? ` → ${getOrderStops(o).map((s) => s.address).join(' → ')} → ` : ' → '}{o.dropoffAddress}</div>
+                    </>
+                  )}
+                  {isDriver && o.status === 'COMPLETED' && o.leftPickupAt && o.completedAt && (
+                    <div className="dashboard-completed-trip-info">
+                      <div className="rd-section-title" style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>{t('dashboard.tripInfo')}</div>
+                      <div className="stat-row"><span>{t('dashboard.tripDuration')}</span><span><strong>{Math.round((new Date(o.completedAt).getTime() - new Date(o.leftPickupAt).getTime()) / 60_000)} min</strong></span></div>
+                      <div className="rd-text-muted" style={{ fontSize: '0.875rem' }}>{o.pickupAddress} → {o.dropoffAddress}</div>
+                      {o.arrivedAtPickupAt && <div className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>{t('dashboard.timeArrived')}: {new Date(o.arrivedAtPickupAt).toLocaleString()}</div>}
+                      <div className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>{t('dashboard.timePickedUp')}: {new Date(o.leftPickupAt).toLocaleString()}</div>
+                      <div className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>{t('dashboard.timeDroppedOff')}: {new Date(o.completedAt).toLocaleString()}</div>
+                      {(o.waitChargeAtPickupCents ?? 0) > 0 && <div className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>{t('dashboard.waitChargePickup')}: ${(o.waitChargeAtPickupCents! / 100).toFixed(0)}</div>}
+                      {(o.waitChargeAtMiddleCents ?? 0) > 0 && <div className="rd-text-muted" style={{ fontSize: '0.8125rem' }}>{t('dashboard.waitChargeSecond')}: ${(o.waitChargeAtMiddleCents! / 100).toFixed(0)}</div>}
+                    </div>
                   )}
                   {o.status === 'IN_PROGRESS' && o.startedAt && (
                     <div className="dashboard-order-duration">
                       {t('dashboard.duration')}: <strong>{formatDuration(o.startedAt)}</strong>
                     </div>
                   )}
-                  <div className="rd-text-muted">
-                    {o.tripType === 'ROUNDTRIP' && o.middleAddress
-                      ? `${o.pickupAddress} → ${o.middleAddress} → ${o.dropoffAddress}`
-                      : `${o.pickupAddress} → ${o.dropoffAddress}`}
-                    {o.routeType && (
-                      <span className="rd-badge rd-badge-pending" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>
-                        {o.routeType === 'LONG' ? t('dashboard.routeLong') : t('dashboard.routeLocal')}
-                      </span>
-                    )}
-                  </div>
+                  {!o.driverId && (
+                    <div className="rd-text-muted">
+                      {getOrderStops(o).length > 0
+                        ? `${o.pickupAddress} → ${getOrderStops(o).map((s) => s.address).join(' → ')} → ${o.dropoffAddress}`
+                        : `${o.pickupAddress} → ${o.dropoffAddress}`}
+                      {o.routeType && (
+                        <span className="rd-badge rd-badge-pending" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>
+                          {o.routeType === 'LONG' ? t('dashboard.routeLong') : t('dashboard.routeLocal')}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {isDriver && o.status === 'ASSIGNED' && !o.arrivedAtPickupAt && (
                     <button type="button" className="rd-btn rd-btn-success" disabled={!!arrivingId} onClick={() => handleArrivedAtPickup(o.id)}>
                       {arrivingId === o.id ? '…' : t('dashboard.arrivedAtPickup')}
                     </button>
                   )}
-                  {isDriver && o.status === 'ASSIGNED' && o.arrivedAtPickupAt && !o.leftPickupAt && (() => {
-                    const totalMin = getTotalWaitMinutes(o.arrivedAtPickupAt!, null);
-                    void now; // tick so timer updates every second
-                    const showTimer = totalMin >= 5;
+                  {isDriver && o.arrivedAtPickupAt && (() => {
+                    const totalMin = getTotalWaitMinutes(o.arrivedAtPickupAt!, o.leftPickupAt ?? null);
+                    void now;
+                    const ended = !!o.leftPickupAt;
+                    const charge = (o.waitChargeAtPickupCents ?? 0) / 100;
                     return (
-                      <div className="dashboard-wait-block">
-                        {showTimer && (
-                          <p className="rd-text-muted">
-                            {t('dashboard.waitingAtPickup')}: <strong>{totalMin} min</strong>
-                            {totalMin >= 20 && (
-                              <> — {t('dashboard.chargeAfter5')}: <strong>${getWaitChargeDollars(totalMin)}</strong></>
+                      <div className="dashboard-wait-timer-card">
+                        <div className="dashboard-wait-timer-card__title">{t('dashboard.waitTimerTitlePickup')}</div>
+                        <div className="dashboard-wait-timer-card__row">
+                          <span className="rd-text-muted">{t('dashboard.waitTimerStarted')}:</span>
+                          <span>{new Date(o.arrivedAtPickupAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        {ended ? (
+                          <div className="dashboard-wait-timer-card__row dashboard-wait-timer-card__row--result">
+                            <span>{t('dashboard.waitTimerEnded')}</span>
+                            <span>{t('dashboard.waitTimerWaited', { min: totalMin })}</span>
+                            <span>{charge > 0 ? `$${charge.toFixed(0)}` : t('dashboard.waitTimerNoCharge')}</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="dashboard-wait-timer-card__row dashboard-wait-timer-card__row--live">
+                              <span>{t('dashboard.waitTimerWaiting')}:</span>
+                              <strong>{totalMin} min</strong>
+                            </div>
+                            {totalMin < 5 && (
+                              <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerStartsIn', { min: 5 - totalMin })}</div>
                             )}
-                          </p>
-                        )}
-                        {!showTimer && totalMin > 0 && (
-                          <p className="rd-text-muted">{t('dashboard.waitTimerStartsIn', { min: 5 - totalMin })}</p>
+                            {totalMin >= 5 && totalMin < 20 && (
+                              <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerFirst5Free')}</div>
+                            )}
+                            {totalMin >= 20 && (
+                              <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerChargeFrom20')}: <strong>${getWaitChargeDollars(totalMin)}</strong></div>
+                            )}
+                          </>
                         )}
                       </div>
                     );
                   })()}
-                  {isDriver && o.status === 'IN_PROGRESS' && o.leftPickupAt && o.arrivedAtPickupAt && o.waitChargeAtPickupCents != null && o.waitChargeAtPickupCents > 0 && (
-                    <p className="rd-text-muted dashboard-wait-note">
-                      {t('dashboard.waitedAtPickupNote', {
-                        min: getTotalWaitMinutes(o.arrivedAtPickupAt, o.leftPickupAt),
-                        amount: (o.waitChargeAtPickupCents / 100).toFixed(0),
-                      })}
-                    </p>
-                  )}
                   {isDriver && o.tripType === 'ROUNDTRIP' && o.status === 'IN_PROGRESS' && o.leftPickupAt && !o.arrivedAtMiddleAt && (
                     <button type="button" className="rd-btn" disabled={!!arrivingId} onClick={() => handleArrivedAtMiddle(o.id)}>
                       {arrivingId === o.id ? '…' : t('dashboard.arrivedAtSecondStop')}
                     </button>
                   )}
-                  {isDriver && o.tripType === 'ROUNDTRIP' && o.status === 'IN_PROGRESS' && o.arrivedAtMiddleAt && !o.leftMiddleAt && (() => {
-                    const totalMin = getTotalWaitMinutes(o.arrivedAtMiddleAt!, null);
-                    void now; // tick
-                    const showTimer = totalMin >= 5;
+                  {isDriver && o.tripType === 'ROUNDTRIP' && o.arrivedAtMiddleAt && (() => {
+                    const totalMin = getTotalWaitMinutes(o.arrivedAtMiddleAt!, o.leftMiddleAt ?? null);
+                    void now;
+                    const ended = !!o.leftMiddleAt;
+                    const charge = (o.waitChargeAtMiddleCents ?? 0) / 100;
                     return (
-                      <div className="dashboard-wait-block">
-                        {showTimer && (
-                          <p className="rd-text-muted">
-                            {t('dashboard.waitingAtSecondStop')}: <strong>{totalMin} min</strong>
-                            {totalMin >= 20 && (
-                              <> — {t('dashboard.chargeAfter5')}: <strong>${getWaitChargeDollars(totalMin)}</strong></>
+                      <div className="dashboard-wait-timer-card dashboard-wait-timer-card--second">
+                        <div className="dashboard-wait-timer-card__title">{t('dashboard.waitTimerTitleSecond')}</div>
+                        <div className="dashboard-wait-timer-card__row">
+                          <span className="rd-text-muted">{t('dashboard.waitTimerStarted')}:</span>
+                          <span>{new Date(o.arrivedAtMiddleAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        {ended ? (
+                          <div className="dashboard-wait-timer-card__row dashboard-wait-timer-card__row--result">
+                            <span>{t('dashboard.waitTimerEnded')}</span>
+                            <span>{t('dashboard.waitTimerWaited', { min: totalMin })}</span>
+                            <span>{charge > 0 ? `$${charge.toFixed(0)}` : t('dashboard.waitTimerNoCharge')}</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="dashboard-wait-timer-card__row dashboard-wait-timer-card__row--live">
+                              <span>{t('dashboard.waitTimerWaiting')}:</span>
+                              <strong>{totalMin} min</strong>
+                            </div>
+                            {totalMin < 5 && (
+                              <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerStartsIn', { min: 5 - totalMin })}</div>
                             )}
-                          </p>
+                            {totalMin >= 5 && totalMin < 20 && (
+                              <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerFirst5Free')}</div>
+                            )}
+                            {totalMin >= 20 && (
+                              <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerChargeFrom20')}: <strong>${getWaitChargeDollars(totalMin)}</strong></div>
+                            )}
+                            <button type="button" className="rd-btn rd-btn-primary dashboard-wait-timer-card__btn" disabled={!!leftMiddleId} onClick={() => handleLeftMiddle(o.id)}>
+                              {leftMiddleId === o.id ? '…' : t('dashboard.startToFinal')}
+                            </button>
+                          </>
                         )}
-                        <button type="button" className="rd-btn rd-btn-primary" disabled={!!leftMiddleId} onClick={() => handleLeftMiddle(o.id)}>
-                          {leftMiddleId === o.id ? '…' : t('dashboard.startToFinal')}
-                        </button>
                       </div>
                     );
                   })()}
-                  {isDriver && o.tripType === 'ROUNDTRIP' && o.leftMiddleAt && o.arrivedAtMiddleAt && o.waitChargeAtMiddleCents != null && o.waitChargeAtMiddleCents > 0 && (
-                    <p className="rd-text-muted dashboard-wait-note">
-                      {t('dashboard.waitedAtSecondNote', { amount: (o.waitChargeAtMiddleCents / 100).toFixed(0) })}
-                    </p>
-                  )}
                   {canAssign && (
                     <div className="dashboard-order-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
                       <button type="button" className="rd-btn" onClick={() => setSelectedOrderId((id) => id === o.id ? null : o.id)}>
@@ -1085,7 +1388,7 @@ export default function Dashboard() {
                         }}
                       >
                         <option value="">{t('dashboard.assignDriver')}</option>
-                        {(driverEtas[o.id]?.drivers ?? drivers).map((d) => {
+                        {(driverEtas[o.id]?.drivers ?? (o.preferredCarType?.trim() ? drivers.filter((d) => (d as { carType?: string | null }).carType === o.preferredCarType!.trim().toUpperCase()) : drivers)).map((d) => {
                           const eta = driverEtas[o.id]?.drivers?.find((x) => x.id === d.id);
                           const label = eta
                             ? `${d.nickname} — ETA ${eta.etaMinutesToPickup} min to pickup, ${eta.etaMinutesTotal} min total`
@@ -1117,9 +1420,14 @@ export default function Dashboard() {
                     </button>
                   )}
                   {canChangeStatus && o.status === 'IN_PROGRESS' && (
-                    <button type="button" className="rd-btn rd-btn-primary" disabled={!!statusUpdatingId} onClick={() => handleStatusChange(o.id, 'COMPLETED')}>
-                      {statusUpdatingId === o.id ? '…' : t('dashboard.complete')}
-                    </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <button type="button" className="rd-btn rd-btn-primary" disabled={!!statusUpdatingId} onClick={() => handleStatusChange(o.id, 'COMPLETED')}>
+                        {statusUpdatingId === o.id ? '…' : t('dashboard.complete')}
+                      </button>
+                      <button type="button" className="rd-btn rd-btn-danger" disabled={!!stopUnderwayId || !!statusUpdatingId} onClick={() => handleStopUnderway(o.id)}>
+                        {stopUnderwayId === o.id ? '…' : t('dashboard.stopUnderway')}
+                      </button>
+                    </div>
                   )}
                   {canAssign && (
                     <button type="button" className="rd-btn rd-btn-danger" disabled={!!deletingId} style={{ marginTop: '0.25rem' }} onClick={() => handleDelete(o.id)}>
@@ -1204,6 +1512,9 @@ export default function Dashboard() {
                     {a.type === 'order.completed' && (
                       <span className="rd-text-muted">{t('dashboard.alertOrderCompleted')}</span>
                     )}
+                    {a.type === 'order.stopped_underway' && (
+                      <span className="rd-text-muted">{t('dashboard.alertStoppedUnderway')}</span>
+                    )}
                     {a.type === 'reminder_pickup_soon' && (
                       <span className="rd-text-muted">
                         {t('dashboard.alertReminderPickup', {
@@ -1217,7 +1528,7 @@ export default function Dashboard() {
                     {a.type === 'cost_limit_exceeded' && (
                       <span className="rd-text-muted">{t('dashboard.alertCostLimitExceeded')}</span>
                     )}
-                    {!['order.assigned', 'order.created', 'order.rejected', 'order.completed', 'reminder_pickup_soon', 'cost_limit_exceeded'].includes(a.type) && (
+                    {!['order.assigned', 'order.created', 'order.rejected', 'order.completed', 'order.stopped_underway', 'reminder_pickup_soon', 'cost_limit_exceeded'].includes(a.type) && (
                       <span className="rd-text-muted">{a.type}</span>
                     )}
                   </div>
@@ -1241,19 +1552,19 @@ export default function Dashboard() {
             <div className="rd-panel-header">
               <h2>{t('dashboard.myStatus')}</h2>
             </div>
-            <label className="dashboard-available-toggle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={user?.available !== false}
-                onChange={(e) => {
-                  const next = e.target.checked;
-                  api.patch('/users/me/available', { available: next })
-                    .then(() => setUser(user ? { ...user, available: next } : null))
-                    .catch(() => toast.error(t('toast.statusUpdateFailed')));
-                }}
-              />
-              <span>{user?.available !== false ? t('dashboard.available') : t('dashboard.unavailable')}</span>
-            </label>
+            <button
+              type="button"
+              className={user?.available !== false ? 'rd-btn dashboard-status-btn dashboard-status-btn--offline' : 'rd-btn dashboard-status-btn dashboard-status-btn--online'}
+              style={{ width: '100%', padding: '1rem 1.5rem', fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem' }}
+              onClick={() => {
+                const next = user?.available === false;
+                api.patch('/users/me/available', { available: next })
+                  .then(() => setUser(user ? { ...user, available: next } : null))
+                  .catch(() => toast.error(t('toast.statusUpdateFailed')));
+              }}
+            >
+              {user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+            </button>
             <div className="rd-panel-header" style={{ marginTop: '0.5rem' }}>
               <h2>{t('dashboard.driverStats')}</h2>
             </div>
@@ -1295,16 +1606,32 @@ export default function Dashboard() {
       </div>
       {postTripSummary && (
         <div className="rd-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setPostTripSummary(null)}>
-          <div className="rd-panel" style={{ maxWidth: 420, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
+          <div className="rd-panel dashboard-trip-summary-modal" style={{ maxWidth: 440, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.tripSummaryTitle')}</h3>
             <p className="rd-text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
               {postTripSummary.pickupAddress} → {postTripSummary.dropoffAddress}
             </p>
-            <div className="dashboard-stats-card" style={{ marginBottom: '1rem' }}>
-              <div className="stat-row"><span>{t('dashboard.distance')}</span><span>{(postTripSummary.distanceKm / 1.60934).toFixed(1)} mi</span></div>
+            <div className="dashboard-stats-card" style={{ marginBottom: '0.75rem' }}>
               {postTripSummary.durationMinutes > 0 && (
-                <div className="stat-row"><span>{t('dashboard.duration')}</span><span>~{Math.round(postTripSummary.durationMinutes)} min</span></div>
+                <div className="stat-row"><span>{t('dashboard.tripDuration')}</span><span><strong>{Math.round(postTripSummary.durationMinutes)} min</strong></span></div>
               )}
+              {postTripSummary.pickupAt && (
+                <div className="stat-row"><span>{t('dashboard.timeScheduled')}</span><span>{new Date(postTripSummary.pickupAt).toLocaleString()}</span></div>
+              )}
+              {postTripSummary.arrivedAtPickupAt && (
+                <div className="stat-row"><span>{t('dashboard.timeArrived')}</span><span>{new Date(postTripSummary.arrivedAtPickupAt).toLocaleString()}</span></div>
+              )}
+              {postTripSummary.leftPickupAt && (
+                <div className="stat-row"><span>{t('dashboard.timePickedUp')}</span><span>{new Date(postTripSummary.leftPickupAt).toLocaleString()}</span></div>
+              )}
+              <div className="stat-row"><span>{t('dashboard.timeDroppedOff')}</span><span>{new Date(postTripSummary.completedAt).toLocaleString()}</span></div>
+              {(postTripSummary.waitChargeAtPickupCents ?? 0) > 0 && (
+                <div className="stat-row"><span>{t('dashboard.waitChargePickup')}</span><span>${(postTripSummary.waitChargeAtPickupCents! / 100).toFixed(0)}</span></div>
+              )}
+              {(postTripSummary.waitChargeAtMiddleCents ?? 0) > 0 && (
+                <div className="stat-row"><span>{t('dashboard.waitChargeSecond')}</span><span>${(postTripSummary.waitChargeAtMiddleCents! / 100).toFixed(0)}</span></div>
+              )}
+              <div className="stat-row"><span>{t('dashboard.distance')}</span><span>{(postTripSummary.distanceKm / 1.60934).toFixed(1)} mi</span></div>
               <div className="stat-row"><span>{t('dashboard.earnings')}</span><span>${(postTripSummary.earningsCents / 100).toFixed(2)}</span></div>
             </div>
             <button type="button" className="rd-btn rd-btn-primary" onClick={() => setPostTripSummary(null)}>{t('dashboard.done')}</button>
