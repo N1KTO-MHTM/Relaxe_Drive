@@ -118,11 +118,11 @@ export class PassengersService {
       const byPhone = await this.prisma.passenger.findFirst({ where: { phone } });
       if (byPhone) {
         const updateData: { name?: string; pickupAddr?: string; dropoffAddr?: string; pickupType?: string; dropoffType?: string } = {};
-        if (data.name != null) updateData.name = data.name || null;
-        if (data.pickupAddr != null) updateData.pickupAddr = data.pickupAddr || null;
-        if (data.dropoffAddr != null) updateData.dropoffAddr = data.dropoffAddr || null;
-        if (data.pickupType != null) updateData.pickupType = data.pickupType || null;
-        if (data.dropoffType != null) updateData.dropoffType = data.dropoffType || null;
+        if (data.name != null) updateData.name = data.name || undefined;
+        if (data.pickupAddr != null) updateData.pickupAddr = data.pickupAddr || undefined;
+        if (data.dropoffAddr != null) updateData.dropoffAddr = data.dropoffAddr || undefined;
+        if (data.pickupType != null) updateData.pickupType = data.pickupType || undefined;
+        if (data.dropoffType != null) updateData.dropoffType = data.dropoffType || undefined;
         if (Object.keys(updateData).length > 0) {
           return this.prisma.passenger.update({ where: { id: byPhone.id }, data: updateData });
         }
@@ -134,10 +134,10 @@ export class PassengersService {
       if (byAddr) {
         const updateData: { phone?: string; name?: string; dropoffAddr?: string; pickupType?: string; dropoffType?: string } = {};
         if (phone != null) updateData.phone = phone || byAddr.phone;
-        if (data.name != null) updateData.name = data.name || null;
-        if (data.dropoffAddr != null) updateData.dropoffAddr = data.dropoffAddr || null;
-        if (data.pickupType != null) updateData.pickupType = data.pickupType || null;
-        if (data.dropoffType != null) updateData.dropoffType = data.dropoffType || null;
+        if (data.name != null) updateData.name = data.name || undefined;
+        if (data.dropoffAddr != null) updateData.dropoffAddr = data.dropoffAddr || undefined;
+        if (data.pickupType != null) updateData.pickupType = data.pickupType || undefined;
+        if (data.dropoffType != null) updateData.dropoffType = data.dropoffType || undefined;
         if (Object.keys(updateData).length > 0) {
           return this.prisma.passenger.update({ where: { id: byAddr.id }, data: updateData });
         }
@@ -147,7 +147,7 @@ export class PassengersService {
     if (!phone && !pickupAddr) return null;
     return this.prisma.passenger.create({
       data: {
-        phone: phone ?? null,
+        phone: phone ?? '',
         name: data.name ?? null,
         pickupAddr: pickupAddr ?? null,
         dropoffAddr: data.dropoffAddr ?? null,
@@ -176,11 +176,11 @@ export class PassengersService {
         p = await this.prisma.passenger.update({
           where: { id: p.id },
           data: {
-            ...(data.name != null && { name: data.name || null }),
-            ...(data.pickupAddr != null && { pickupAddr: data.pickupAddr || null }),
-            ...(data.dropoffAddr != null && { dropoffAddr: data.dropoffAddr || null }),
-            ...(data.pickupType != null && { pickupType: data.pickupType || null }),
-            ...(data.dropoffType != null && { dropoffType: data.dropoffType || null }),
+            ...(data.name != null && { name: data.name || undefined }),
+            ...(data.pickupAddr != null && { pickupAddr: data.pickupAddr || undefined }),
+            ...(data.dropoffAddr != null && { dropoffAddr: data.dropoffAddr || undefined }),
+            ...(data.pickupType != null && { pickupType: data.pickupType || undefined }),
+            ...(data.dropoffType != null && { dropoffType: data.dropoffType || undefined }),
           },
         });
       }
