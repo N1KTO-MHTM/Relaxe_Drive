@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
+import { useToastStore } from '../../store/toast';
 import './Pendings.css';
 
 interface PendingDriver {
@@ -18,11 +19,13 @@ interface PendingDriver {
 
 export default function Pendings() {
   const { t } = useTranslation();
+  const toast = useToastStore();
   const [list, setList] = useState<PendingDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectConfirmUser, setRejectConfirmUser] = useState<PendingDriver | null>(null);
 
   function load() {
     setLoading(true);
@@ -30,7 +33,10 @@ export default function Pendings() {
     api
       .get<PendingDriver[]>('/users/pending')
       .then((data) => setList(Array.isArray(data) ? data : []))
-      .catch(() => setError('Failed to load pending drivers'))
+      .catch(() => {
+        setError(t('pendings.loadError'));
+        setList([]);
+      })
       .finally(() => setLoading(false));
   }
 
@@ -40,27 +46,37 @@ export default function Pendings() {
 
   async function handleApprove(userId: string) {
     setApprovingId(userId);
+    setError(null);
     try {
       await api.patch(`/users/${userId}/approve`, {});
       setList((prev) => prev.filter((u) => u.id !== userId));
+      toast.success(t('toast.driverApproved'));
     } catch {
-      setError('Failed to approve driver');
+      setError(t('toast.approveFailed'));
+      toast.error(t('toast.approveFailed'));
     } finally {
       setApprovingId(null);
     }
   }
 
   async function handleReject(userId: string) {
-    if (!window.confirm(t('pendings.rejectConfirm'))) return;
     setRejectingId(userId);
+    setRejectConfirmUser(null);
+    setError(null);
     try {
       await api.patch(`/users/${userId}/reject`, {});
       setList((prev) => prev.filter((u) => u.id !== userId));
+      toast.success(t('toast.driverRejected'));
     } catch {
-      setError('Failed to reject driver');
+      setError(t('toast.rejectDriverFailed'));
+      toast.error(t('toast.rejectDriverFailed'));
     } finally {
       setRejectingId(null);
     }
+  }
+
+  function openRejectConfirm(d: PendingDriver) {
+    setRejectConfirmUser(d);
   }
 
   return (
@@ -79,8 +95,8 @@ export default function Pendings() {
           <p className="rd-text-muted">{t('pendings.noPending')}</p>
         )}
         {!loading && !error && list.length > 0 && (
-          <div className="rd-table-wrapper">
-            <table className="rd-table" style={{ width: '100%' }}>
+          <div className="pendings-table-wrapper rd-table-wrapper">
+            <table className="rd-table pendings-table" style={{ width: '100%' }}>
               <thead>
                 <tr>
                   <th>{t('auth.nickname')}</th>
@@ -90,42 +106,75 @@ export default function Pendings() {
                   <th>{t('auth.carType')}</th>
                   <th>{t('auth.carPlateNumber')}</th>
                   <th>{t('pendings.registered')}</th>
-                  <th></th>
+                  <th className="pendings-th-actions">{t('pendings.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {list.map((d) => (
-                  <tr key={d.id}>
-                    <td><strong>{d.nickname}</strong></td>
-                    <td>{d.phone ?? '—'}</td>
-                    <td>{d.email ?? '—'}</td>
-                    <td>{d.driverId ?? '—'}</td>
+                  <tr key={d.id} className="pendings-row">
+                    <td className="pendings-cell-nickname"><strong>{d.nickname}</strong></td>
+                    <td className="pendings-cell-phone">{d.phone ?? '—'}</td>
+                    <td className="pendings-cell-email" title={d.email ?? undefined}>
+                      {d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}
+                    </td>
+                    <td className="pendings-cell-driver-id">{d.driverId ?? '—'}</td>
                     <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
-                    <td>{d.carPlateNumber ?? '—'}</td>
-                    <td>{d.createdAt ? new Date(d.createdAt).toLocaleString() : '—'}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="rd-btn rd-btn-primary"
-                        disabled={approvingId === d.id || rejectingId === d.id}
-                        onClick={() => handleApprove(d.id)}
-                      >
-                        {approvingId === d.id ? '…' : t('pendings.approve')}
-                      </button>
-                      <button
-                        type="button"
-                        className="rd-btn rd-btn-danger"
-                        style={{ marginLeft: '0.25rem' }}
-                        disabled={approvingId === d.id || rejectingId === d.id}
-                        onClick={() => handleReject(d.id)}
-                      >
-                        {rejectingId === d.id ? '…' : t('pendings.reject')}
-                      </button>
+                    <td className="pendings-cell-plate">{d.carPlateNumber ?? '—'}</td>
+                    <td className="pendings-cell-date">{d.createdAt ? new Date(d.createdAt).toLocaleString() : '—'}</td>
+                    <td className="pendings-cell-actions">
+                      <div className="pendings-actions">
+                        <button
+                          type="button"
+                          className="rd-btn rd-btn-primary pendings-btn-approve"
+                          disabled={approvingId === d.id || rejectingId === d.id}
+                          onClick={() => handleApprove(d.id)}
+                          title={t('pendings.approve')}
+                        >
+                          {approvingId === d.id ? '…' : t('pendings.approve')}
+                        </button>
+                        <button
+                          type="button"
+                          className="rd-btn rd-btn-danger pendings-btn-reject"
+                          disabled={approvingId === d.id || rejectingId === d.id}
+                          onClick={() => openRejectConfirm(d)}
+                          title={t('pendings.reject')}
+                        >
+                          {rejectingId === d.id ? '…' : t('pendings.reject')}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {rejectConfirmUser && (
+          <div
+            className="pendings-reject-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pendings-reject-title"
+          >
+            <div className="pendings-reject-modal-backdrop" onClick={() => setRejectConfirmUser(null)} />
+            <div className="pendings-reject-modal-content rd-panel">
+              <h3 id="pendings-reject-title">{t('pendings.reject')}: {rejectConfirmUser.nickname}</h3>
+              <p className="rd-text-muted">{t('pendings.rejectConfirm')}</p>
+              <div className="pendings-reject-modal-actions">
+                <button
+                  type="button"
+                  className="rd-btn rd-btn-danger"
+                  disabled={!!rejectingId}
+                  onClick={() => handleReject(rejectConfirmUser.id)}
+                >
+                  {rejectingId === rejectConfirmUser.id ? '…' : t('pendings.reject')}
+                </button>
+                <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setRejectConfirmUser(null)} disabled={!!rejectingId}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -118,6 +118,7 @@ export default function Dashboard() {
   const [findByIdQuery, setFindByIdQuery] = useState('');
   const [driverStatusFilter, setDriverStatusFilter] = useState<'all' | 'active' | 'busy' | 'offline'>('all');
   const [driverCarTypeFilter, setDriverCarTypeFilter] = useState<string>('');
+  const [driverSearchQuery, setDriverSearchQuery] = useState('');
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
@@ -223,8 +224,18 @@ export default function Dashboard() {
     if (driverCarTypeFilter) {
       list = list.filter((d) => (d as { carType?: string | null }).carType === driverCarTypeFilter);
     }
+    const q = (driverSearchQuery || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (d) =>
+          (d.nickname ?? '').toLowerCase().includes(q) ||
+          (d.phone ?? '').toLowerCase().includes(q) ||
+          ((d as { driverId?: string | null }).driverId ?? '').toLowerCase().includes(q) ||
+          (d.id ?? '').toLowerCase().includes(q)
+      );
+    }
     return list;
-  }, [drivers, orders, driverStatusFilter, driverCarTypeFilter]);
+  }, [drivers, orders, driverStatusFilter, driverCarTypeFilter, driverSearchQuery]);
 
   const driversForMap: DriverForMap[] = useMemo(() => {
     const selectedOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : null;
@@ -1948,6 +1959,15 @@ export default function Dashboard() {
             {canAssign && (
               <>
                 <div className="dashboard-drivers-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <input
+                    type="search"
+                    className="rd-input dashboard-drivers-search"
+                    placeholder={t('dashboard.driverSearchPlaceholder')}
+                    value={driverSearchQuery}
+                    onChange={(e) => setDriverSearchQuery(e.target.value)}
+                    style={{ minWidth: 140, flex: '1 1 140px' }}
+                    aria-label={t('dashboard.driverSearchPlaceholder')}
+                  />
                   <select className="rd-input" value={driverStatusFilter} onChange={(e) => setDriverStatusFilter(e.target.value as 'all' | 'active' | 'busy' | 'offline')} style={{ width: 'auto', minWidth: 100 }}>
                     <option value="all">{t('dashboard.driverStatusAll')}</option>
                     <option value="active">{t('dashboard.driverStatusActive')}</option>

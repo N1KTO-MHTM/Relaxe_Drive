@@ -23,6 +23,8 @@
     "forgotPasswordSubmit": "Request reset",
     "registerFailed": "Registration failed",
     "fillRequiredDriverFields": "Phone and car type are required to submit for approval.",
+    "fillAllRequiredFields": "Please fill all required fields: nickname, phone, password, and car type.",
+    "phonePlaceholder": "+1 555 123-4567",
     "registerDriverOnly": "New accounts are registered as drivers. Sign in with nickname and password.",
     "carPlateNumber": "Car plate number",
     "carType": "Car type",
@@ -160,6 +162,7 @@
     "driverStatusBusy": "Busy",
     "driverStatusOffline": "Offline",
     "driverCarAll": "All cars",
+    "driverSearchPlaceholder": "Search by name, phone, ID",
     "noCompletedOrders": "No completed orders",
     "completedOrders": "Completed orders",
     "exportCsv": "Export CSV",
@@ -238,7 +241,7 @@
     "etaTotal": "ETA total",
     "available": "Available for trips",
     "unavailable": "Not available",
-    "startOnline": "Start online",
+    "startOnline": "Go online",
     "goOffline": "Go offline",
     "noAlerts": "No alerts",
     "alertOrderAssigned": "Order assigned → {{pickup}}",
@@ -306,7 +309,7 @@
     "reportDescriptionOptional": "Optional details",
     "submit": "Submit"
   },
-  "pendings": { "title": "Pending drivers", "subtitle": "Drivers who registered and are waiting for admin approval. Until approved, they cannot sign in.", "noPending": "No pending drivers.", "approve": "Approve", "reject": "Reject", "rejectConfirm": "Reject this driver? Their account will be removed; they can register again.", "registered": "Registered" },
+  "pendings": { "title": "Pending drivers", "subtitle": "Drivers who registered and are waiting for admin approval. Until approved, they cannot sign in.", "noPending": "No pending drivers.", "approve": "Approve", "reject": "Reject", "rejectConfirm": "Reject this driver? Their account will be removed; they can register again.", "registered": "Registered", "actions": "Actions", "loadError": "Failed to load pending drivers." },
   "drivers": { "title": "Drivers", "subtitle": "All drivers. View on dashboard map to see locations.", "show": "Show", "locationAll": "All drivers", "locationOnMap": "On map only", "tabAll": "All", "tabOther": "Other", "showOnMap": "Show on map", "nickname": "Driver", "phone": "Phone", "driverId": "Driver ID", "status": "Status", "noDrivers": "No drivers", "search": "Search", "searchPlaceholder": "Search by name, email, phone, ID…", "userId": "User ID", "noMatch": "No matching drivers", "exportCsv": "Export CSV", "onMap": "On map", "offline": "Offline", "blocked": "Blocked", "banned": "Banned", "viewDetails": "View details", "driverInfo": "Driver information", "tripHistory": "Trip history", "earnings": "Earnings", "totalEarned": "Total earned", "totalMiles": "Total miles", "noTripHistory": "No trips in the last 7 days", "tripHistoryFrom": "From", "tripHistoryTo": "To", "tripHistoryLast7": "Trip history shows last 7 days.", "viewRoute": "View route", "avgSpeed": "Avg speed", "riskyEvents": "{{count}} Risky event(s)", "exportDate": "Date", "exportTime": "Time", "exportDistance": "Distance (mi)", "duration": "Duration", "summaryCount": "{{count}} driver(s)" },
   "calendar": { "title": "Calendar", "today": "Today", "day": "Day", "week": "Week", "preOrder": "Pre-order (up to 6 days)", "conflict": "Conflict", "createOrderForDay": "Create order for this day", "allDrivers": "All drivers", "chooseDriver": "Choose driver to see schedule", "driverSchedule": "{{name}}'s schedule", "viewDriverDetails": "View driver details", "status_SCHEDULED": "Scheduled", "status_ASSIGNED": "Assigned", "status_IN_PROGRESS": "In progress", "status_COMPLETED": "Completed", "status_CANCELLED": "Cancelled", "status_DRAFT": "Draft" },
   "liveWall": { "searchPlaceholder": "Search by driver ID, user ID, or lat,lng…", "go": "Go", "filterByType": "Driver type", "allTypes": "All types", "other": "Other", "active": "active" },
@@ -319,7 +322,7 @@
   "whiteLabel": { "title": "White Label", "logo": "Logo", "colors": "Colors", "domains": "Domains", "languages": "Languages", "logoUrl": "Logo URL", "primaryColor": "Primary color", "domain": "Domain", "locales": "Locales (comma-separated)", "save": "Save", "saved": "Settings saved", "loadError": "Could not load settings" },
   "audit": { "title": "Audit Logs", "subtitle": "Filter and view system audit log entries.", "userId": "User ID", "action": "Action", "resource": "Resource", "from": "From", "to": "To", "limit": "Limit", "time": "Time", "user": "User", "payload": "Payload", "noData": "No entries" },
   "health": { "title": "System Health", "subtitle": "Service status and last check.", "lastCheck": "Last check", "services": "Services" },
-  "toast": { "orderCreated": "Order created", "orderCreateFailed": "Failed to create order", "driverAssigned": "Driver assigned", "assignFailed": "Failed to assign driver", "orderCompleted": "Order completed", "rideStarted": "Ride started", "statusUpdateFailed": "Failed to update status", "orderDeleted": "Order deleted", "deleteFailed": "Failed to delete order", "orderRejected": "Order rejected", "rejectFailed": "Failed to reject order", "clientAdded": "Client added", "exportDone": "Export finished" },
+  "toast": { "orderCreated": "Order created", "orderCreateFailed": "Failed to create order", "driverAssigned": "Driver assigned", "assignFailed": "Failed to assign driver", "orderCompleted": "Order completed", "rideStarted": "Ride started", "statusUpdateFailed": "Failed to update status", "orderDeleted": "Order deleted", "deleteFailed": "Failed to delete order", "orderRejected": "Order rejected", "rejectFailed": "Failed to reject order", "clientAdded": "Client added", "exportDone": "Export finished", "driverApproved": "Driver approved", "driverRejected": "Driver rejected", "approveFailed": "Failed to approve", "rejectDriverFailed": "Failed to reject driver" },
   "status": { "ok": "OK", "warning": "Warning", "critical": "Critical", "connected": "Connected" },
   "pagination": { "prev": "Previous", "next": "Next", "page": "Page {{current}} of {{total}}" }
 }

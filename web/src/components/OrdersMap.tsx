@@ -633,9 +633,37 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     return () => clearInterval(t);
   }, [navMode, currentUserLocation?.lat, currentUserLocation?.lng, routeData?.polyline, routeData?.driverToPickupPolyline]);
 
+  const handlePickOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onMapClick || !mapRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const map = mapRef.current;
+    const rect = map.getContainer().getBoundingClientRect();
+    const point = L.point(e.clientX - rect.left, e.clientY - rect.top);
+    const latlng = map.containerPointToLatLng(point);
+    onMapClick(latlng.lat, latlng.lng);
+  };
+
   return (
     <div className="orders-map-container" style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480 }} />
+      {onMapClick && !navMode && (
+        <div
+          className="orders-map-pick-overlay"
+          role="button"
+          tabIndex={0}
+          onClick={handlePickOverlayClick}
+          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLDivElement).click()}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 500,
+            cursor: 'crosshair',
+            background: 'rgba(0,0,0,0.02)',
+          }}
+          title="Click anywhere to set location"
+        />
+      )}
       {onRecenter && (navMode || showDriverMarkers || routeData) && (
         <button
           type="button"
@@ -647,8 +675,8 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         </button>
       )}
       {!navMode && (
-        <div className="orders-map-overlay rd-text-muted" style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: 8, background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.75rem' }}>
-          {onMapClick ? 'Click on map to set location. Address will be detected automatically.' : showDriverMarkers ? 'Click driver marker for name and phone.' : 'OpenStreetMap. Orders with coordinates will show as markers.'}
+        <div className="orders-map-overlay rd-text-muted" style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: 8, background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.75rem', zIndex: 501, pointerEvents: onMapClick ? 'none' : undefined }}>
+          {onMapClick ? 'Click anywhere on the map to set location. Address will be detected automatically.' : showDriverMarkers ? 'Click driver marker for name and phone.' : 'OpenStreetMap. Orders with coordinates will show as markers.'}
         </div>
       )}
     </div>

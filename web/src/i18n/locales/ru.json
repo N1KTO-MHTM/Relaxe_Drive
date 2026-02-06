@@ -23,6 +23,8 @@
     "forgotPasswordSubmit": "Запросить сброс",
     "registerFailed": "Ошибка регистрации",
     "fillRequiredDriverFields": "Для отправки на одобрение нужны телефон и тип машины.",
+    "fillAllRequiredFields": "Заполните все обязательные поля: никнейм, телефон, пароль и тип автомобиля.",
+    "phonePlaceholder": "+1 555 123-4567",
     "registerDriverOnly": "Новые аккаунты регистрируются как водители. Вход по никнейму и паролю.",
     "carPlateNumber": "Номер автомобиля",
     "carType": "Тип автомобиля",
@@ -90,7 +92,11 @@
     "orderRejected": "Заказ отменён",
     "rejectFailed": "Не удалось отменить заказ",
     "clientAdded": "Клиент добавлен",
-    "exportDone": "Экспорт выполнен"
+    "exportDone": "Экспорт выполнен",
+    "driverApproved": "Водитель одобрен",
+    "driverRejected": "Водитель отклонён",
+    "approveFailed": "Не удалось одобрить",
+    "rejectDriverFailed": "Не удалось отклонить"
   },
   "dashboard": {
     "title": "Панель диспетчера",
@@ -171,6 +177,7 @@
     "driverStatusBusy": "Заняты",
     "driverStatusOffline": "Офлайн",
     "driverCarAll": "Все авто",
+    "driverSearchPlaceholder": "Поиск по имени, телефону, ID",
     "noCompletedOrders": "Нет завершённых заказов",
     "completedOrders": "Завершённые заказы",
     "placeType": "Тип места",
@@ -277,7 +284,7 @@
     "stopAddressPlaceholder": "Адрес остановки",
     "clientSuggestion": "Клиент (необяз. — выберите для подстановки адресов)"
   },
-  "pendings": { "title": "Ожидают одобрения", "subtitle": "Водители, зарегистрировавшиеся и ожидающие одобрения администратора. До одобрения не могут войти.", "noPending": "Нет водителей в ожидании.", "approve": "Одобрить", "reject": "Отклонить", "rejectConfirm": "Отклонить заявку? Аккаунт будет удалён; водитель сможет зарегистрироваться снова.", "registered": "Зарегистрирован" },
+  "pendings": { "title": "Ожидают одобрения", "subtitle": "Водители, зарегистрировавшиеся и ожидающие одобрения администратора. До одобрения не могут войти.", "noPending": "Нет водителей в ожидании.", "approve": "Одобрить", "reject": "Отклонить", "rejectConfirm": "Отклонить заявку? Аккаунт будет удалён; водитель сможет зарегистрироваться снова.", "registered": "Зарегистрирован", "actions": "Действия", "loadError": "Не удалось загрузить список." },
   "drivers": { "title": "Водители", "subtitle": "Все водители. Перейдите на панель с картой, чтобы видеть местоположения.", "show": "Показать", "locationAll": "Все водители", "locationOnMap": "Только на карте", "tabAll": "Все", "tabOther": "Другое", "showOnMap": "Показать на карте", "nickname": "Водитель", "phone": "Телефон", "driverId": "ID водителя", "status": "Статус", "noDrivers": "Нет водителей", "search": "Поиск", "searchPlaceholder": "Поиск по имени, email, телефону, ID…", "userId": "ID пользователя", "noMatch": "Нет совпадений", "exportCsv": "Экспорт CSV", "onMap": "На карте", "offline": "Офлайн", "blocked": "Заблокирован", "banned": "Забанен", "viewDetails": "Подробнее", "driverInfo": "Информация о водителе", "tripHistory": "История поездок", "earnings": "Заработок", "totalEarned": "Всего заработано", "totalMiles": "Всего миль", "noTripHistory": "Нет поездок за последние 7 дней", "tripHistoryFrom": "С", "tripHistoryTo": "По", "tripHistoryLast7": "История поездок за последние 7 дней.", "viewRoute": "Маршрут", "avgSpeed": "Ср. скорость", "riskyEvents": "{{count}} риск(ов)", "exportDate": "Дата", "exportTime": "Время", "exportDistance": "Расстояние (ми)", "duration": "Длительность", "summaryCount": "{{count}} водитель(ей)" },
   "calendar": { "title": "Календарь", "today": "Сегодня", "day": "День", "week": "Неделя", "preOrder": "Предзаказ (до 6 дней)", "conflict": "Конфликт", "createOrderForDay": "Создать заказ на этот день", "allDrivers": "Все водители", "chooseDriver": "Выберите водителя — откроется его календарь", "driverSchedule": "Расписание {{name}}", "viewDriverDetails": "Подробнее о водителе", "status_SCHEDULED": "Запланирован", "status_ASSIGNED": "Назначен", "status_IN_PROGRESS": "В пути", "status_COMPLETED": "Выполнен", "status_CANCELLED": "Отменён", "status_DRAFT": "Черновик" },
   "liveWall": { "searchPlaceholder": "Поиск по ID водителя, ID пользователя или lat,lng…", "go": "Найти", "filterByType": "Тип авто", "allTypes": "Все типы", "other": "Другое", "active": "активных" },

@@ -22,8 +22,12 @@ export default function Register() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!phone.trim() || !carType) {
-      setError(t('auth.fillRequiredDriverFields'));
+    const hasNickname = nickname.trim().length > 0;
+    const hasPhone = phone.trim().length > 0;
+    const hasPassword = password.length > 0;
+    const hasCarType = !!carType;
+    if (!hasNickname || !hasPhone || !hasPassword || !hasCarType) {
+      setError(t('auth.fillAllRequiredFields'));
       return;
     }
     try {
@@ -71,7 +75,7 @@ export default function Register() {
           autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="+7 999 123-45-67"
+          placeholder={t('auth.phonePlaceholder')}
           required
         />
       </div>

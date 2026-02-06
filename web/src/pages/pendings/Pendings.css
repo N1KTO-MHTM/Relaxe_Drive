@@ -1,11 +1,173 @@
+/* Pending drivers — professional layout */
+.pendings-page .rd-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .pendings-page .pendings-subtitle {
+  margin-top: 0.25rem;
   margin-bottom: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
 }
 
 .pendings-page .pendings-error {
   margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--rd-radius);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.pendings-page .rd-table td {
+.pendings-table-wrapper {
+  border-radius: var(--rd-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--rd-border);
+  margin-top: 0.5rem;
+}
+
+.pendings-table {
+  width: 100%;
+}
+
+.pendings-table thead th {
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--rd-text-muted);
+  padding: 0.75rem 0.65rem;
+  white-space: nowrap;
+  text-align: left;
+  background: var(--rd-bg-muted, rgba(255, 255, 255, 0.03));
+  border-bottom: 1px solid var(--rd-border);
+}
+
+.pendings-table tbody td {
+  padding: 0.75rem 0.65rem;
   vertical-align: middle;
+  border-bottom: 1px solid var(--rd-border);
+  font-size: 0.9rem;
+}
+
+.pendings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pendings-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pendings-cell-nickname {
+  font-weight: 600;
+}
+
+.pendings-cell-phone {
+  font-variant-numeric: tabular-nums;
+}
+
+.pendings-cell-email {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pendings-cell-email a {
+  color: var(--rd-accent);
+  text-decoration: none;
+}
+
+.pendings-cell-email a:hover {
+  text-decoration: underline;
+}
+
+.pendings-cell-driver-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  color: var(--rd-text-muted);
+}
+
+.pendings-cell-plate {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.pendings-cell-date {
+  font-size: 0.85rem;
+  color: var(--rd-text-muted);
+  white-space: nowrap;
+}
+
+.pendings-th-actions,
+.pendings-cell-actions {
+  text-align: right;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.pendings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.pendings-btn-approve {
+  min-width: 5rem;
+}
+
+.pendings-btn-reject {
+  min-width: 4.5rem;
+}
+
+/* Reject confirmation modal */
+.pendings-reject-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pendings-reject-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.pendings-reject-modal-content {
+  position: relative;
+  max-width: 420px;
+  width: 100%;
+  padding: 1.25rem;
+}
+
+.pendings-reject-modal-content h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.pendings-reject-modal-content .rd-text-muted {
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.pendings-reject-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.pendings-reject-modal-actions .rd-btn-danger {
+  order: -1;
 }

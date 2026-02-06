@@ -200,7 +200,7 @@ export default function Roles() {
         </div>
         <p className="rd-text-muted">{t('roles.usersList')}</p>
         {error && <p className="rd-text-critical">{error}</p>}
-        {!loading && users.length > 0 && (
+        {!loading && (
           <div className="roles-search-bar">
             <input
               type="text"

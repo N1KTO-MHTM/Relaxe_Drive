@@ -23,6 +23,8 @@
     "forgotPasswordSubmit": "Solicitar restablecimiento",
     "registerFailed": "Error al registrarse",
     "fillRequiredDriverFields": "El teléfono y el tipo de coche son obligatorios para enviar a aprobación.",
+    "fillAllRequiredFields": "Complete todos los campos obligatorios: usuario, teléfono, contraseña y tipo de coche.",
+    "phonePlaceholder": "+1 555 123-4567",
     "registerDriverOnly": "Las nuevas cuentas se registran como conductores. Inicia sesión con usuario y contraseña.",
     "carPlateNumber": "Matrícula del coche",
     "carType": "Tipo de coche",
@@ -119,6 +121,7 @@
     "driverStatusBusy": "Ocupados",
     "driverStatusOffline": "Desconectados",
     "driverCarAll": "Todos los coches",
+    "driverSearchPlaceholder": "Buscar por nombre, teléfono, ID",
     "car": "Coche",
     "orderStatus": "Estado",
     "assignDriver": "Asignar conductor",
@@ -218,8 +221,8 @@
     "etaToPickup": "ETA a recogida",
     "etaTotal": "ETA total",
     "available": "Disponible",
-    "startOnline": "Salir en línea",
-    "goOffline": "Ir desconectado",
+    "startOnline": "Conectarse",
+    "goOffline": "Desconectarse",
     "noAlerts": "Sin alertas",
     "alertStoppedUnderway": "Conductor paró el viaje en camino",
     "alertReminderPickup": "Recogida pronto: {{pickup}} a las {{at}}",
@@ -268,7 +271,9 @@
     "approve": "Aprobar",
     "reject": "Rechazar",
     "rejectConfirm": "¿Rechazar a este conductor? Se eliminará la cuenta; podrá registrarse de nuevo.",
-    "registered": "Registrado"
+    "registered": "Registrado",
+    "actions": "Acciones",
+    "loadError": "Error al cargar la lista."
   },
   "drivers": {
     "title": "Conductores",

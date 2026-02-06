@@ -416,11 +416,20 @@ export default function Drivers() {
                           const distanceMi = (trip.distanceKm / 1.60934).toFixed(1);
                           return (
                             <li key={trip.id} className="drivers-trip-card drivers-trip-card--with-map">
-                              <TripCardMap
-                                pickupAddress={trip.pickupAddress}
-                                dropoffAddress={trip.dropoffAddress}
-                                className="drivers-trip-card-map"
-                              />
+                              <a
+                                href={googleMapsRouteUrl(trip.pickupAddress, trip.dropoffAddress)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="drivers-trip-card-map-link"
+                                title={t('drivers.viewRoute')}
+                              >
+                                <TripCardMap
+                                  pickupAddress={trip.pickupAddress}
+                                  dropoffAddress={trip.dropoffAddress}
+                                  className="drivers-trip-card-map"
+                                />
+                                <span className="drivers-trip-card-map-hint">{t('drivers.viewRoute')}</span>
+                              </a>
                               <div className="drivers-trip-card-body">
                                 <div className="drivers-trip-route">{trip.pickupAddress} → {trip.dropoffAddress}</div>
                                 <div className="drivers-trip-meta-row">

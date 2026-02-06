@@ -37,6 +37,34 @@
   min-height: 60vh;
 }
 
+/* Mobile: driver view — stack map above sidebar, readable stat rows */
+@media (max-width: 768px) {
+  .dashboard-page--driver .dashboard-page__grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "map-area"
+      "orders-area";
+    grid-template-rows: minmax(280px, 45vh) 1fr;
+  }
+
+  .dashboard-page--driver .dashboard-page__map {
+    min-height: 280px;
+    max-height: 50vh;
+  }
+
+  .dashboard-page--driver .dashboard-page__sidebar {
+    min-width: 0;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-page--driver .dashboard-page__map {
+    min-height: 240px;
+    max-height: 45vh;
+  }
+}
+
 .dashboard-page--driver.dashboard-page--full-map .dashboard-page__grid {
   grid-template-columns: 1fr;
   grid-template-areas: "map-area";
@@ -495,9 +523,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 0;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.875rem;
   color: var(--rd-text-muted);
+  flex-wrap: wrap;
+  min-height: 2.25rem;
+}
+
+.dashboard-stats-card .stat-row span:first-child {
+  flex-shrink: 0;
+}
+
+.dashboard-stats-card .stat-row span:first-child::after {
+  content: ':';
+  margin-left: 0.15em;
+}
+
+.dashboard-stats-card .stat-row span:last-child {
+  text-align: right;
+  color: var(--rd-text);
+  font-variant-numeric: tabular-nums;
 }
 .dashboard-alerts-card .alert-item { padding: 8px 0; border-bottom: 1px solid var(--rd-border); }
 .dashboard-alerts-card .alert-item:last-child { border-bottom: none; }
@@ -556,6 +602,13 @@
   .dashboard-driver-card {
     flex-direction: row;
   }
+
+  .dashboard-order-tabs .rd-btn,
+  .dashboard-order-tabs .rd-input,
+  .dashboard-order-tabs select.rd-input {
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @media (max-width: 480px) {
@@ -594,3 +647,20 @@
 .dashboard-status-btn--offline:hover {
   filter: brightness(1.1);
 }
+
+/* Mobile: touch-friendly driver sidebar and status button */
+@media (max-width: 768px) {
+  .dashboard-stats-card .stat-row {
+    padding: 0.6rem 0;
+  }
+
+  .dashboard-status-btn {
+    min-height: 48px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .dashboard-page--driver .dashboard-page__sidebar .rd-panel-header h2 {
+    font-size: 1rem;
+  }
+}
+
