@@ -189,8 +189,9 @@ export class OrdersController {
       if (passenger) passengerId = passenger.id;
     }
     const pickupAtDate = (() => {
-      if (!body.pickupAt) return new Date();
-      const d = new Date(body.pickupAt);
+      const raw = body.pickupAt;
+      if (raw === undefined || raw === null || String(raw).trim() === '' || String(raw) === 'Invalid Date') return new Date();
+      const d = new Date(raw);
       return Number.isNaN(d.getTime()) ? new Date() : d;
     })();
     const created = await this.ordersService.create({
