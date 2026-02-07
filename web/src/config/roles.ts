@@ -58,6 +58,7 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
   { path: '/white-label', key: 'whiteLabel', group: 'admin' },
   { path: '/audit', key: 'audit', group: 'admin' },
   { path: '/health', key: 'health', group: 'admin' },
+  { path: '/phone-base', key: 'phoneBase', group: 'tools' },
   { path: '/about', key: 'about', group: 'about' },
 ];
 

@@ -1,3 +1,5 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { PhoneBaseService } from '../phone-base/phone-base.service';
 
 @Injectable()
