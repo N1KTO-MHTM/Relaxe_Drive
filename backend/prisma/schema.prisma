@@ -195,7 +195,7 @@ model SavedAddress {
 
 model Zone {
   id          String   @id @default(cuid())
-  name        String   @unique
+  name        String
   description String?
   color       String   @default("#3b82f6")
   points      String   // SQLite: JSON stringified

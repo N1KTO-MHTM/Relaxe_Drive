@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-// Version 1.0.6 - Build Fix: Replaced Prisma upsert with findFirst+update/create fallback for Map Zones
+// Version 1.0.7 - Build Fix: Removed DB-level unique constraint to unblock 'db push'; implemented logical de-duplication in ZonesService
 import { logger } from './common/logger';
 import { AllExceptionsFilter } from './common/http-exception.filter';
 

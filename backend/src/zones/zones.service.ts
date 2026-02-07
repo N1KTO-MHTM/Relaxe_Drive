@@ -295,13 +295,20 @@ export class ZonesService implements OnModuleInit {
         ];
 
         for (const z of zones) {
-            const existing = await (this.prisma.zone as any).findFirst({
+            const matches = await (this.prisma.zone as any).findMany({
                 where: { name: z.name },
+                orderBy: { createdAt: 'asc' },
             });
 
-            if (existing) {
+            if (matches.length > 0) {
+                // Keep the first one, delete others
+                const [keep, ...others] = matches;
+                for (const dupe of others) {
+                    await (this.prisma.zone as any).delete({ where: { id: dupe.id } });
+                }
+
                 await (this.prisma.zone as any).update({
-                    where: { id: existing.id },
+                    where: { id: keep.id },
                     data: {
                         description: z.description,
                         color: z.color,
