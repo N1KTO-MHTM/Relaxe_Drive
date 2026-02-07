@@ -554,7 +554,8 @@
     "filterByType": "Driver type",
     "allTypes": "All types",
     "other": "Other",
-    "active": "active"
+    "active": "active",
+    "selectDriverFirst": "Select a driver first to re-center"
   },
   "passengers": {
     "title": "Clients",
