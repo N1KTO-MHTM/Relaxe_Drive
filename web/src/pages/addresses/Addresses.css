@@ -322,11 +322,31 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+.addresses-card-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: stretch;
+}
+
+.addresses-btn-create-order {
+    width: 100%;
+    font-size: 0.85rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+}
+
+@media (max-width: 600px) {
     .addresses-grid {
         grid-template-columns: 1fr;
     }
 
+    .addresses-modal-content {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
     .addresses-modal-header {
         flex-direction: column;
         align-items: flex-start;

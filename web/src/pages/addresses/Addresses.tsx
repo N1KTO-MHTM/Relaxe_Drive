@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useToastStore } from '../../store/toast';
 import './Addresses.css';
@@ -17,6 +18,7 @@ interface SavedAddress {
 
 export default function Addresses() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const toast = useToastStore();
     const [addresses, setAddresses] = useState<SavedAddress[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,12 +26,18 @@ export default function Addresses() {
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<SavedAddress | null>(null);
+    const [filterCategory, setFilterCategory] = useState('');
     const [formData, setFormData] = useState({
         phone: '',
         pickupAddress: '',
         pickupCategory: 'other',
         dropoffAddress: '',
         dropoffCategory: 'other',
+    });
+
+    const filteredAddresses = addresses.filter(addr => {
+        if (filterCategory && addr.category !== filterCategory) return false;
+        return true;
     });
 
     function loadAddresses() {
@@ -146,6 +154,17 @@ export default function Addresses() {
                 <div className="rd-panel-header">
                     <h1>{t('addresses.title')}</h1>
                     <div className="addresses-header-actions">
+                        <select
+                            className="rd-input addresses-filter-select"
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value)}
+                        >
+                            <option value="">All Categories</option>
+                            <option value="home">🏠 Home</option>
+                            <option value="work">💼 Work</option>
+                            <option value="frequent">⭐ Frequent</option>
+                            <option value="other">📍 Other</option>
+                        </select>
                         <button
                             type="button"
                             className="rd-btn rd-btn-secondary"
@@ -167,13 +186,13 @@ export default function Addresses() {
 
                 {error && <p className="rd-text-critical addresses-error">{error}</p>}
                 {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
-                {!loading && !error && addresses.length === 0 && (
-                    <p className="rd-text-muted">{t('addresses.noAddresses')}</p>
+                {!loading && !error && filteredAddresses.length === 0 && (
+                    <p className="rd-text-muted">{addresses.length === 0 ? t('addresses.noAddresses') : 'No addresses match this category'}</p>
                 )}
 
-                {!loading && !error && addresses.length > 0 && (
+                {!loading && !error && filteredAddresses.length > 0 && (
                     <div className="addresses-grid">
-                        {addresses.map((addr) => (
+                        {filteredAddresses.map((addr) => (
                             <div key={addr.id} className="addresses-card rd-panel">
                                 <div className="addresses-card-header">
                                     <div className="addresses-card-phone">
@@ -203,15 +222,31 @@ export default function Addresses() {
                                     <div className="addresses-card-address">{addr.address}</div>
                                     <div className="addresses-card-meta">
                                         <span className={`addresses-badge ${getCategoryBadge(addr.category)}`}>
+                                            {addr.category === 'home' ? '🏠 ' : addr.category === 'work' ? '💼 ' : addr.category === 'frequent' ? '⭐ ' : '📍 '}
                                             {addr.category || 'other'}
                                         </span>
                                         <span className={`addresses-badge ${getTypeBadge(addr.type)}`}>
-                                            {addr.type || 'both'}
+                                            {addr.type === 'pickup' ? '📍 Pickup' : addr.type === 'dropoff' ? '🎯 Dropoff' : '🔄 Both'}
                                         </span>
                                         <span className="addresses-use-count">
                                             Used {addr.useCount}×
                                         </span>
                                     </div>
+                                </div>
+                                <div className="addresses-card-footer">
+                                    <button
+                                        type="button"
+                                        className="rd-btn rd-btn-primary rd-btn-sm addresses-btn-create-order"
+                                        onClick={() => navigate('/dashboard', {
+                                            state: {
+                                                prefillAddress: addr.address,
+                                                prefillPhone: addr.phone,
+                                                prefillType: addr.type
+                                            }
+                                        })}
+                                    >
+                                        🚀 {t('addresses.createOrder')}
+                                    </button>
                                 </div>
                             </div>
                         ))}

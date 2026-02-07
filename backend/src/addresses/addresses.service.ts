@@ -39,7 +39,20 @@ export class AddressesService {
             });
         }
 
-        return this.prisma.savedAddress.create({
+        // Check for duplicates
+        const existing = await this.prisma.savedAddress.findFirst({
+            where: {
+                passengerId: passenger.id,
+                address: data.address,
+                type: data.type || 'both',
+            },
+        });
+
+        if (existing) {
+            return existing;
+        }
+
+        return (this.prisma.savedAddress as any).create({
             data: {
                 passengerId: passenger.id,
                 phone: data.phone,
@@ -61,7 +74,7 @@ export class AddressesService {
             throw new Error('Address not found or unauthorized');
         }
 
-        return this.prisma.savedAddress.update({
+        return (this.prisma.savedAddress as any).update({
             where: { id },
             data: {
                 phone: data.phone !== undefined ? data.phone : undefined,

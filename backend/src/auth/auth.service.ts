@@ -21,7 +21,7 @@ export class AuthService {
     private jwtService: JwtService,
     private config: ConfigService,
     private audit: AuditService,
-  ) {}
+  ) { }
 
   async register(
     nickname: string,
@@ -81,7 +81,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (user.blocked) throw new UnauthorizedException('Account is blocked');
     if (user.role === 'DRIVER' && user.approvedAt == null) {
-      throw new UnauthorizedException('Account pending approval. An administrator must approve your registration before you can sign in.');
+      throw new UnauthorizedException(`Account pending approval. Please contact support. Status for user ${user.id} is still pending.`);
     }
     if (user.bannedUntil && user.bannedUntil > new Date()) {
       throw new UnauthorizedException(`Account temporarily banned. Reason: ${user.banReason || 'Not specified'}`);

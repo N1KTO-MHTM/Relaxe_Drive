@@ -328,13 +328,12 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     const rocklandLatLngs = ROCKLAND_COUNTY_BOUNDARY.map(([lat, lng]) => L.latLng(lat, lng));
     const rocklandLine = L.polygon(rocklandLatLngs, {
       color: '#0d9488',
-      weight: 2,
-      opacity: 0.85,
-      dashArray: '8, 6',
+      weight: 3,
+      opacity: 0.9,
       fill: true,
       fillColor: '#0d9488',
-      fillOpacity: 0.06,
-      interactive: false, // Ensure background boundary doesn't block clicks
+      fillOpacity: 0.08,
+      interactive: false,
     }).addTo(map);
     rocklandLine.bindPopup('Rockland County', { closeOnClick: false });
     rocklandBoundaryRef.current = rocklandLine;
@@ -639,11 +638,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       try {
         const poly = L.polygon(z.points, {
           color: z.color,
-          weight: 2,
+          weight: 3,
           fill: true,
           fillColor: z.color,
-          fillOpacity: 0.15,
-          dashArray: '5, 5',
+          fillOpacity: 0.2,
           interactive: true,
         }).addTo(group);
         poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
