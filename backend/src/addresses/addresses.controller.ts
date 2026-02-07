@@ -3,7 +3,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AddressesService } from './addresses.service';
 
 interface RequestWithUser {
-    user: { userId: string };
+    user: { id: string };
 }
 
 @Controller('addresses')
@@ -13,7 +13,7 @@ export class AddressesController {
 
     @Get()
     async findAll(@Request() req: RequestWithUser) {
-        return this.addressesService.findAll(req.user.userId);
+        return this.addressesService.findAll(req.user.id);
     }
 
     @Post()
@@ -21,7 +21,7 @@ export class AddressesController {
         @Request() req: RequestWithUser,
         @Body() body: { phone?: string; address: string; category?: string; type?: string },
     ) {
-        return this.addressesService.create(req.user.userId, body);
+        return this.addressesService.create(req.user.id, body);
     }
 
     @Patch(':id')
@@ -30,11 +30,11 @@ export class AddressesController {
         @Request() req: RequestWithUser,
         @Body() body: { phone?: string; address?: string; category?: string; type?: string },
     ) {
-        return this.addressesService.update(id, req.user.userId, body);
+        return this.addressesService.update(id, req.user.id, body);
     }
 
     @Delete(':id')
     async delete(@Param('id') id: string, @Request() req: RequestWithUser) {
-        return this.addressesService.delete(id, req.user.userId);
+        return this.addressesService.delete(id, req.user.id);
     }
 }
