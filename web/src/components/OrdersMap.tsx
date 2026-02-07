@@ -298,7 +298,6 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   const driverPathLayerRef = useRef<L.Polyline | null>(null);
   /** Per-driver markers for smooth position updates (no teleport). */
   const driverMarkersByIdRef = useRef<Map<string, L.Marker>>(new Map());
-  const trafficLayerRef = useRef<L.TileLayer | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
