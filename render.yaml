@@ -18,8 +18,8 @@ services:
       npm run build
     autoDeploy: true
 
-    # One-time: resolve failed migration P3009 (remove "resolve" line after deploy succeeds)
-    startCommand: npx prisma migrate resolve --rolled-back 20260219000000_add_order_completed_at 2>/dev/null || true && npx prisma migrate deploy && npm run start:prod
+    # Use db push to sync schema without migrations (auto-create tables)
+    startCommand: npx prisma db push && npm run start:prod
 
     envVars:
       - key: NODE_ENV
