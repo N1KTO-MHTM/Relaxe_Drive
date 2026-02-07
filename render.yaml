@@ -35,9 +35,9 @@ services:
   - type: web
     name: relaxdrive-web
     runtime: static
-    rootDir: web
-    buildCommand: npm install --include=dev && npm run build
-    staticPublishPath: dist
+    rootDir: . # Run from repo root to avoid confusion
+    buildCommand: cd web && npm install --include=dev && npm run build
+    staticPublishPath: web/dist
     envVars:
       - key: VITE_API_URL
         value: https://relaxdrive-api.onrender.com
