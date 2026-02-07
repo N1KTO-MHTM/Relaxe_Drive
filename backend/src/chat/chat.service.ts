@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { WebSocketGateway } from '../websocket/websocket.gateway';
+import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class ChatService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly wsGateway: WebSocketGateway,
+        private readonly wsGateway: RelaxDriveWsGateway,
     ) { }
 
     /**
