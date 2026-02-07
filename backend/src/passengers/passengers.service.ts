@@ -1,9 +1,17 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PhoneBaseService } from '../phone-base/phone-base.service';
 
 @Injectable()
 export class PassengersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private phoneBase: PhoneBaseService,
+  ) { }
+
+  /** Resolve phone number if it maps to another target. */
+  private async resolvePhone(phone: string): Promise<string> {
+    const target = await this.phoneBase.findTargetPhone(phone);
+    return target || phone;
+  }
 
   /** List only clients (passengers not linked to a driver account). Drivers who registered with phone have userId set and are excluded. */
   async findAll() {
@@ -22,8 +30,10 @@ export class PassengersService {
     pickupType?: string;
     dropoffType?: string;
   }) {
-    const phone = data.phone?.trim();
+    const rawPhone = data.phone?.trim();
+    const phone = rawPhone ? await this.resolvePhone(rawPhone) : rawPhone;
     const pickupAddr = data.pickupAddr?.trim();
+
     if (phone && pickupAddr) {
       const existing = await this.prisma.passenger.findFirst({
         where: { phone, pickupAddr },
@@ -32,7 +42,7 @@ export class PassengersService {
     }
     return this.prisma.passenger.create({
       data: {
-        phone: data.phone,
+        phone: phone || '',
         name: data.name ?? null,
         pickupAddr: data.pickupAddr ?? null,
         dropoffAddr: data.dropoffAddr ?? null,
@@ -53,10 +63,11 @@ export class PassengersService {
       dropoffType?: string;
     },
   ) {
+    const phone = data.phone?.trim() ? await this.resolvePhone(data.phone.trim()) : undefined;
     return this.prisma.passenger.update({
       where: { id },
       data: {
-        ...(data.phone != null && { phone: data.phone.trim() }),
+        ...(phone != null && { phone }),
         ...(data.name != null && { name: data.name || null }),
         ...(data.pickupAddr != null && { pickupAddr: data.pickupAddr || null }),
         ...(data.dropoffAddr != null && { dropoffAddr: data.dropoffAddr || null }),
@@ -72,8 +83,10 @@ export class PassengersService {
 
   /** Link a driver (user) to a passenger record by phone: find or create passenger, set userId. If phone is already linked to a driver, do not add/overwrite. */
   async linkDriverToPassenger(phone: string, userId: string) {
-    const normalized = phone.trim();
-    if (!normalized) return null;
+    const raw = phone.trim();
+    if (!raw) return null;
+    const normalized = await this.resolvePhone(raw);
+
     const p = await this.prisma.passenger.findFirst({ where: { phone: normalized } });
     if (p) {
       if (p.userId) return p; // phone already registered as driver, don't add again
@@ -91,7 +104,8 @@ export class PassengersService {
 
   /** Returns true if a passenger with this phone and pickup address already exists. */
   async existsByPhoneAndPickupAddr(phone: string, pickupAddr: string): Promise<boolean> {
-    const p = phone.trim();
+    const raw = phone.trim();
+    const p = raw ? await this.resolvePhone(raw) : raw;
     const a = pickupAddr?.trim();
     if (!p || !a) return false;
     const found = await this.prisma.passenger.findFirst({
@@ -120,7 +134,8 @@ export class PassengersService {
       dropoffType?: string;
     },
   ) {
-    const phone = data.phone?.trim();
+    const rawPhone = data.phone?.trim();
+    const phone = rawPhone ? await this.resolvePhone(rawPhone) : rawPhone;
     const pickupAddr = data.pickupAddr?.trim();
 
     if (phone) {
@@ -177,8 +192,10 @@ export class PassengersService {
       dropoffType?: string;
     },
   ) {
-    const normalized = phone.trim();
-    if (!normalized) return null;
+    const raw = phone.trim();
+    if (!raw) return null;
+    const normalized = await this.resolvePhone(raw);
+
     let p = await this.prisma.passenger.findFirst({ where: { phone: normalized } });
     if (p) {
       if (data && (data.name != null || data.pickupAddr != null || data.dropoffAddr != null || data.pickupType != null || data.dropoffType != null)) {

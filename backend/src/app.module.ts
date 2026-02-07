@@ -25,6 +25,7 @@ import { ReportsModule } from './reports/reports.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { PlanningModule } from './planning/planning.module';
 import { ZonesModule } from './zones/zones.module';
+import { PhoneBaseModule } from './phone-base/phone-base.module';
 
 @Module({
   controllers: [AppController],
@@ -53,6 +54,7 @@ import { ZonesModule } from './zones/zones.module';
     SchedulerModule,
     PlanningModule,
     ZonesModule,
+    PhoneBaseModule,
   ],
 })
 export class AppModule { }
