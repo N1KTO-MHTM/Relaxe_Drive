@@ -20,7 +20,8 @@
     "prisma:delete-all-non-admin": "node prisma/delete-all-non-admin-users.js",
     "prisma:studio": "prisma studio",
     "test": "jest",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
