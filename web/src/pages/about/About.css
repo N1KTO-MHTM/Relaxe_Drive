@@ -1,144 +1,114 @@
 .about-page {
-  max-width: 560px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.about-block {
-  margin: var(--rd-space-lg) 0;
+.about-header {
+  padding: var(--rd-space-xl);
+  margin-bottom: var(--rd-space-lg);
+  text-align: center;
+}
+
+.about-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: var(--rd-space-md);
+  background: linear-gradient(135deg, var(--rd-text), var(--rd-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.about-hero {
+  display: flex;
+  justify-content: center;
+  gap: var(--rd-space-lg);
+  margin-top: var(--rd-space-md);
+  font-size: 1.1rem;
+}
+
+.about-main-desc {
+  max-width: 800px;
+  margin: var(--rd-space-lg) auto 0;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.categories-title {
+  font-size: 1.5rem;
+  margin: var(--rd-space-xl) 0 var(--rd-space-lg);
+  text-align: center;
+  font-weight: 600;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--rd-space-lg);
+  margin-bottom: var(--rd-space-xl);
+}
+
+.about-card {
   padding: var(--rd-space-lg);
-  background: var(--rd-bg-elevated);
-  border-radius: var(--rd-radius);
-  border: 1px solid var(--rd-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.about-app {
-  font-size: 1.125rem;
-  margin: 0 0 0.5rem;
+.about-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  border-color: var(--rd-accent);
 }
 
-.about-version {
-  font-size: 0.9375rem;
-  color: var(--rd-text-muted);
-  margin: 0 0 0.25rem;
+.about-card-icon {
+  font-size: 2rem;
+  margin-bottom: var(--rd-space-md);
 }
 
-.about-creator {
-  font-size: 0.9375rem;
-  margin: 0;
-}
-
-.about-creator strong {
+.about-card h3 {
+  margin: 0 0 var(--rd-space-sm);
+  font-size: 1.25rem;
   color: var(--rd-accent);
 }
 
-.about-access {
-  margin-top: var(--rd-space-lg);
-  padding: var(--rd-space-md);
-  background: var(--rd-bg-panel);
-  border-radius: var(--rd-radius);
-  border: 1px solid var(--rd-border);
-}
-
-.about-access h2 {
-  margin: 0 0 var(--rd-space-sm);
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.about-detail {
-  margin-top: var(--rd-space-sm);
+.about-card p {
+  line-height: 1.6;
   font-size: 0.9375rem;
-  line-height: 1.5;
+  flex-grow: 1;
 }
 
-.about-location-guide {
-  margin-top: var(--rd-space-lg);
+.about-card-content {
+  margin-top: var(--rd-space-md);
 }
 
-.about-location-guide-title {
-  margin: 0 0 var(--rd-space-sm);
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.about-location-guide-intro {
-  margin: 0 0 var(--rd-space-md);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-}
-
-.about-location-guide-steps {
-  margin: 0 0 var(--rd-space-md);
+.about-step-list {
   padding-left: 1.25rem;
+  margin: 0;
   font-size: 0.9375rem;
   line-height: 1.6;
-  color: var(--rd-text-muted);
 }
 
-.about-location-guide-steps li {
+.about-step-list li {
   margin-bottom: 0.5rem;
 }
 
-.about-location-guide-success {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+.about-footer {
+  text-align: center;
+  padding: var(--rd-space-lg);
+  margin-top: var(--rd-space-xl);
 }
 
-.about-location-guide-phone {
-  margin-top: var(--rd-space-md);
-  padding: var(--rd-space-md);
-  background: var(--rd-bg-panel);
-  border-radius: var(--rd-radius);
-  border: 1px solid var(--rd-border);
-}
+@media (max-width: 768px) {
+  .about-hero {
+    flex-direction: column;
+    gap: var(--rd-space-xs);
+  }
 
-.about-location-guide-phone-title {
-  margin: 0 0 var(--rd-space-sm);
-  font-size: 0.9375rem;
-  font-weight: 600;
-}
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
 
-.about-location-guide-phone .about-location-guide-steps {
-  margin-bottom: 0;
-}
-
-.about-instructions {
-  margin-top: var(--rd-space-lg);
-}
-
-.about-instructions-title {
-  margin: 0 0 var(--rd-space-sm);
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.about-instructions-intro {
-  margin: 0 0 var(--rd-space-md);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-}
-
-.about-instructions-section {
-  margin-top: var(--rd-space-md);
-  padding-top: var(--rd-space-md);
-  border-top: 1px solid var(--rd-border);
-}
-
-.about-instructions-section:first-of-type {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-}
-
-.about-instructions-heading {
-  margin: 0 0 var(--rd-space-xs);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--rd-text);
-}
-
-.about-instructions-text {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.55;
+  .about-header h1 {
+    font-size: 2rem;
+  }
 }

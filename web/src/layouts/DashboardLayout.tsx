@@ -22,7 +22,7 @@ export default function DashboardLayout() {
     if (!socket || !user?.id) return;
     const onUserUpdated = (data: { userId?: string }) => {
       if (data?.userId === user.id) {
-        api.get<{ id: string; nickname: string; role: string; locale: string; available?: boolean; email?: string; phone?: string; driverId?: string; carId?: string; carType?: string; carPlateNumber?: string; carCapacity?: number; carModelAndYear?: string }>('/users/me').then((data) => setUser(data ? { ...data, role: data.role as import('../store/auth').Role } : null)).catch(() => {});
+        api.get<{ id: string; nickname: string; role: string; locale: string; available?: boolean; email?: string; phone?: string; driverId?: string; carId?: string; carType?: string; carPlateNumber?: string; carCapacity?: number; carModelAndYear?: string }>('/users/me').then((data) => setUser(data ? { ...data, role: data.role as import('../store/auth').Role } : null)).catch(() => { });
       }
     };
     socket.on('user.updated', onUserUpdated);
@@ -63,22 +63,32 @@ export default function DashboardLayout() {
           </div>
         </div>
         <nav className={`dashboard-layout__nav ${mobileNavOpen ? 'dashboard-layout__nav--open' : ''}`}>
-          {nav.map((item, index) => {
-            const prevGroup = nav[index - 1]?.group;
-            const showSep = item.group && prevGroup && item.group !== prevGroup;
-            return (
-              <span key={item.path} className="dashboard-layout__nav-item-wrap">
-                {showSep && <span className="dashboard-layout__nav-sep" aria-hidden />}
-                <Link
-                  to={item.path}
-                  className={location.pathname === item.path ? 'active' : ''}
-                  onClick={() => setMobileNavOpen(false)}
-                >
-                  {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
-                </Link>
-              </span>
-            );
-          })}
+          {(() => {
+            const groups: Record<string, typeof nav> = { operations: [], dispatch: [], bi: [], system: [] };
+            nav.forEach(item => {
+              if (item.group && groups[item.group]) groups[item.group].push(item);
+              else groups.operations.push(item); // Fallback
+            });
+
+            return Object.entries(groups).map(([groupKey, items]) => {
+              if (items.length === 0) return null;
+              return (
+                <div key={groupKey} className="nav-group">
+                  <div className="nav-group-title">{t(`nav.group.${groupKey}`) || groupKey.toUpperCase()}</div>
+                  {items.map(item => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
+                    </Link>
+                  ))}
+                </div>
+              );
+            });
+          })()}
         </nav>
         <div className="dashboard-layout__right">
           {(user?.role === 'ADMIN' || user?.role === 'DISPATCHER') && (
@@ -105,7 +115,7 @@ export default function DashboardLayout() {
               if (uid) {
                 api.patch<{ id: string; nickname: string; role: string; locale: string }>('/users/me', { locale: lng })
                   .then((data) => setUser(data ? { ...data, role: data.role as Role } : null))
-                  .catch(() => {});
+                  .catch(() => { });
               }
             }}
             className="rd-input lang-select"

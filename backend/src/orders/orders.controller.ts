@@ -299,7 +299,7 @@ export class OrdersController {
 
   @Patch(':id/arrived-at-pickup')
   @UseGuards(RolesGuard)
-  @Roles('DRIVER')
+  @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async arrivedAtPickup(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setArrivedAtPickup(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
@@ -309,7 +309,7 @@ export class OrdersController {
 
   @Patch(':id/arrived-at-middle')
   @UseGuards(RolesGuard)
-  @Roles('DRIVER')
+  @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async arrivedAtMiddle(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setArrivedAtMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
@@ -319,7 +319,7 @@ export class OrdersController {
 
   @Patch(':id/left-middle')
   @UseGuards(RolesGuard)
-  @Roles('DRIVER')
+  @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async leftMiddle(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setLeftMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
@@ -329,7 +329,7 @@ export class OrdersController {
 
   @Patch(':id/stop-underway')
   @UseGuards(RolesGuard)
-  @Roles('DRIVER')
+  @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async stopUnderway(
     @Param('id') orderId: string,
     @Request() req: { user: { id: string } },

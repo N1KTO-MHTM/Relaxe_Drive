@@ -128,6 +128,7 @@ export default function Dashboard() {
   const [orderTab, setOrderTab] = useState<'active' | 'completed' | 'addresses'>('active');
   const [addressesTabPickup, setAddressesTabPickup] = useState('');
   const [addressesTabDropoff, setAddressesTabDropoff] = useState('');
+  const [addressesTabPhone, setAddressesTabPhone] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('');
   const [findByIdQuery, setFindByIdQuery] = useState('');
   const [exportPeriodFrom, setExportPeriodFrom] = useState(() => {
@@ -2055,6 +2056,18 @@ export default function Dashboard() {
               <h3 className="rd-section-title" style={{ marginTop: 0 }}>{t('dashboard.tabAddresses')}</h3>
               <p className="rd-text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>{t('dashboard.addressesPanelHint')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 480 }}>
+                <div>
+                  <label className="dashboard-form-label">{t('dashboard.phone')}</label>
+                  <input
+                    type="tel"
+                    className="rd-input"
+                    value={addressesTabPhone}
+                    onChange={(e) => setAddressesTabPhone(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    aria-label={t('dashboard.phone')}
+                    style={{ width: '100%' }}
+                  />
+                </div>
                 <div>
                   <label className="dashboard-form-label">{t('dashboard.pickup')}</label>
                   <input

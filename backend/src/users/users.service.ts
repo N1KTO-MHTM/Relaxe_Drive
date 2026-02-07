@@ -293,6 +293,7 @@ export class UsersService {
         carCapacity: true,
         carModelAndYear: true,
         createdAt: true,
+        updatedAt: true,
       },
       orderBy: { nickname: 'asc' },
     });

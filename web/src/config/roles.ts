@@ -3,38 +3,19 @@ import type { Role } from '../store/auth';
 /** Paths that each role can access. Drivers and Clients tabs only for DISPATCHER and ADMIN; DRIVER cannot see them. */
 export const ROLE_PATHS: Record<Role, string[]> = {
   ADMIN: [
-    '/dashboard',
-    '/wall',
-    '/calendar',
-    '/passengers',
-    '/addresses',
-    '/drivers',
-    '/pendings',
-    '/translation',
-    '/analytics',
-    '/roles',
-    '/sessions',
-    '/cost-control',
-    '/white-label',
-    '/audit',
-    '/health',
-    '/about',
+    '/dashboard', '/wall', '/calendar',
+    '/passengers', '/addresses', '/drivers', '/phone-base',
+    '/analytics', '/driver-reports', '/cost-control', '/sessions', '/audit',
+    '/roles', '/translation', '/white-label', '/health', '/about',
   ],
   DISPATCHER: [
-    '/dashboard',
-    '/wall',
-    '/calendar',
-    '/passengers',
-    '/addresses',
-    '/drivers',
-    '/pendings',
-    '/translation',
-    '/sessions',
-    '/audit',
-    '/about',
+    '/dashboard', '/wall', '/calendar',
+    '/passengers', '/addresses', '/drivers', '/phone-base',
+    '/analytics', '/driver-reports', '/sessions', '/audit',
+    '/translation', '/about',
   ],
-  /** Driver: no Passengers, no Drivers — only dashboard, translation, about. */
-  DRIVER: ['/dashboard', '/translation', '/about'],
+  /** Driver: Dashboard, My Reports, Translation, About. */
+  DRIVER: ['/dashboard', '/driver-reports', '/translation', '/about'],
 };
 
 export function canAccessPath(role: Role | null, path: string): boolean {
@@ -46,23 +27,30 @@ export function canAccessPath(role: Role | null, path: string): boolean {
 
 /** Nav items in logical order: Main → People → Tools → Admin → About. */
 const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
-  { path: '/dashboard', key: 'dashboard', group: 'main' },
-  { path: '/wall', key: 'liveWall', group: 'main' },
-  { path: '/calendar', key: 'calendar', group: 'main' },
-  { path: '/passengers', key: 'passengers', group: 'people' },
-  { path: '/addresses', key: 'addresses', group: 'people' },
-  { path: '/drivers', key: 'drivers', group: 'people' },
-  { path: '/pendings', key: 'pendings', group: 'people' },
-  { path: '/translation', key: 'translation', group: 'tools' },
-  { path: '/analytics', key: 'analytics', group: 'tools' },
-  { path: '/roles', key: 'roles', group: 'admin' },
-  { path: '/sessions', key: 'sessions', group: 'admin' },
-  { path: '/cost-control', key: 'costControl', group: 'admin' },
-  { path: '/white-label', key: 'whiteLabel', group: 'admin' },
-  { path: '/audit', key: 'audit', group: 'admin' },
-  { path: '/health', key: 'health', group: 'admin' },
-  { path: '/phone-base', key: 'phoneBase', group: 'tools' },
-  { path: '/about', key: 'about', group: 'about' },
+  // Operations
+  { path: '/dashboard', key: 'dashboard', group: 'operations' },
+  { path: '/wall', key: 'liveWall', group: 'operations' },
+  { path: '/calendar', key: 'calendar', group: 'operations' },
+
+  // Dispatch Center
+  { path: '/drivers', key: 'drivers', group: 'dispatch' },
+  { path: '/passengers', key: 'passengers', group: 'dispatch' },
+  { path: '/addresses', key: 'addresses', group: 'dispatch' },
+  { path: '/phone-base', key: 'phoneBase', group: 'dispatch' },
+
+  // Business Intelligence
+  { path: '/analytics', key: 'analytics', group: 'bi' },
+  { path: '/driver-reports', key: 'driverReports', group: 'bi' }, // New
+  { path: '/cost-control', key: 'costControl', group: 'bi' },
+  { path: '/sessions', key: 'sessions', group: 'bi' },
+  { path: '/audit', key: 'audit', group: 'bi' },
+
+  // System Settings
+  { path: '/roles', key: 'roles', group: 'system' },
+  { path: '/translation', key: 'translation', group: 'system' },
+  { path: '/white-label', key: 'whiteLabel', group: 'system' },
+  { path: '/health', key: 'health', group: 'system' },
+  { path: '/about', key: 'about', group: 'system' },
 ];
 
 export function getAllowedNavItems(role: Role | null): { path: string; key: string; group?: string }[] {

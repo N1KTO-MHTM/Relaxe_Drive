@@ -1,46 +1,43 @@
-import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { ReportsService, REPORT_TYPES, type ReportType } from './reports.service';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'DISPATCHER', 'DRIVER')
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(private readonly reportsService: ReportsService) { }
 
-  @Get()
-  list(
-    @Query('minLat') minLat: string,
-    @Query('maxLat') maxLat: string,
-    @Query('minLng') minLng: string,
-    @Query('maxLng') maxLng: string,
-    @Query('sinceMinutes') sinceMinutes?: string,
-  ) {
-    const minLatN = parseFloat(minLat);
-    const maxLatN = parseFloat(maxLat);
-    const minLngN = parseFloat(minLng);
-    const maxLngN = parseFloat(maxLng);
-    const since = sinceMinutes ? parseInt(sinceMinutes, 10) : 120;
-    if (!Number.isFinite(minLatN) || !Number.isFinite(maxLatN) || !Number.isFinite(minLngN) || !Number.isFinite(maxLngN)) {
-      return [];
-    }
-    return this.reports.findInBounds(minLatN, maxLatN, minLngN, maxLngN, Number.isFinite(since) ? since : 120);
+  @Get('driver')
+  @Roles('DRIVER', 'ADMIN', 'DISPATCHER')
+  async getDriverReports(@Request() req: any) {
+    // If Admin/Dispatcher, could allow query param ?driverId=...
+    // For now, return reports for the requesting user if they are a driver
+    // Or all reports if Admin (to be implemented)
+    const userId = req.user.userId;
+    return this.reportsService.getReportsForUser(userId, req.user.role);
   }
 
-  @Post()
-  async create(
-    @Body() body: { lat: number; lng: number; type: string; description?: string },
-    @Request() req: { user: { id: string } },
+  @Get('download')
+  @Roles('DRIVER', 'ADMIN', 'DISPATCHER')
+  async downloadReport(
+    @Query('driverId') driverId: string,
+    @Query('month') month: string,
+    @Request() req: any,
+    @Res() res: Response,
   ) {
-    const type = REPORT_TYPES.includes(body.type as ReportType) ? (body.type as ReportType) : 'OTHER';
-    return this.reports.create({
-      lat: body.lat,
-      lng: body.lng,
-      type,
-      description: body.description,
-      userId: req.user.id,
+    // Security check: Drivers can only download their own
+    if (req.user.role === 'DRIVER' && req.user.userId !== driverId) {
+      return res.status(403).send('Forbidden');
+    }
+
+    const csv = await this.reportsService.generateCsv(driverId, month);
+    res.set({
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="report-${driverId}-${month}.csv"`,
     });
+    return res.send(csv);
   }
 }

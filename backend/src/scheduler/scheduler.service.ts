@@ -17,7 +17,7 @@ export class SchedulerService {
     private config: ConfigService,
     private planning: PlanningService,
     private users: UsersService,
-  ) {}
+  ) { }
 
   /** Every day at 3:00 — delete sessions not active for 90 days (config: SESSION_CLEANUP_DAYS). */
   @Cron('0 3 * * *')
@@ -32,10 +32,11 @@ export class SchedulerService {
     }
   }
 
-  /** Every day at 4:00 — delete DriverTripSummary older than 7 days. */
+  /** Every day at 4:00 — delete DriverTripSummary older than 365 days. */
   @Cron('0 4 * * *')
   async cleanupOldTripSummaries() {
-    const before = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const days = 365;
+    const before = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const result = await this.prisma.driverTripSummary.deleteMany({
       where: { completedAt: { lt: before } },
     });

@@ -212,7 +212,7 @@ export class OrdersService {
             updatedAt: now,
           },
         });
-        const purgeBefore = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const purgeBefore = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         await this.prisma.driverTripSummary.deleteMany({
           where: { driverId: order.driverId, completedAt: { lt: purgeBefore } },
         });

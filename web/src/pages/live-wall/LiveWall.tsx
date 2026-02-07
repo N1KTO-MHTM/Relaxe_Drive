@@ -42,6 +42,7 @@ export default function LiveWall() {
   const [centerTrigger, setCenterTrigger] = useState(0);
   const [reportsTrigger, setReportsTrigger] = useState(0);
   const [reportTicks, setReportTicks] = useState(0);
+  const [zones, setZones] = useState<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>([]);
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
       return sessionStorage.getItem('livewall-search') ?? '';
@@ -103,6 +104,13 @@ export default function LiveWall() {
       .then(setFutureOrderCoords)
       .catch(() => setFutureOrderCoords([]));
   }, [canAssign, orders]);
+
+  useEffect(() => {
+    if (!canAssign) return;
+    api.get<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>('/zones')
+      .then(setZones)
+      .catch(() => setZones([]));
+  }, [canAssign]);
 
   useEffect(() => {
     const minLat = 40.9;
@@ -237,6 +245,7 @@ export default function LiveWall() {
           reports={reportsOnMap}
           futureOrderPickups={futurePickups}
           focusCenter={focusCenter}
+          zones={canAssign ? zones : undefined}
         />
       </div>
     </div>

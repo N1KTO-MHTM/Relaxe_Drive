@@ -260,19 +260,20 @@ export default function Addresses() {
                         <div className="addresses-modal-content rd-panel addresses-modal-split">
                             <div className="addresses-modal-header">
                                 <h3>{editingAddress ? t('addresses.editAddress') : t('addresses.addNew')}</h3>
-                                <div className="addresses-form-group-phone">
-                                    <label>{t('addresses.phone')}</label>
+                            </div>
+
+                            <form onSubmit={handleSubmit}>
+                                <div className="addresses-form-group-phone-inline" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--rd-bg-muted, rgba(255, 255, 255, 0.02))', borderRadius: 'var(--rd-radius)', border: '1px solid var(--rd-border)' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('addresses.phone')}</label>
                                     <input
                                         type="tel"
                                         className="rd-input"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="(555) 123-4567"
+                                        style={{ width: '100%' }}
                                     />
                                 </div>
-                            </div>
-
-                            <form onSubmit={handleSubmit}>
                                 <div className="addresses-split-container">
                                     {/* Pickup Section */}
                                     <div className="addresses-split-box pickup-box">

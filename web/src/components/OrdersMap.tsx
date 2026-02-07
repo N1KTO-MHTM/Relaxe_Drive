@@ -132,6 +132,8 @@ interface OrdersMapProps {
   driverView?: boolean;
   /** Zones to display (polygons) */
   zones?: Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>;
+  /** Whether to show the zones on the map */
+  showZones?: boolean;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -292,7 +294,7 @@ declare global {
 }
 
 const SMOOTH_MOVE_MS = 1000;
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, zones = [], focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, zones = [], showZones = true, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -304,7 +306,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   const reportMarkersRef = useRef<L.Marker[]>([]);
   const currentUserMarkerRef = useRef<L.Marker | null>(null);
   const pickPointMarkerRef = useRef<L.Marker | null>(null);
-  const rocklandBoundaryRef = useRef<L.Polygon | null>(null);
+  const serviceAreaRef = useRef<L.Polygon | null>(null);
   /** Driver path trail (where current user drove) — last N points. */
   const driverPathTrailRef = useRef<[number, number][]>([]);
   const driverPathLayerRef = useRef<L.Polyline | null>(null);
@@ -329,14 +331,15 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     const rocklandLine = L.polygon(rocklandLatLngs, {
       color: '#0d9488',
       weight: 3,
-      opacity: 0.9,
+      opacity: 0.8,
       fill: true,
       fillColor: '#0d9488',
-      fillOpacity: 0.08,
+      fillOpacity: 0.05,
       interactive: false,
+      dashArray: '5, 5',
     }).addTo(map);
     rocklandLine.bindPopup('Rockland County', { closeOnClick: false });
-    rocklandBoundaryRef.current = rocklandLine;
+    serviceAreaRef.current = rocklandLine;
     mapRef.current = map;
     let handleMoveEnd: (() => void) | undefined;
     if (onMapViewChange) {
@@ -364,9 +367,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
       map.getContainer().removeEventListener('click', onPopupExitClick);
       window.removeEventListener('resize', onResize);
-      if (rocklandBoundaryRef.current) {
-        map.removeLayer(rocklandBoundaryRef.current);
-        rocklandBoundaryRef.current = null;
+      if (serviceAreaRef.current) {
+        map.removeLayer(serviceAreaRef.current);
+        serviceAreaRef.current = null;
       }
       if (driverClusterRef.current) {
         map.removeLayer(driverClusterRef.current);
@@ -631,19 +634,20 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       map.removeLayer(zonesLayerRef.current);
       zonesLayerRef.current = null;
     }
-    if (!zones || zones.length === 0 || driverView) return;
+    if (!showZones || !zones || zones.length === 0 || driverView) return;
 
     const group = L.layerGroup().addTo(map);
     zones.forEach((z) => {
       try {
         const poly = L.polygon(z.points, {
-          color: z.color,
-          weight: 4,
+          color: z.color || '#2dd4bf', // Default teal if missing
+          weight: 1,
           fill: true,
-          fillColor: z.color,
-          fillOpacity: 0.25,
+          fillColor: z.color || '#2dd4bf',
+          fillOpacity: 0.2, // Transparent as requested
           interactive: true,
         }).addTo(group);
+        // poly.bindTooltip(z.name, { permanent: true, direction: "center", className: "zone-label" }); // Optional: Label
         poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
       } catch (e) {
         console.error('Failed to render zone', z, e);
@@ -656,7 +660,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         zonesLayerRef.current = null;
       }
     };
-  }, [zones, driverView]);
+  }, [zones, driverView, showZones]);
 
   // "You" marker for driver view: create once, then smooth-move on location change
   const currentUserTargetRef = useRef<{ lat: number; lng: number } | null>(null);

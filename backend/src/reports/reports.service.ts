@@ -1,66 +1,87 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
-
-export const REPORT_TYPES = ['POLICE', 'TRAFFIC', 'WORK_ZONE', 'CAR_CRASH', 'OTHER'] as const;
-export type ReportType = (typeof REPORT_TYPES)[number];
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class ReportsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly ws: RelaxDriveWsGateway,
-  ) { }
+  constructor(private prisma: PrismaService) { }
 
-  async create(data: { lat: number; lng: number; type: ReportType; description?: string; userId: string }) {
-    const report = await this.prisma.driverReport.create({
-      data: {
-        lat: data.lat,
-        lng: data.lng,
-        type: data.type,
-        description: data.description ?? null,
-        userId: data.userId,
-      },
-    });
-    this.ws.broadcastReport(report);
-    return report;
-  }
+  async getReportsForUser(userId: string, role: string) {
+    const reports = [];
+    const now = new Date();
 
-  async findInBounds(
-    minLat: number,
-    maxLat: number,
-    minLng: number,
-    maxLng: number,
-    sinceMinutes = 120,
-  ) {
-    const since = new Date(Date.now() - sinceMinutes * 60 * 1000);
-    return this.prisma.driverReport.findMany({
-      where: {
-        lat: { gte: minLat, lte: maxLat },
-        lng: { gte: minLng, lte: maxLng },
-        createdAt: { gte: since },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const startOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
-  onModuleInit() {
-    setInterval(() => {
-      this.deleteOldReports();
-    }, 60 * 1000); // Check every minute
-  }
-
-  async deleteOldReports() {
-    try {
-      // Auto-delete reports older than 1 minute
-      const cutoff = new Date(Date.now() - 60 * 1000);
-      await this.prisma.driverReport.deleteMany({
+      // Aggregate from DriverTripSummary
+      const stats = await this.prisma.driverTripSummary.aggregate({
         where: {
-          createdAt: { lt: cutoff },
+          driverId: role === 'DRIVER' ? userId : undefined,
+          completedAt: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+        _count: { id: true },
+        _sum: {
+          earningsCents: true,
         },
       });
-    } catch (e) {
-      console.error('Failed to cleanup old reports', e);
+
+      if (stats._count.id > 0) {
+        reports.push({
+          id: `report-${userId}-${monthKey}`,
+          month: monthKey,
+          driverId: userId,
+          driverName: 'Driver',
+          totalRides: stats._count.id,
+          totalEarnings: stats._sum.earningsCents || 0,
+          hoursOnline: 0,
+          createdAt: endOfMonth.toISOString(),
+          url: `/api/reports/download?driverId=${userId}&month=${monthKey}`,
+        });
+      }
     }
+    // Sort by recent first
+    return reports.sort((a, b) => b.month.localeCompare(a.month));
+  }
+
+  async generateCsv(driverId: string, month: string): Promise<string> {
+    const [year, m] = month.split('-');
+    const startOfMonth = new Date(parseInt(year), parseInt(m) - 1, 1);
+    const endOfMonth = new Date(parseInt(year), parseInt(m), 0, 23, 59, 59);
+
+    const trips = await this.prisma.driverTripSummary.findMany({
+      where: {
+        driverId,
+        completedAt: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      orderBy: { completedAt: 'asc' },
+    });
+
+    const header = 'Date,Pickup,Dropoff,Distance(km),Earnings($)\n';
+    const rows = trips.map(t => {
+      const date = t.completedAt.toISOString().split('T')[0];
+      const earnings = (t.earningsCents / 100).toFixed(2);
+      // Escape commas in addresses
+      const pickup = `"${t.pickupAddress.replace(/"/g, '""')}"`;
+      const dropoff = `"${t.dropoffAddress.replace(/"/g, '""')}"`;
+      return `${date},${pickup},${dropoff},${t.distanceKm},${earnings}`;
+    });
+
+    return header + rows.join('\n');
+  }
+
+  // Run at 00:00 on the 1st day of every month
+  @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
+  async handleMonthlyReports() {
+    // Implementation for automatic background generation 
+    // (Optional if we generate on-the-fly via download)
   }
 }
