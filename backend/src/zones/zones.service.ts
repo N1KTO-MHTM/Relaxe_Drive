@@ -6,11 +6,8 @@ export class ZonesService implements OnModuleInit {
     constructor(private prisma: PrismaService) { }
 
     async onModuleInit() {
-        // Seed zones if empty
-        const count = await this.prisma.zone.count();
-        if (count === 0) {
-            await this.seedZones();
-        }
+        // Always run seed to ensure zones are updated with latest coordinates
+        await this.seedZones();
     }
 
     async findAll() {
@@ -78,8 +75,14 @@ export class ZonesService implements OnModuleInit {
         ];
 
         for (const z of zones) {
-            await this.prisma.zone.create({
-                data: {
+            await this.prisma.zone.upsert({
+                where: { name: z.name },
+                update: {
+                    description: z.description,
+                    color: z.color,
+                    points: JSON.stringify(z.points),
+                },
+                create: {
                     name: z.name,
                     description: z.description,
                     color: z.color,
