@@ -11,7 +11,7 @@ export class UsersService {
     private prisma: PrismaService,
     private passengersService: PassengersService,
     private eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async findByNickname(nickname: string) {
     return this.prisma.user.findUnique({ where: { nickname } });
@@ -99,19 +99,34 @@ export class UsersService {
     return String(maxNum + 1);
   }
 
-  /** Next carId: separate numeric sequence 1, 2, 3, ... (car / vehicle). Driver can be 31, car 50. */
-  private async nextCarId(): Promise<string> {
+  /** Next carId: [CarType][Sequence] e.g. Minivan1, Sedan1. */
+  private async nextCarIdByType(carType: string): Promise<string> {
+    if (!carType) return '';
+    const typeNormalized = carType.trim().toUpperCase(); // SEDAN, MINIVAN, SUV
+    // Find all users with this car type and a carId
     const users = await this.prisma.user.findMany({
-      where: { carId: { not: null } },
+      where: {
+        carId: { not: null },
+        carType: typeNormalized, // Strict match on type
+      },
       select: { carId: true },
     });
+
+    // Extract numbers from carIds (e.g. "Minivan1" -> 1)
     let maxNum = 0;
+    // We assume carType casing in ID might vary, so we just look for digits
+    // Ideally we prefix with TitleCase of type, e.g. Minivan, Sedan, Suv
+    const prefix = typeNormalized.charAt(0).toUpperCase() + typeNormalized.slice(1).toLowerCase();
+
     for (const u of users) {
       if (!u.carId) continue;
-      const num = parseInt(u.carId, 10);
+      // Remove non-digits
+      const numStr = u.carId.replace(/\D/g, '');
+      const num = parseInt(numStr, 10);
       if (!Number.isNaN(num) && num > maxNum) maxNum = num;
     }
-    return String(maxNum + 1);
+
+    return `${prefix}${maxNum + 1}`;
   }
 
   async create(data: {
@@ -139,7 +154,9 @@ export class UsersService {
     let carId: string | null = null;
     if (data.role === 'DRIVER') {
       driverId = await this.nextDriverId();
-      carId = await this.nextCarId();
+      if (data.carType) {
+        carId = await this.nextCarIdByType(data.carType);
+      }
     }
     const user = await this.prisma.user.create({
       data: {

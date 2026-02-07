@@ -12,6 +12,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [carPlateNumber, setCarPlateNumber] = useState('');
   const [carType, setCarType] = useState<string>('');
   const [carCapacity, setCarCapacity] = useState<number | ''>('');
@@ -28,6 +29,11 @@ export default function Register() {
     const hasCarType = !!carType;
     if (!hasNickname || !hasPhone || !hasPassword || !hasCarType) {
       setError(t('auth.fillAllRequiredFields'));
+      return;
+    }
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      setError(t('auth.passwordMismatch'));
       return;
     }
     try {
@@ -94,13 +100,24 @@ export default function Register() {
         </select>
       </div>
       <div style={row}>
-        <label className="rd-label">{t('auth.password')}</label>
+        <label className="rd-label">{t('auth.password')} *</label>
         <input
           type={showPassword ? 'text' : 'password'}
           className="rd-input"
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      <div style={row}>
+        <label className="rd-label">{t('auth.confirmPassword')} *</label>
+        <input
+          type={showPassword ? 'text' : 'password'}
+          className="rd-input"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', fontSize: '0.8125rem', color: 'var(--rd-text-muted)', cursor: 'pointer' }}>
@@ -135,7 +152,7 @@ export default function Register() {
         type="submit"
         className="rd-btn rd-btn-primary"
         style={{ width: '100%' }}
-        disabled={!nickname.trim() || !password || !phone.trim() || !carType}
+        disabled={!nickname.trim() || !password || !confirmPassword || !phone.trim() || !carType}
       >
         {t('auth.register')}
       </button>

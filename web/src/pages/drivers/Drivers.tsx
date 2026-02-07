@@ -79,6 +79,12 @@ export default function Drivers() {
   const [editDriverIdValue, setEditDriverIdValue] = useState('');
   const [editCarIdValue, setEditCarIdValue] = useState('');
   const [savingDriverIds, setSavingDriverIds] = useState(false);
+  const [deleteConfirmDriver, setDeleteConfirmDriver] = useState<DriverRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editModalDriver, setEditModalDriver] = useState<DriverRow | null>(null);
+  const [editModalDriverId, setEditModalDriverId] = useState('');
+  const [editModalCarId, setEditModalCarId] = useState('');
+  const [savingEditModal, setSavingEditModal] = useState(false);
   const showPhone = canSeeDriverPhones(user?.role);
   const canViewDriverDetail = showPhone;
   const canEditDriverIds = user?.role === 'ADMIN';
@@ -222,6 +228,41 @@ export default function Drivers() {
     }
   }
 
+  async function handleDeleteDriver() {
+    if (!deleteConfirmDriver || !canEditDriverIds) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/users/${deleteConfirmDriver.id}`);
+      setList((prev) => prev.filter((d) => d.id !== deleteConfirmDriver.id));
+      if (selectedDriver?.id === deleteConfirmDriver.id) setSelectedDriver(null);
+      setDeleteConfirmDriver(null);
+    } catch (err) {
+      alert(t('drivers.deleteFailed') || 'Failed to delete driver');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleSaveEditModal() {
+    if (!editModalDriver || !canEditDriverIds) return;
+    setSavingEditModal(true);
+    try {
+      const updated = await api.patch<{ driverId?: string | null; carId?: string | null }>(
+        `/users/${editModalDriver.id}/driver-ids`,
+        { driverId: editModalDriverId.trim() || null, carId: editModalCarId.trim() || null }
+      );
+      setList((prev) => prev.map((d) => d.id === editModalDriver.id ? { ...d, driverId: updated.driverId ?? null, carId: updated.carId ?? null } : d));
+      if (selectedDriver?.id === editModalDriver.id) {
+        setSelectedDriver((prev) => prev ? { ...prev, driverId: updated.driverId ?? null, carId: updated.carId ?? null } : null);
+      }
+      setEditModalDriver(null);
+    } catch {
+      alert(t('drivers.saveFailed') || 'Failed to save changes');
+    } finally {
+      setSavingEditModal(false);
+    }
+  }
+
   return (
     <div className="rd-page">
       <div className="drivers-page rd-panel">
@@ -330,6 +371,7 @@ export default function Drivers() {
                   <th>{t('auth.carPlateNumber')}</th>
                   <th>{t('drivers.status')}</th>
                   {canViewDriverDetail && <th></th>}
+                  {canEditDriverIds && <th>{t('common.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -368,6 +410,28 @@ export default function Drivers() {
                           >
                             {t('drivers.viewDetails')}
                           </button>
+                        </td>
+                      )}
+                      {canEditDriverIds && (
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button
+                              type="button"
+                              className="rd-btn rd-btn-secondary"
+                              onClick={(e) => { e.stopPropagation(); setEditModalDriver(d); setEditModalDriverId(d.driverId ?? ''); setEditModalCarId(d.carId ?? ''); }}
+                              title={t('common.edit')}
+                            >
+                              {t('common.edit')}
+                            </button>
+                            <button
+                              type="button"
+                              className="rd-btn rd-btn-critical"
+                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmDriver(d); }}
+                              title={t('common.delete')}
+                            >
+                              {t('common.delete')}
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -552,6 +616,74 @@ export default function Drivers() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirmDriver && (
+          <div className="rd-modal-overlay" onClick={() => !deleting && setDeleteConfirmDriver(null)}>
+            <div className="rd-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="rd-modal-header">
+                <h2>{t('drivers.deleteConfirmTitle')}</h2>
+                <button type="button" className="rd-btn" onClick={() => setDeleteConfirmDriver(null)} disabled={deleting}>×</button>
+              </div>
+              <div className="rd-modal-body">
+                <p>{t('drivers.deleteConfirmMessage', { name: deleteConfirmDriver.nickname })}</p>
+                <p className="rd-text-muted">{t('drivers.deleteConfirmWarning')}</p>
+              </div>
+              <div className="rd-modal-footer">
+                <button type="button" className="rd-btn rd-btn-critical" onClick={handleDeleteDriver} disabled={deleting}>
+                  {deleting ? t('common.deleting') : t('common.delete')}
+                </button>
+                <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setDeleteConfirmDriver(null)} disabled={deleting}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Driver Modal */}
+        {editModalDriver && (
+          <div className="rd-modal-overlay" onClick={() => !savingEditModal && setEditModalDriver(null)}>
+            <div className="rd-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="rd-modal-header">
+                <h2>{t('drivers.editDriver', { name: editModalDriver.nickname })}</h2>
+                <button type="button" className="rd-btn" onClick={() => setEditModalDriver(null)} disabled={savingEditModal}>×</button>
+              </div>
+              <div className="rd-modal-body">
+                <div className="rd-form-group">
+                  <label htmlFor="edit-driver-id">{t('drivers.driverId')}</label>
+                  <input
+                    id="edit-driver-id"
+                    type="text"
+                    className="rd-input"
+                    value={editModalDriverId}
+                    onChange={(e) => setEditModalDriverId(e.target.value)}
+                    placeholder="1, 2, 3..."
+                  />
+                </div>
+                <div className="rd-form-group">
+                  <label htmlFor="edit-car-id">{t('drivers.carId')}</label>
+                  <input
+                    id="edit-car-id"
+                    type="text"
+                    className="rd-input"
+                    value={editModalCarId}
+                    onChange={(e) => setEditModalCarId(e.target.value)}
+                    placeholder="Minivan1, Sedan1..."
+                  />
+                </div>
+              </div>
+              <div className="rd-modal-footer">
+                <button type="button" className="rd-btn rd-btn-primary" onClick={handleSaveEditModal} disabled={savingEditModal}>
+                  {savingEditModal ? t('common.saving') : t('common.save')}
+                </button>
+                <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setEditModalDriver(null)} disabled={savingEditModal}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

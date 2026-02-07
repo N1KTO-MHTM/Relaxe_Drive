@@ -174,23 +174,25 @@ const ARROW_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 
 /** "You" marker: blue car icon, optional rotation (degrees) for heading. */
 function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
-  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);` : '';
+  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;` : '';
+  const svg = CAR_ICON_SVG.replace('width="18" height="18"', 'width="32" height="32"').replace('fill="white"', 'fill="#2563eb"').replace('<svg', `<svg style="${transform}"`);
   return L.divIcon({
     className: 'orders-map-current-user-marker',
-    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);${transform}" title="You">${CAR_ICON_SVG.replace('width="18" height="18"', 'width="22" height="22"')}</span>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    html: `<span style="display:flex;align-items:center;justify-content:center;" title="You">${svg}</span>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
 }
 
 /** "You" marker: blue arrow icon (pointing up), optional rotation for heading. */
 function currentUserArrowIcon(rotationDegrees?: number): L.DivIcon {
-  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);` : '';
+  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;` : '';
+  const svg = ARROW_ICON_SVG.replace('width="22" height="22"', 'width="32" height="32"').replace('fill="white"', 'fill="#2563eb"').replace('<svg', `<svg style="${transform}"`);
   return L.divIcon({
     className: 'orders-map-current-user-marker',
-    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);${transform}" title="You">${ARROW_ICON_SVG}</span>`,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    html: `<span style="display:flex;align-items:center;justify-content:center;" title="You">${svg}</span>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
 }
 
@@ -274,7 +276,7 @@ declare global {
   }
 }
 
-const SMOOTH_MOVE_MS = 180;
+const SMOOTH_MOVE_MS = 1000;
 export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, zones = [], focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -317,6 +319,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       fill: true,
       fillColor: '#0d9488',
       fillOpacity: 0.06,
+      interactive: false, // Ensure background boundary doesn't block clicks
     }).addTo(map);
     rocklandLine.bindPopup('Rockland County', { closeOnClick: false });
     rocklandBoundaryRef.current = rocklandLine;
@@ -478,7 +481,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           marker.setIcon(icon);
         }
 
-        if (distM > 100) {
+        if (distM > 500) { // Teleport if distance > 500m (approx 30s at 60mph)
           marker.setLatLng([lat, lng]);
         } else if (distM > 2) {
           const startTime = performance.now();
@@ -626,6 +629,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           fillColor: z.color,
           fillOpacity: 0.15,
           dashArray: '5, 5',
+          interactive: true,
         }).addTo(group);
         poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
       } catch (e) {

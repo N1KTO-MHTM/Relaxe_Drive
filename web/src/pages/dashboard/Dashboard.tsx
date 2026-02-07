@@ -432,7 +432,9 @@ export default function Dashboard() {
   function loadOrders() {
     setLoading(true);
     api.get<Order[]>('/orders').then((data) => {
-      setOrders(Array.isArray(data) ? data : []);
+      // Filter out deleted and cancelled orders
+      const activeOrders = Array.isArray(data) ? data.filter((o) => o.status !== 'DELETED' && o.status !== 'CANCELLED') : [];
+      setOrders(activeOrders);
     }).catch(() => {
       setOrders([]);
     }).finally(() => {
@@ -1587,6 +1589,8 @@ export default function Dashboard() {
         const toPickup = orders.some((o) => o.id === selectedOrderId && o.status === 'ASSIGNED');
         const altRoutes = routeData.alternativeRoutes ?? [];
         const mainMin = toPickup ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0);
+        const mainDist = routeData.distanceKm ?? 0;
+        const mainRoute = selectedRouteIndex === 0 || altRoutes.length === 0 ? { durationMinutes: mainMin, distanceKm: mainDist, trafficLevel: routeData.trafficLevel, trafficDelayMinutes: routeData.trafficDelayMinutes, hasTolls: routeData.hasTolls, tollCount: routeData.tollCount, summary: routeData.summary } : null;
         const steps = toPickup ? (routeData.driverToPickupSteps ?? []) : (routeData.steps ?? []);
         const durationMin = altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
           ? altRoutes[selectedRouteIndex - 1].durationMinutes
@@ -1623,18 +1627,60 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" className="rd-btn" onClick={refetchRoute}>{t('dashboard.recheckEta')}</button>
               {altRoutes.length > 0 && (
-                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center' }}>
-                  {[null, ...altRoutes].map((alt, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`rd-btn ${selectedRouteIndex === i ? 'rd-btn-primary' : ''}`}
-                      onClick={() => setSelectedRouteIndex(i)}
-                    >
-                      {i === 0 ? t('dashboard.routeMain') : `${t('dashboard.routeAlt')} ${i}`} ({alt ? alt.durationMinutes : mainMin} min)
-                    </button>
-                  ))}
-                </span>
+                <div className="dashboard-route-options" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginTop: '0.5rem' }}>
+                  {[mainRoute, ...altRoutes].map((route, i) => {
+                    const isSelected = selectedRouteIndex === i;
+                    const trafficBadgeClass = route?.trafficLevel === 'heavy' ? 'rd-badge-critical' : route?.trafficLevel === 'moderate' ? 'rd-badge-warning' : 'rd-badge-ok';
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`dashboard-route-option ${isSelected ? 'dashboard-route-option--selected' : ''}`}
+                        onClick={() => setSelectedRouteIndex(i)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          padding: '0.75rem',
+                          border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          borderRadius: '8px',
+                          background: isSelected ? 'var(--color-primary-bg)' : 'var(--color-bg)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          width: '100%',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: '0.25rem' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>
+                            {i === 0 ? t('dashboard.routeMain') : `${t('dashboard.routeAlt')} ${i}`}
+                            {route?.summary && ` · ${route.summary}`}
+                          </span>
+                          <span style={{ fontWeight: 700, fontSize: '1.1rem', color: isSelected ? 'var(--color-primary)' : 'inherit' }}>
+                            {route?.durationMinutes ?? mainMin} min
+                            {route?.trafficDelayMinutes && route.trafficDelayMinutes > 0 && (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-critical)', marginLeft: '0.25rem' }}>
+                                +{route.trafficDelayMinutes}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', fontSize: '0.85rem' }}>
+                          <span className="rd-text-muted">{route?.distanceKm ?? mainDist} km</span>
+                          {route?.trafficLevel && (
+                            <span className={`rd-badge ${trafficBadgeClass}`} style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem' }}>
+                              {route.trafficLevel} traffic
+                            </span>
+                          )}
+                          {route?.hasTolls && (
+                            <span className="rd-badge" style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>
+                              🛣️ Toll road{route.tollCount && route.tollCount > 1 ? ` (${route.tollCount})` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
               <button type="button" className="rd-btn" onClick={() => setShowReportModal(true)} disabled={!driverLocation}>{t('dashboard.report')}</button>
               {(() => {
@@ -2311,7 +2357,26 @@ export default function Dashboard() {
                         ? driverEtas[o.id].drivers.map((e) => drivers.find((u) => u.id === e.id)).filter((u): u is User => u != null)
                         : (o.preferredCarType?.trim() ? drivers.filter((d) => (d as { carType?: string | null }).carType === o.preferredCarType!.trim().toUpperCase()) : drivers);
                       const searchQ = (driverAssignSearch[o.id] ?? '').trim();
-                      const filteredDrivers = searchQ ? baseList.filter((d) => driverMatchesSearch(d, searchQ)) : baseList;
+                      let filteredDrivers = searchQ ? baseList.filter((d) => driverMatchesSearch(d, searchQ)) : baseList;
+
+                      // Smart sorting: 1) Assigned drivers by ETA, 2) Available drivers
+                      filteredDrivers = filteredDrivers.sort((a, b) => {
+                        const aAssigned = orders.some(ord => ord.driverId === a.id && ord.status === 'ASSIGNED');
+                        const bAssigned = orders.some(ord => ord.driverId === b.id && ord.status === 'ASSIGNED');
+
+                        // Assigned drivers come first
+                        if (aAssigned && !bAssigned) return -1;
+                        if (!aAssigned && bAssigned) return 1;
+
+                        // If both assigned or both available, sort by ETA
+                        const aEta = driverEtas[o.id]?.drivers?.find((x) => x.id === a.id);
+                        const bEta = driverEtas[o.id]?.drivers?.find((x) => x.id === b.id);
+                        const aToPickup = Number(aEta?.etaMinutesToPickup) || 999;
+                        const bToPickup = Number(bEta?.etaMinutesToPickup) || 999;
+
+                        return aToPickup - bToPickup;
+                      });
+
                       const best = driverEtas[o.id]?.drivers?.[0];
                       const bestDriver = best ? drivers.find((d) => d.id === best.id) : null;
                       return (

@@ -205,10 +205,10 @@ export class OrdersController {
     // Save address history if passenger exists and not manual entry
     if (passengerId && !body.manualEntry) {
       if (body.pickupAddress?.trim()) {
-        await this.passengersService.saveAddressHistory(passengerId, body.pickupAddress, 'pickup');
+        await this.passengersService.saveAddressHistory(passengerId, body.pickupAddress, 'pickup', body.pickupType);
       }
       if (body.dropoffAddress?.trim()) {
-        await this.passengersService.saveAddressHistory(passengerId, body.dropoffAddress, 'dropoff');
+        await this.passengersService.saveAddressHistory(passengerId, body.dropoffAddress, 'dropoff', body.dropoffType);
       }
       if (body.middleAddress?.trim()) {
         await this.passengersService.saveAddressHistory(passengerId, body.middleAddress, 'stop');

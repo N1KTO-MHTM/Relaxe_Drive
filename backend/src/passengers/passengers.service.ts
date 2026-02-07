@@ -225,7 +225,7 @@ export class PassengersService {
       },
     });
   }
-  async saveAddressHistory(passengerId: string, address: string, type: string) {
+  async saveAddressHistory(passengerId: string, address: string, type: string, category?: string) {
     const normalized = address.trim();
     if (!normalized) return;
 
@@ -236,7 +236,11 @@ export class PassengersService {
     if (existing) {
       await this.prisma.savedAddress.update({
         where: { id: existing.id },
-        data: { useCount: { increment: 1 }, lastUsedAt: new Date() },
+        data: {
+          useCount: { increment: 1 },
+          lastUsedAt: new Date(),
+          ...(category ? { category } : {}), // Update category if provided
+        },
       });
     } else {
       await this.prisma.savedAddress.create({
@@ -244,6 +248,7 @@ export class PassengersService {
           passengerId,
           address: normalized,
           type,
+          category: category || null,
           useCount: 1,
         },
       });

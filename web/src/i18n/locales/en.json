@@ -10,9 +10,11 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "delete": "Delete",
+    "deleting": "Deleting…",
     "edit": "Edit",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "actions": "Actions"
   },
   "auth": {
     "login": "Sign in",
@@ -84,13 +86,13 @@
     "instructionsTitle": "Instructions — how it works",
     "instructionsIntro": "Short guide by role: what the system does and how to use it.",
     "instructionsGeneralTitle": "In general",
-    "instructionsGeneral": "RelaxDrive is a dispatch platform: dispatchers create orders (pickup, dropoff, time) and assign drivers. Drivers see their trips on the Dashboard, accept or reject, share location, and update status (arrived, started, completed). The map shows orders, drivers, and routes in real time. Planning runs every 5 minutes: risk level and suggested driver are computed for each order. Alerts (new order, assigned, completed, etc.) are shown on the dashboard.",
+    "instructionsGeneral": "RelaxDrive is a comprehensive dispatch platform with real-time GPS tracking, intelligent route planning, and automated driver assignment. Key features: Live map with driver locations and routes; Zones (geofencing) for service areas; Phone database for number transfers; Address history with categorization (Home, Synagogue, School, Hospital, Store, Office); Driver reports (Police, Traffic, Work Zone, Crash) with 1-minute auto-expiry; Speedometer and standing timer for drivers; Alternative routes with traffic info; Sequential Driver IDs (1, 2, 3...) and Car IDs (Minivan1, Sedan1); Multi-language support with voice translation; Planning algorithm runs every 5 minutes to compute risk levels and suggest optimal driver assignments.",
     "instructionsDispatcherTitle": "Dispatcher",
-    "instructionsDispatcher": "Dashboard: create an order (pickup/dropoff, optional stops, pickup time, passenger). View active and scheduled orders on the map; assign a driver from the list or use «Assign suggested» for one-click assignment. Use «Unassigned: N» and «At risk: M» to spot orders that need attention. Delay order (+5 / +10 min), mark manual assignment, or delete a trip with confirmation. Calendar: plan by day/week. Clients: add clients, create an order from a client. Pending drivers: approve or reject new driver registrations. Alerts appear at the top when something happens.",
+    "instructionsDispatcher": "Dashboard: Create orders with pickup/dropoff addresses (manual entry or pick on map), optional middle stops for roundtrips, pickup time, passenger info, and place types (Home, Synagogue, School, etc.). View all active and scheduled orders on the interactive map with zones overlay. Assign drivers manually or use 'Assign suggested' for AI-powered assignment. Monitor 'Unassigned: N' and 'At risk: M' counters. Delay orders (+5/+10 min), mark manual assignments, delete trips. Drivers List: View all drivers with sequential IDs, filter by car type (Sedan/Minivan/SUV), location status (on map/offline), edit Driver ID and Car ID, delete drivers with confirmation. Calendar: Plan orders by day/week, view conflicts, see driver schedules. Clients: Add clients with phone/name, view address history with categories, create orders from client profiles. Phone Database: Manage transferred numbers (old → new mappings). Pending Drivers: Approve or reject new driver registrations. Zones: View service area polygons on map (interactive, clickable). Session Monitor: See who's online (device, IP, last active). Analytics: Export data, view statistics.",
     "instructionsDriverTitle": "Driver",
-    "instructionsDriver": "Dashboard: «Today's rides: N» shows your trips. For each order: Accept (or reject), then Arrived at pickup → Start ride → Complete (or Stop underway in emergency). For roundtrips: arrive at middle stop, wait timer (first 5 min free, then billing), then Start to final → Complete. Share location (Go online) so the dispatcher sees you on the map. Use Google Maps / Waze for navigation. Report on the map: police, traffic, work zone, crash. Translation: voice-to-text and history.",
+    "instructionsDriver": "Dashboard: 'Today's rides: N' shows your assigned trips. For each order: Accept (or Reject), then Arrived at pickup → Start ride → Complete. For roundtrips: Arrive at middle stop → wait timer (first 5 min free, billing after) → Start to final → Complete. GPS Tracking: Share location ('Go online') so dispatchers see you in real time with smooth marker animation (1s smoothing). Your marker shows car icon or arrow (rotates with heading), displays speed in mph, standing timer ('here for X min'), and heading direction ('To pickup', 'To dropoff'). Navigation: View route on map with turn-by-turn instructions, alternative routes with traffic info, distance and ETA. Use Google Maps/Waze for external navigation. Reports: Post real-time reports on map (Police, Traffic, Work Zone, Car Crash) - auto-expire after 1 minute. Translation: Voice-to-text and history for multilingual support. Stats: View today's rides and total earnings/miles.",
     "instructionsAdminTitle": "Admin",
-    "instructionsAdmin": "All dispatcher features plus: Roles — change user role, block/ban, reset password, Driver ID and Car ID. Cost control — view usage and limits (maps, translation, AI, TTS); alerts when limits are exceeded. White label — logo, colors, domains. Audit — filter by user/action. System health — service status. Pending drivers — approve/reject registrations."
+    "instructionsAdmin": "All dispatcher features plus: Drivers Management: Edit Driver IDs (sequential: 1, 2, 3...) and Car IDs (type-based: Minivan1, Sedan1, SUV1), delete drivers with confirmation modal, view driver details (trip history, earnings, stats). Roles: Change user roles (Driver/Dispatcher/Admin), block/ban users with reason and expiry, reset passwords. Phone Database: Manage transferred phone numbers (old → new mappings) for seamless client transitions. Zones: Create and manage service area polygons (geofencing) with custom colors, view on map. Pending Drivers: Approve or reject new driver registrations. Cost Control: View API usage and limits (maps, translation, AI, TTS), receive alerts when limits are exceeded. White Label: Customize logo, colors, domains for branding. Audit Logs: Filter by user/action/resource, track all system changes. System Health: Monitor service status, view error logs. Session Monitor: See all online users with device, IP, last active time. Analytics: Export comprehensive data, view system-wide statistics."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -452,7 +454,13 @@
     "exportTime": "Time",
     "exportDistance": "Distance (mi)",
     "duration": "Duration",
-    "summaryCount": "{{count}} driver(s)"
+    "summaryCount": "{{count}} driver(s)",
+    "deleteConfirmTitle": "Delete driver?",
+    "deleteConfirmMessage": "Are you sure you want to delete {{name}}?",
+    "deleteConfirmWarning": "This action cannot be undone. All associated data will be removed.",
+    "deleteFailed": "Failed to delete driver",
+    "editDriver": "Edit {{name}}",
+    "saveFailed": "Failed to save changes"
   },
   "calendar": {
     "title": "Calendar",

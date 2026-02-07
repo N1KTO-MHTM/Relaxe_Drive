@@ -118,11 +118,27 @@
 }
 
 .pendings-btn-approve {
-  min-width: 5rem;
+  min-width: 6rem;
+  font-weight: 600;
+  background: #10b981 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.pendings-btn-approve:hover:not(:disabled) {
+  background: #059669 !important;
 }
 
 .pendings-btn-reject {
-  min-width: 4.5rem;
+  min-width: 5rem;
+  font-weight: 600;
+  background: #ef4444 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.pendings-btn-reject:hover:not(:disabled) {
+  background: #dc2626 !important;
 }
 
 /* Reject confirmation modal */
