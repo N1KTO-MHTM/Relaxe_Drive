@@ -188,6 +188,86 @@
     cursor: pointer;
 }
 
+.addresses-modal-content.addresses-modal-split {
+    max-width: 800px;
+    width: 95%;
+    padding: 2rem;
+}
+
+.addresses-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--rd-border);
+}
+
+.addresses-modal-header h3 {
+    margin: 0;
+}
+
+.addresses-form-group-phone {
+    flex: 0 0 240px;
+}
+
+.addresses-form-group-phone label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--rd-text-muted);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.addresses-split-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.addresses-split-box {
+    padding: 1.5rem;
+    background: var(--rd-bg-muted, rgba(255, 255, 255, 0.02));
+    border-radius: var(--rd-radius-lg);
+    border: 1px solid var(--rd-border);
+    transition: border-color 0.2s;
+}
+
+.addresses-split-box:focus-within {
+    border-color: var(--rd-accent);
+}
+
+.addresses-split-box h4 {
+    margin: 0 0 1.25rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pickup-box h4 {
+    color: #f97316;
+}
+
+.dropoff-box h4 {
+    color: #14b8a6;
+}
+
+.addresses-split-box .box-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.box-icon {
+    font-size: 1.5rem;
+}
+
 .addresses-modal-content {
     position: relative;
     max-width: 500px;
@@ -228,6 +308,8 @@
     gap: 0.75rem;
     justify-content: flex-end;
     margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rd-border);
 }
 
 .addresses-delete-preview {
@@ -243,6 +325,22 @@
 @media (max-width: 768px) {
     .addresses-grid {
         grid-template-columns: 1fr;
+    }
+
+    .addresses-modal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .addresses-form-group-phone {
+        width: 100%;
+        flex: none;
+    }
+
+    .addresses-split-container {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 
     .addresses-form-row {

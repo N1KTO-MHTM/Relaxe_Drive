@@ -26,9 +26,10 @@ export default function Addresses() {
     const [deleteConfirm, setDeleteConfirm] = useState<SavedAddress | null>(null);
     const [formData, setFormData] = useState({
         phone: '',
-        address: '',
-        category: 'other',
-        type: 'both',
+        pickupAddress: '',
+        pickupCategory: 'other',
+        dropoffAddress: '',
+        dropoffCategory: 'other',
     });
 
     function loadAddresses() {
@@ -52,16 +53,38 @@ export default function Addresses() {
         e.preventDefault();
         try {
             if (editingAddress) {
-                await api.patch(`/addresses/${editingAddress.id}`, formData);
+                // For editing, we only update the single record that was opened (address field used)
+                await api.patch(`/addresses/${editingAddress.id}`, {
+                    phone: formData.phone,
+                    address: formData.pickupAddress || formData.dropoffAddress,
+                    category: formData.pickupCategory || formData.dropoffCategory,
+                    type: formData.pickupAddress ? 'pickup' : 'dropoff'
+                });
                 toast.success('Address updated');
             } else {
-                await api.post('/addresses', formData);
-                toast.success('Address added');
+                // For new creation, we can save both if filled
+                if (formData.pickupAddress) {
+                    await api.post('/addresses', {
+                        phone: formData.phone,
+                        address: formData.pickupAddress,
+                        category: formData.pickupCategory,
+                        type: 'pickup'
+                    });
+                }
+                if (formData.dropoffAddress) {
+                    await api.post('/addresses', {
+                        phone: formData.phone,
+                        address: formData.dropoffAddress,
+                        category: formData.dropoffCategory,
+                        type: 'dropoff'
+                    });
+                }
+                toast.success('Address(es) added');
             }
             loadAddresses();
             setShowAddForm(false);
             setEditingAddress(null);
-            setFormData({ phone: '', address: '', category: 'other', type: 'both' });
+            setFormData({ phone: '', pickupAddress: '', pickupCategory: 'other', dropoffAddress: '', dropoffCategory: 'other' });
         } catch {
             toast.error('Failed to save address');
         }
@@ -82,9 +105,10 @@ export default function Addresses() {
         setEditingAddress(addr);
         setFormData({
             phone: addr.phone || '',
-            address: addr.address,
-            category: addr.category || 'other',
-            type: addr.type || 'both',
+            pickupAddress: addr.type === 'pickup' || addr.type === 'both' ? addr.address : '',
+            pickupCategory: addr.type === 'pickup' || addr.type === 'both' ? (addr.category || 'other') : 'other',
+            dropoffAddress: addr.type === 'dropoff' ? addr.address : '',
+            dropoffCategory: addr.type === 'dropoff' ? (addr.category || 'other') : 'other',
         });
         setShowAddForm(true);
     }
@@ -92,7 +116,7 @@ export default function Addresses() {
     function closeForm() {
         setShowAddForm(false);
         setEditingAddress(null);
-        setFormData({ phone: '', address: '', category: 'other', type: 'both' });
+        setFormData({ phone: '', pickupAddress: '', pickupCategory: 'other', dropoffAddress: '', dropoffCategory: 'other' });
     }
 
     function getCategoryBadge(category?: string | null) {
@@ -198,10 +222,10 @@ export default function Addresses() {
                 {showAddForm && (
                     <div className="addresses-modal">
                         <div className="addresses-modal-backdrop" onClick={closeForm} />
-                        <div className="addresses-modal-content rd-panel">
-                            <h3>{editingAddress ? t('addresses.editAddress') : t('addresses.addNew')}</h3>
-                            <form onSubmit={handleSubmit}>
-                                <div className="addresses-form-group">
+                        <div className="addresses-modal-content rd-panel addresses-modal-split">
+                            <div className="addresses-modal-header">
+                                <h3>{editingAddress ? t('addresses.editAddress') : t('addresses.addNew')}</h3>
+                                <div className="addresses-form-group-phone">
                                     <label>{t('addresses.phone')}</label>
                                     <input
                                         type="tel"
@@ -211,45 +235,70 @@ export default function Addresses() {
                                         placeholder="(555) 123-4567"
                                     />
                                 </div>
+                            </div>
 
-                                <div className="addresses-form-group">
-                                    <label>{t('addresses.address')} *</label>
-                                    <input
-                                        type="text"
-                                        className="rd-input"
-                                        value={formData.address}
-                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                        placeholder="123 Main St, City, State ZIP"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="addresses-form-row">
-                                    <div className="addresses-form-group">
-                                        <label>{t('addresses.category')}</label>
-                                        <select
-                                            className="rd-input"
-                                            value={formData.category}
-                                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        >
-                                            <option value="home">🏠 Home</option>
-                                            <option value="work">💼 Work</option>
-                                            <option value="frequent">⭐ Frequent</option>
-                                            <option value="other">📍 Other</option>
-                                        </select>
+                            <form onSubmit={handleSubmit}>
+                                <div className="addresses-split-container">
+                                    {/* Pickup Section */}
+                                    <div className="addresses-split-box pickup-box">
+                                        <div className="box-header">
+                                            <span className="box-icon">📍</span>
+                                            <h4>{t('addresses.typePickup')}</h4>
+                                        </div>
+                                        <div className="addresses-form-group">
+                                            <label>{t('addresses.address')}</label>
+                                            <input
+                                                type="text"
+                                                className="rd-input"
+                                                value={formData.pickupAddress}
+                                                onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
+                                                placeholder="Enter pickup address"
+                                            />
+                                        </div>
+                                        <div className="addresses-form-group">
+                                            <label>{t('addresses.category')}</label>
+                                            <select
+                                                className="rd-input"
+                                                value={formData.pickupCategory}
+                                                onChange={(e) => setFormData({ ...formData, pickupCategory: e.target.value })}
+                                            >
+                                                <option value="home">🏠 Home</option>
+                                                <option value="work">💼 Work</option>
+                                                <option value="frequent">⭐ Frequent</option>
+                                                <option value="other">📍 Other</option>
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    <div className="addresses-form-group">
-                                        <label>{t('addresses.type')}</label>
-                                        <select
-                                            className="rd-input"
-                                            value={formData.type}
-                                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                        >
-                                            <option value="both">🔄 Both</option>
-                                            <option value="pickup">📍 Pickup</option>
-                                            <option value="dropoff">🎯 Dropoff</option>
-                                        </select>
+                                    {/* Dropoff Section */}
+                                    <div className="addresses-split-box dropoff-box">
+                                        <div className="box-header">
+                                            <span className="box-icon">🎯</span>
+                                            <h4>{t('addresses.typeDropoff')}</h4>
+                                        </div>
+                                        <div className="addresses-form-group">
+                                            <label>{t('addresses.address')}</label>
+                                            <input
+                                                type="text"
+                                                className="rd-input"
+                                                value={formData.dropoffAddress}
+                                                onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
+                                                placeholder="Enter dropoff address"
+                                            />
+                                        </div>
+                                        <div className="addresses-form-group">
+                                            <label>{t('addresses.category')}</label>
+                                            <select
+                                                className="rd-input"
+                                                value={formData.dropoffCategory}
+                                                onChange={(e) => setFormData({ ...formData, dropoffCategory: e.target.value })}
+                                            >
+                                                <option value="home">🏠 Home</option>
+                                                <option value="work">💼 Work</option>
+                                                <option value="frequent">⭐ Frequent</option>
+                                                <option value="other">📍 Other</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
