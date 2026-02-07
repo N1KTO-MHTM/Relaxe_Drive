@@ -115,6 +115,8 @@ interface OrdersMapProps {
   currentUserHeadingDegrees?: number | null;
   /** When true (driver view): only show reports, route line and my location; no pickup/dropoff markers. */
   driverView?: boolean;
+  /** Zones to display (polygons) */
+  zones?: Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -232,11 +234,11 @@ const REPORT_TYPE_KEYS: Record<string, string> = {
 
 /** Emoji per report type for clearer map icons. */
 const REPORT_EMOJI: Record<string, string> = {
-  POLICE: '🚔',
-  TRAFFIC: '🚦',
+  POLICE: '👮',
+  TRAFFIC: '🛑',
   WORK_ZONE: '🚧',
-  CAR_CRASH: '🚗💥',
-  OTHER: '📍',
+  CAR_CRASH: '💥',
+  OTHER: '⚠️',
 };
 
 function reportIcon(type: string): L.DivIcon {
@@ -273,7 +275,7 @@ declare global {
 }
 
 const SMOOTH_MOVE_MS = 180;
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, zones = [], focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -602,6 +604,42 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
     };
   }, [problemZones, driverView]);
+
+  // Zones overlay
+  const zonesLayerRef = useRef<L.LayerGroup | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (zonesLayerRef.current) {
+      map.removeLayer(zonesLayerRef.current);
+      zonesLayerRef.current = null;
+    }
+    if (!zones || zones.length === 0 || driverView) return;
+
+    const group = L.layerGroup().addTo(map);
+    zones.forEach((z) => {
+      try {
+        const poly = L.polygon(z.points, {
+          color: z.color,
+          weight: 2,
+          fill: true,
+          fillColor: z.color,
+          fillOpacity: 0.15,
+          dashArray: '5, 5',
+        }).addTo(group);
+        poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
+      } catch (e) {
+        console.error('Failed to render zone', z, e);
+      }
+    });
+    zonesLayerRef.current = group;
+    return () => {
+      if (zonesLayerRef.current) {
+        map.removeLayer(zonesLayerRef.current);
+        zonesLayerRef.current = null;
+      }
+    };
+  }, [zones, driverView]);
 
   // "You" marker for driver view: create once, then smooth-move on location change
   const currentUserTargetRef = useRef<{ lat: number; lng: number } | null>(null);

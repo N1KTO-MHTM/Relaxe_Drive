@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class PassengersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   /** List only clients (passengers not linked to a driver account). Drivers who registered with phone have userId set and are excluded. */
   async findAll() {
@@ -204,6 +204,38 @@ export class PassengersService {
         pickupType: data?.pickupType ?? null,
         dropoffType: data?.dropoffType ?? null,
       },
+    });
+  }
+  async saveAddressHistory(passengerId: string, address: string, type: string) {
+    const normalized = address.trim();
+    if (!normalized) return;
+
+    const existing = await this.prisma.savedAddress.findFirst({
+      where: { passengerId, address: normalized },
+    });
+
+    if (existing) {
+      await this.prisma.savedAddress.update({
+        where: { id: existing.id },
+        data: { useCount: { increment: 1 }, lastUsedAt: new Date() },
+      });
+    } else {
+      await this.prisma.savedAddress.create({
+        data: {
+          passengerId,
+          address: normalized,
+          type,
+          useCount: 1,
+        },
+      });
+    }
+  }
+
+  async getHistory(passengerId: string) {
+    return this.prisma.savedAddress.findMany({
+      where: { passengerId },
+      orderBy: { useCount: 'desc' },
+      take: 10,
     });
   }
 }

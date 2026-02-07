@@ -12,6 +12,7 @@ import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
 import { shortId } from '../../utils/shortId';
 import type { Order, DriverEta, PlanningResult } from '../../types';
+import Speedometer from '../../components/Speedometer/Speedometer';
 import './Dashboard.css';
 
 /** Wait billing: first 5 min free. 20 min = $5, 30 = $10, 1h = $20, 1h20 = $25, 1h30 = $30, 2h = $40. */
@@ -83,6 +84,7 @@ export default function Dashboard() {
   /** Multiple stops (between pickup and dropoff). When non-empty, sent as waypoints; else roundtrip uses middleAddress. */
   const [waypointAddresses, setWaypointAddresses] = useState<string[]>([]);
   const [dropoffAddress, setDropoffAddress] = useState('');
+  const [manualEntry, setManualEntry] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [arrivingId, setArrivingId] = useState<string | null>(null);
   const [leftMiddleId, setLeftMiddleId] = useState<string | null>(null);
@@ -127,7 +129,6 @@ export default function Dashboard() {
   const [addressesTabPickup, setAddressesTabPickup] = useState('');
   const [addressesTabDropoff, setAddressesTabDropoff] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('');
-  const [orderSortBy, setOrderSortBy] = useState<'arrived' | 'pickedUp' | 'droppedOff'>('arrived');
   const [findByIdQuery, setFindByIdQuery] = useState('');
   const [exportPeriodFrom, setExportPeriodFrom] = useState(() => {
     const d = new Date();
@@ -141,11 +142,13 @@ export default function Dashboard() {
   const [driverSearchQuery, setDriverSearchQuery] = useState('');
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
+  const [passengerAddressHistory, setPassengerAddressHistory] = useState<Array<{ id: string; address: string; type?: string }>>([]);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [alerts, setAlerts] = useState<Array<{ id: string; type: string; orderId?: string; driverId?: string; pickupAddress?: string; at: string; count?: number }>>([]);
   const [reports, setReports] = useState<DriverReportMap[]>([]);
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
+  const [zones, setZones] = useState<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>([]);
   const [planningResult, setPlanningResult] = useState<PlanningResult | null>(null);
   const [showPlanPanel, setShowPlanPanel] = useState(false);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
@@ -234,16 +237,9 @@ export default function Dashboard() {
         return false;
       });
     }
-    const getSortTime = (o: Order) => {
-      switch (orderSortBy) {
-        case 'arrived': return o.arrivedAtPickupAt ? new Date(o.arrivedAtPickupAt).getTime() : new Date(o.pickupAt).getTime();
-        case 'pickedUp': return o.leftPickupAt ? new Date(o.leftPickupAt).getTime() : new Date(o.pickupAt).getTime();
-        case 'droppedOff': return o.completedAt ? new Date(o.completedAt).getTime() : new Date(o.pickupAt).getTime();
-        default: return new Date(o.pickupAt).getTime();
-      }
-    };
-    return out.sort((a, b) => getSortTime(b) - getSortTime(a));
-  }, [orders, completedOrders, orderTab, orderStatusFilter, orderSortBy, findByIdQuery, isDriver, user?.id]);
+    // Default sort by pickupAt (newest first)
+    return out.sort((a, b) => new Date(b.pickupAt).getTime() - new Date(a.pickupAt).getTime());
+  }, [orders, completedOrders, orderTab, orderStatusFilter, findByIdQuery, isDriver, user?.id]);
 
   /** Unique existing addresses from clients and orders — for autocomplete and "no duplicate" hint when creating order. */
   const existingAddresses = useMemo(() => {
@@ -254,10 +250,14 @@ export default function Dashboard() {
     });
     orders.forEach((o) => {
       if (o.pickupAddress?.trim()) set.add(o.pickupAddress.trim());
+      if (o.pickupAddress?.trim()) set.add(o.pickupAddress.trim());
       if (o.dropoffAddress?.trim()) set.add(o.dropoffAddress.trim());
     });
+    passengerAddressHistory.forEach((a) => {
+      if (a.address?.trim()) set.add(a.address.trim());
+    });
     return Array.from(set).sort();
-  }, [passengersSuggestions, orders]);
+  }, [passengersSuggestions, orders, passengerAddressHistory]);
 
   /** Up to 5 address suggestions for pickup (no duplicates; filter by current input). */
   const pickupAddressSuggestions = useMemo(() => {
@@ -361,7 +361,6 @@ export default function Dashboard() {
           if (onTripOrder.leftPickupAt) {
             return new Date(new Date(onTripOrder.leftPickupAt).getTime() + etaMin * 60_000).toISOString();
           }
-          return new Date(new Date(onTripOrder.pickupAt).getTime() + (etaData?.etaMinutesTotal ?? etaMin) * 60_000).toISOString();
           return new Date(new Date(onTripOrder.pickupAt).getTime() + (etaData?.etaMinutesTotal ?? etaMin) * 60_000).toISOString();
         })(),
       } as DriverForMap;
@@ -651,6 +650,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!canAssign) return;
     api.get<Array<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }>>('/planning/order-coords').then(setFutureOrderCoords).catch(() => { });
+    api.get<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>('/zones').then(setZones).catch(() => { });
   }, [canAssign]);
 
   useEffect(() => {
@@ -775,6 +775,22 @@ export default function Dashboard() {
       setPassengersSuggestions(Array.isArray(data) ? data : []);
     }).catch(() => { });
   }, [canCreateOrder, showForm]);
+
+  // Fetch address history when passenger selected
+  useEffect(() => {
+    if (!orderPhone || manualEntry) {
+      setPassengerAddressHistory([]);
+      return;
+    }
+    const p = passengersSuggestions.find((x) => x.phone === orderPhone);
+    if (!p) {
+      setPassengerAddressHistory([]);
+      return;
+    }
+    api.get<Array<{ id: string; address: string; type?: string }>>(`/passengers/${p.id}/addresses`)
+      .then((data) => setPassengerAddressHistory(Array.isArray(data) ? data : []))
+      .catch(() => setPassengerAddressHistory([]));
+  }, [orderPhone, manualEntry, passengersSuggestions]);
 
   // Preload driver ETAs when an order is selected (dispatcher) so dropdown shows ETA without extra click
   useEffect(() => {
@@ -1413,6 +1429,7 @@ export default function Dashboard() {
         phone: orderPhone.trim() || undefined,
         passengerName: orderPassengerName.trim() || undefined,
         preferredCarType: preferredCarTypeForm.trim() || undefined,
+        manualEntry,
         ...(pickupAtIso ? { pickupAt: pickupAtIso } : {}),
       });
       setPickupAddress('');
@@ -1427,6 +1444,7 @@ export default function Dashboard() {
       setPreferredCarTypeForm('');
       setRouteTypeForm('LOCAL');
       setPickPoint(null);
+      setManualEntry(false);
       setShowForm(false);
       toast.success(t('toast.orderCreated'));
     } catch (err) {
@@ -1670,34 +1688,50 @@ export default function Dashboard() {
                   </button>
                   <form onSubmit={handleCreateOrder} className="dashboard-order-form">
                     <div className="dashboard-form-row dashboard-form-row--compact">
-                      <label className="dashboard-form-label--inline">{t('dashboard.clientSuggestion')}</label>
-                      <select
-                        className="rd-input"
-                        style={{ minWidth: 140 }}
-                        value={passengersSuggestions.find((p) => p.phone === orderPhone)?.id ?? ''}
-                        onChange={(e) => {
-                          const id = e.target.value;
-                          const p = passengersSuggestions.find((x) => x.id === id);
-                          if (p) {
-                            setOrderPhone(p.phone ?? '');
-                            setOrderPassengerName(p.name ?? '');
-                            setPickupAddress(p.pickupAddr ?? '');
-                            setDropoffAddress(p.dropoffAddr ?? '');
-                            setPickupType(p.pickupType ?? '');
-                            setDropoffType(p.dropoffType ?? '');
-                          } else {
-                            setOrderPhone('');
-                            setOrderPassengerName('');
-                          }
-                        }}
-                      >
-                        <option value="">—</option>
-                        {passengersSuggestions.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.phone ?? ''} {p.name ? `— ${p.name}` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginRight: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={manualEntry}
+                          onChange={(e) => {
+                            setManualEntry(e.target.checked);
+                            if (e.target.checked) {
+                              setOrderPhone('');
+                              setOrderPassengerName('');
+                            }
+                          }}
+                        />
+                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{t('dashboard.manualEntry')}</span>
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                        <label className="dashboard-form-label--inline" style={{ opacity: manualEntry ? 0.5 : 1 }}>{t('dashboard.clientSuggestion')}</label>
+                        <select
+                          className="rd-input"
+                          style={{ minWidth: 140 }}
+                          value={passengersSuggestions.find((p) => p.phone === orderPhone)?.id ?? ''}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            const p = passengersSuggestions.find((x) => x.id === id);
+                            if (p) {
+                              setOrderPhone(p.phone ?? '');
+                              setOrderPassengerName(p.name ?? '');
+                              setPickupAddress(p.pickupAddr ?? '');
+                              setDropoffAddress(p.dropoffAddr ?? '');
+                              setPickupType(p.pickupType ?? '');
+                              setDropoffType(p.dropoffType ?? '');
+                            } else {
+                              setOrderPhone('');
+                              setOrderPassengerName('');
+                            }
+                          }}
+                        >
+                          <option value="">—</option>
+                          {passengersSuggestions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.phone ?? ''} {p.name ? `— ${p.name}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className="dashboard-form-row dashboard-form-row--two">
                       <div>
@@ -1914,11 +1948,6 @@ export default function Dashboard() {
                 <option value="CANCELLED">CANCELLED</option>
               </select>
             )}
-            <select className="rd-input" value={orderSortBy} onChange={(e) => setOrderSortBy(e.target.value as 'arrived' | 'pickedUp' | 'droppedOff')} style={{ width: 'auto', minWidth: 140 }}>
-              <option value="arrived">{t('dashboard.sortByArrived')}</option>
-              <option value="pickedUp">{t('dashboard.sortByPickedUp')}</option>
-              <option value="droppedOff">{t('dashboard.sortByDroppedOff')}</option>
-            </select>
             {!isDriver && (
               <input
                 type="text"
@@ -2463,6 +2492,7 @@ export default function Dashboard() {
               selectedOrderTooltip={selectedOrderTooltip}
               futureOrderPickups={canAssign ? futureOrderCoords.filter((f) => f.orderId !== selectedOrderId).map((f) => ({ orderId: f.orderId, lat: f.pickupLat, lng: f.pickupLng, pickupAt: f.pickupAt })) : []}
               problemZones={canAssign && showProblemZones && problemZones ? problemZones : undefined}
+              zones={canAssign ? zones : undefined}
               focusCenter={!isDriver ? myLocationCenter : undefined}
               initialCenter={savedMapView?.center}
               initialZoom={savedMapView?.zoom}
@@ -2482,6 +2512,7 @@ export default function Dashboard() {
                 );
               } : undefined}
             />
+            <Speedometer speedMph={driverSpeedMph} standingStartedAt={standingStartedAt} />
             {isDriver && currentDriverOrder && (
               <div className="driver-trip-card">
                 <div className="driver-trip-card__phase">

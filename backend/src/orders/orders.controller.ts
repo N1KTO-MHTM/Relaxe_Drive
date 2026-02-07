@@ -23,19 +23,27 @@ export class OrdersController {
     private usersService: UsersService,
     private passengersService: PassengersService,
     private planningService: PlanningService,
-  ) {}
+  ) { }
 
   @Get()
-  list(
+  async list(
     @Request() req: { user: { id: string; role: string } },
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
     const driverOnly = req.user?.role === 'DRIVER' ? req.user.id : undefined;
-    if (from && to) {
-      return this.ordersService.findByDateRange(new Date(from), new Date(to), driverOnly);
-    }
-    return this.ordersService.findActiveAndScheduled(driverOnly);
+    const orders = (from && to)
+      ? await this.ordersService.findByDateRange(new Date(from), new Date(to), driverOnly)
+      : await this.ordersService.findActiveAndScheduled(driverOnly);
+    return orders.map(o => this.transformOrder(o));
+  }
+
+  private transformOrder(order: any) {
+    if (!order) return order;
+    return {
+      ...order,
+      waypoints: order.waypoints && typeof order.waypoints === 'string' ? JSON.parse(order.waypoints) : order.waypoints || [],
+    };
   }
 
   @Get(':id/driver-etas')
@@ -105,7 +113,7 @@ export class OrdersController {
     if (!pickupCoords || !dropoffCoords) {
       return { pickupCoords: pickupCoords ?? null, dropoffCoords: dropoffCoords ?? null, polyline: '', durationMinutes: 0, distanceKm: 0 };
     }
-    const waypointsRaw = (order as unknown as { waypoints?: { address: string }[] }).waypoints;
+    const waypointsRaw = order.waypoints && typeof order.waypoints === 'string' ? JSON.parse(order.waypoints) : [];
     const stopAddresses = Array.isArray(waypointsRaw) ? waypointsRaw.map((w) => w?.address).filter(Boolean) as string[] : [];
     let pickupToDropoff: { polyline: string; durationMinutes: number; distanceKm: number; steps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }> };
     if (stopAddresses.length > 0) {
@@ -174,19 +182,37 @@ export class OrdersController {
       passengerName?: string;
       bufferMinutes?: number;
       preferredCarType?: string | null;
+      manualEntry?: boolean;
     },
   ) {
     let passengerId = body.passengerId;
-    if (body.phone?.trim() || body.pickupAddress?.trim()) {
-      const passenger = await this.passengersService.findOrCreateByPhoneOrAddress({
-        phone: body.phone?.trim(),
-        name: body.passengerName?.trim(),
-        pickupAddr: body.pickupAddress?.trim(),
-        dropoffAddr: body.dropoffAddress?.trim(),
-        pickupType: body.pickupType,
-        dropoffType: body.dropoffType,
-      });
-      if (passenger) passengerId = passenger.id;
+
+    // If manualEntry is true, we SKIP creating/updating passenger processing
+    if (!body.manualEntry) {
+      if (body.phone?.trim() || body.pickupAddress?.trim()) {
+        const passenger = await this.passengersService.findOrCreateByPhoneOrAddress({
+          phone: body.phone?.trim(),
+          name: body.passengerName?.trim(),
+          pickupAddr: body.pickupAddress?.trim(),
+          dropoffAddr: body.dropoffAddress?.trim(),
+          pickupType: body.pickupType,
+          dropoffType: body.dropoffType,
+        });
+        if (passenger) passengerId = passenger.id;
+      }
+    }
+
+    // Save address history if passenger exists and not manual entry
+    if (passengerId && !body.manualEntry) {
+      if (body.pickupAddress?.trim()) {
+        await this.passengersService.saveAddressHistory(passengerId, body.pickupAddress, 'pickup');
+      }
+      if (body.dropoffAddress?.trim()) {
+        await this.passengersService.saveAddressHistory(passengerId, body.dropoffAddress, 'dropoff');
+      }
+      if (body.middleAddress?.trim()) {
+        await this.passengersService.saveAddressHistory(passengerId, body.middleAddress, 'stop');
+      }
     }
     const pickupAtDate = (() => {
       const raw = body.pickupAt;
@@ -216,10 +242,10 @@ export class OrdersController {
       dropoffAddress: body.dropoffAddress,
     });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.alerts.emitAlert('order.created', { orderId: created.id, pickupAddress: created.pickupAddress, pickupAt: created.pickupAt?.toISOString() });
-    this.planningService.recalculateAndEmit().catch(() => {});
-    return created;
+    this.planningService.recalculateAndEmit().catch(() => { });
+    return this.transformOrder(created);
   }
 
   @Patch(':id/assign')
@@ -249,10 +275,10 @@ export class OrdersController {
     }
     await this.audit.log(req.user.id, 'order.assign', 'order', { orderId, driverId: body.driverId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.alerts.emitAlert('order.assigned', { orderId, driverId: body.driverId, pickupAddress: updated.pickupAddress ?? undefined });
-    this.planningService.recalculateAndEmit().catch(() => {});
-    return updated;
+    this.planningService.recalculateAndEmit().catch(() => { });
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/reject')
@@ -265,10 +291,10 @@ export class OrdersController {
     const updated = await this.ordersService.driverReject(orderId, req.user.id);
     await this.audit.log(req.user.id, 'order.driver_reject', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.alerts.emitAlert('order.rejected', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
-    this.planningService.recalculateAndEmit().catch(() => {});
-    return updated;
+    this.planningService.recalculateAndEmit().catch(() => { });
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/arrived-at-pickup')
@@ -311,10 +337,10 @@ export class OrdersController {
     const updated = await this.ordersService.stopUnderway(orderId, req.user.id);
     await this.audit.log(req.user.id, 'order.stop_underway', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.alerts.emitAlert('order.stopped_underway', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
-    this.planningService.recalculateAndEmit().catch(() => {});
-    return updated;
+    this.planningService.recalculateAndEmit().catch(() => { });
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/status')
@@ -333,11 +359,11 @@ export class OrdersController {
     );
     await this.audit.log(req.user.id, 'order.status_change', 'order', { orderId, status: body.status });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     if (body.status === 'COMPLETED') {
       this.alerts.emitAlert('order.completed', { orderId });
     }
-    return result;
+    return this.transformOrder(result);
   }
 
   @Patch(':id/manual')
@@ -352,7 +378,7 @@ export class OrdersController {
     await this.audit.log(req.user.id, 'order.manual_flag', 'order', { orderId, manualAssignment: !!body.manualAssignment });
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
-    this.planningService.recalculateAndEmit().catch(() => {});
+    this.planningService.recalculateAndEmit().catch(() => { });
     return updated;
   }
 
@@ -369,7 +395,7 @@ export class OrdersController {
     await this.audit.log(req.user.id, 'order.delay', 'order', { orderId, delayMinutes });
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
-    this.planningService.recalculateAndEmit().catch(() => {});
+    this.planningService.recalculateAndEmit().catch(() => { });
     return updated;
   }
 
@@ -381,7 +407,7 @@ export class OrdersController {
     await this.audit.log(req.user.id, 'order.delete', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list);
-    this.planningService.recalculateAndEmit().catch(() => {});
+    this.planningService.recalculateAndEmit().catch(() => { });
     return { deleted: true };
   }
 }

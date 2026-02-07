@@ -24,6 +24,7 @@ import { PassengersModule } from './passengers/passengers.module';
 import { ReportsModule } from './reports/reports.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { PlanningModule } from './planning/planning.module';
+import { ZonesModule } from './zones/zones.module';
 
 @Module({
   controllers: [AppController],
@@ -51,6 +52,7 @@ import { PlanningModule } from './planning/planning.module';
     ReportsModule,
     SchedulerModule,
     PlanningModule,
+    ZonesModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

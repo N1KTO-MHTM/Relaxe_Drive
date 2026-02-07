@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
 
@@ -10,7 +10,7 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ws: RelaxDriveWsGateway,
-  ) {}
+  ) { }
 
   async create(data: { lat: number; lng: number; type: ReportType; description?: string; userId: string }) {
     const report = await this.prisma.driverReport.create({
@@ -42,5 +42,25 @@ export class ReportsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  onModuleInit() {
+    setInterval(() => {
+      this.deleteOldReports();
+    }, 60 * 1000); // Check every minute
+  }
+
+  async deleteOldReports() {
+    try {
+      // Auto-delete reports older than 1 minute
+      const cutoff = new Date(Date.now() - 60 * 1000);
+      await this.prisma.driverReport.deleteMany({
+        where: {
+          createdAt: { lt: cutoff },
+        },
+      });
+    } catch (e) {
+      console.error('Failed to cleanup old reports', e);
+    }
   }
 }

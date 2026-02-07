@@ -29,7 +29,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private passengersService: PassengersService,
-  ) {}
+  ) { }
 
   async create(data: {
     pickupAt: Date;
@@ -48,7 +48,7 @@ export class OrdersService {
   }) {
     const waypointsJson =
       data.waypoints && data.waypoints.length > 0
-        ? (data.waypoints as unknown as object)
+        ? JSON.stringify(data.waypoints)
         : undefined;
     return this.prisma.order.create({
       data: {

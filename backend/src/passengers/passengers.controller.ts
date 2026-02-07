@@ -8,7 +8,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN', 'DISPATCHER')
 export class PassengersController {
-  constructor(private passengersService: PassengersService) {}
+  constructor(private passengersService: PassengersService) { }
 
   @Get()
   async list(@Request() req: { user?: { role: string } }) {
@@ -62,5 +62,10 @@ export class PassengersController {
   async delete(@Param('id') id: string) {
     await this.passengersService.delete(id);
     return { deleted: true };
+  }
+
+  @Get(':id/addresses')
+  async getAddresses(@Param('id') id: string) {
+    return this.passengersService.getHistory(id);
   }
 }
