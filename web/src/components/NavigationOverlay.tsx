@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Order, OrderRouteData, RouteStep } from '../types';
+import { Order, OrderRouteData } from '../types';
 
 interface NavigationOverlayProps {
     order: Order;
@@ -18,7 +18,6 @@ export default function NavigationOverlay({ order, routeData, isPickup, onClose,
     // Use driverToPickup data if isPickup, else regular route data
     const steps = (isPickup ? routeData.driverToPickupSteps : routeData.steps) || [];
     const durationMin = (isPickup ? routeData.driverToPickupMinutes : routeData.durationMinutes) ?? 0;
-    const distanceKm = distanceM => (distanceM / 1000).toFixed(1);
     const totalDistKm = ((isPickup ? routeData.driverToPickupMinutes : routeData.distanceKm) ?? 0).toFixed(1); // distanceKm might be missing in routeData type logic above, trusting prop
 
     // Simple next step logic: just show the first step or "Head to destination"
@@ -107,7 +106,7 @@ function formatDistance(meters: number): string {
     return Math.round(meters) + ' m';
 }
 
-function getStepIcon(type: number): string {
+function getStepIcon(_type: number): string {
     // Simple mapping based on OSRM modifier types if available, defaulting to arrows
     // 0: Unknown, 1: Start, 2: End, ...
     // For now return generic arrows

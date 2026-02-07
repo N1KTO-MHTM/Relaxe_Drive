@@ -4,8 +4,8 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore } from '../../store/auth';
 import { api } from '../../api/client';
-import OrdersMap from '../../components/OrdersMap';
-import type { OrderRouteData, DriverForMap, DriverReportMap } from '../../components/OrdersMap';
+import OrdersMap, { OrderRouteData, DriverForMap } from '../../components/OrdersMap';
+import type { DriverReportMap } from '../../components/OrdersMap';
 import { AddressRouteMap } from '../../components/AddressRouteMap';
 import NavBar, { formatDistanceHint, STEP_TYPE_ICON } from '../../components/NavBar';
 import DriverChatButton from '../../components/DriverChatButton';
