@@ -22,16 +22,17 @@ export default function Speedometer({ speedMph, standingStartedAt }: Speedometer
         return () => clearInterval(interval);
     }, [standingStartedAt]);
 
-    if (standingStartedAt) {
-        const minutes = Math.floor(standingTime / 60000);
-        const seconds = Math.floor((standingTime % 60000) / 1000);
-        return (
-            <div className="speedometer speedometer--standing">
-                <div className="speedometer-value">{minutes}:{seconds.toString().padStart(2, '0')}</div>
-                <div className="speedometer-label">Waiting</div>
-            </div>
-        );
-    }
+    // Don't show waiting time on map
+    // if (standingStartedAt) {
+    //     const minutes = Math.floor(standingTime / 60000);
+    //     const seconds = Math.floor((standingTime % 60000) / 1000);
+    //     return (
+    //         <div className="speedometer speedometer--standing">
+    //             <div className="speedometer-value">{minutes}:{seconds.toString().padStart(2, '0')}</div>
+    //             <div className="speedometer-label">Waiting</div>
+    //         </div>
+    //     );
+    // }
 
     if (speedMph === null || speedMph < 1) return null;
 
