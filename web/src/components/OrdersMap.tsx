@@ -6,20 +6,6 @@ import L from './leafletWithCluster';
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY
 const DEFAULT_ZOOM = 12;
 
-/** Rockland County, NY — simplified boundary. Closed polygon for service area. */
-const ROCKLAND_COUNTY_BOUNDARY: [number, number][] = [
-  [41.004, -74.078],  // SW
-  [41.004, -73.945],  // S
-  [41.025, -73.882],  // SE (Hudson)
-  [41.095, -73.862],
-  [41.168, -73.888],
-  [41.268, -73.912],  // NE
-  [41.272, -74.042],  // N
-  [41.248, -74.118],  // NW
-  [41.118, -74.152],  // W
-  [41.004, -74.078],  // close
-];
-
 export type DriverMapStatus = 'available' | 'busy' | 'offline';
 
 export interface DriverForMap {
@@ -327,19 +313,6 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       maxZoom: 19,
     });
     tileLayer.addTo(map);
-    const rocklandLatLngs = ROCKLAND_COUNTY_BOUNDARY.map(([lat, lng]) => L.latLng(lat, lng));
-    const rocklandLine = L.polygon(rocklandLatLngs, {
-      color: '#0d9488',
-      weight: 3,
-      opacity: 0.8,
-      fill: true,
-      fillColor: '#0d9488',
-      fillOpacity: 0.05,
-      interactive: false,
-      dashArray: '5, 5',
-    }).addTo(map);
-    rocklandLine.bindPopup('Rockland County', { closeOnClick: false });
-    serviceAreaRef.current = rocklandLine;
     mapRef.current = map;
     let handleMoveEnd: (() => void) | undefined;
     if (onMapViewChange) {

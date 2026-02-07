@@ -159,6 +159,7 @@
     "drivers": "Drivers",
     "translation": "Translation",
     "analytics": "Analytics",
+    "driverReports": "Driver Reports",
     "roles": "Roles & Permissions",
     "pendings": "Pending drivers",
     "sessions": "Session Monitor",
@@ -170,7 +171,13 @@
     "about": "About",
     "language": "Language",
     "themeLight": "Light theme",
-    "themeDark": "Dark theme"
+    "themeDark": "Dark theme",
+    "group": {
+      "operations": "Operations",
+      "dispatch": "Dispatch",
+      "bi": "BI",
+      "system": "System"
+    }
   },
   "dashboard": {
     "title": "Dispatcher Dashboard",
