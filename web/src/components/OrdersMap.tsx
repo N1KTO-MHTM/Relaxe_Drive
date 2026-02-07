@@ -2,72 +2,12 @@ import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 import L from './leafletWithCluster';
+import { DriverForMap, DriverMapStatus, OrderRouteData, RouteStep } from '../types';
+// import { DriverForMap, DriverMapStatus, OrderRouteData, RouteStep } from '../types'; // import moved to top
 
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY
 const DEFAULT_ZOOM = 12;
 
-export type DriverMapStatus = 'available' | 'busy' | 'offline';
-
-export interface DriverForMap {
-  id: string;
-  nickname: string;
-  phone?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-  /** For map: green=available, red=on trip (busy), gray=offline */
-  status?: DriverMapStatus;
-  carType?: string | null;
-  carPlateNumber?: string | null;
-  carId?: string | null;
-  driverId?: string | null;
-  /** Optional label for popup e.g. "Available" / "On trip" / "Offline" */
-  statusLabel?: string;
-  /** When on trip: ETA and current order info for popup */
-  etaMinutesToPickup?: number;
-  etaMinutesTotal?: number;
-  etaMinutesPickupToDropoff?: number;
-  assignedOrderPickup?: string | null;
-  assignedOrderDropoff?: string | null;
-  /** When busy: "Busy until HH:MM" */
-  busyUntil?: string | null;
-}
-
-export interface RouteStep {
-  type: number;
-  instruction: string;
-  distanceM: number;
-  durationS: number;
-}
-
-export interface OrderRouteData {
-  pickupCoords: { lat: number; lng: number } | null;
-  dropoffCoords: { lat: number; lng: number } | null;
-  polyline: string;
-  durationMinutes?: number;
-  distanceKm?: number;
-  steps?: RouteStep[];
-  /** Driver → pickup leg (when driver view) */
-  driverToPickupPolyline?: string;
-  driverToPickupMinutes?: number;
-  driverToPickupSteps?: RouteStep[];
-  /** Alternative routes (driver can choose) */
-  alternativeRoutes?: Array<{
-    polyline: string;
-    durationMinutes: number;
-    distanceKm: number;
-    trafficLevel?: 'low' | 'moderate' | 'heavy';
-    trafficDelayMinutes?: number;
-    hasTolls?: boolean;
-    tollCount?: number;
-    summary?: string;
-  }>;
-  /** Traffic and route information */
-  trafficLevel?: 'low' | 'moderate' | 'heavy';
-  trafficDelayMinutes?: number;
-  hasTolls?: boolean;
-  tollCount?: number;
-  summary?: string;
-}
 
 export type DriverReportMap = { id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string };
 
@@ -491,7 +431,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         marker = L.marker([lat, lng], { icon }); // Use initial icon with rotation 0
         const name = driver.nickname || 'Driver';
         const rows: string[] = [`<strong>${escapeHtml(name)}</strong>`];
-        if (driver.phone) rows.push(`Phone: ${escapeHtml(driver.phone)}`);
+        if (driver.phone) rows.push(`Phone: <a href="tel:${escapeHtml(driver.phone)}">${escapeHtml(driver.phone)}</a>`);
         if (driver.driverId) rows.push(`${escapeHtml(t('drivers.driverId'))}: ${escapeHtml(driver.driverId)}`);
         if (driver.carId) rows.push(`${escapeHtml(t('drivers.carId'))}: ${escapeHtml(driver.carId)}`);
         if (driver.carType) rows.push(`Car type: ${escapeHtml(driver.carType)}`);

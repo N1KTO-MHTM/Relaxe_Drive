@@ -215,3 +215,37 @@ model PhoneBase {
 
   @@map("phone_base")
 }
+
+model Chat {
+  id            String        @id @default(cuid())
+  driverId      String        @unique @map("driver_id")
+  status        String        @default("OPEN") // OPEN, WAITING, CLOSED
+  lastMessageAt DateTime      @default(now()) @map("last_message_at")
+  lastMessage   String?       @map("last_message")
+  unreadCount   Int           @default(0) @map("unread_count")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  
+  messages      ChatMessage[]
+
+  @@index([status])
+  @@index([lastMessageAt])
+  @@map("chats")
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  chatId     String   @map("chat_id")
+  senderId   String   @map("sender_id")
+  senderRole String   @map("sender_role") // DRIVER or DISPATCHER
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}

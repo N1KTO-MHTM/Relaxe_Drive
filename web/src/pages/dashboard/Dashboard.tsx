@@ -8,6 +8,10 @@ import OrdersMap from '../../components/OrdersMap';
 import type { OrderRouteData, DriverForMap, DriverReportMap } from '../../components/OrdersMap';
 import { AddressRouteMap } from '../../components/AddressRouteMap';
 import NavBar, { formatDistanceHint, STEP_TYPE_ICON } from '../../components/NavBar';
+import DriverChatButton from '../../components/DriverChatButton';
+import RouteSelectionModal from '../../components/RouteSelectionModal';
+import DriverTripsModal from '../../components/DriverTripsModal';
+import NavigationOverlay from '../../components/NavigationOverlay';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
 import { shortId } from '../../utils/shortId';
@@ -178,6 +182,8 @@ export default function Dashboard() {
   const [driverAssignSearch, setDriverAssignSearch] = useState<Record<string, string>>({});
   const [driverAssignByIdInput, setDriverAssignByIdInput] = useState<Record<string, string>>({});
   const [selectedDriverDetail, setSelectedDriverDetail] = useState<{ orderId: string; driver: User } | null>(null);
+  const [driverTripsModalId, setDriverTripsModalId] = useState<string | null>(null);
+  const [showRouteSelection, setShowRouteSelection] = useState(false);
   const autoStopSentForOrderIdRef = useRef<string | null>(null);
   const [driverMapFullScreen, setDriverMapFullScreen] = useState(false);
   const DRIVER_MAP_ICON_KEY = 'relaxe_driver_map_icon';
@@ -1956,7 +1962,24 @@ export default function Dashboard() {
                       )}
                     </div>
                     {submitError && <p className="rd-text-critical">{submitError}</p>}
-                    <button type="submit" className="rd-btn rd-btn-primary">{t('dashboard.createOrder')}</button>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                      <button
+                        type="button"
+                        className="rd-btn"
+                        onClick={() => setShowRouteSelection(true)}
+                        disabled={!pickupAddress || !dropoffAddress}
+                        style={{ flex: 1, background: '#f3f4f6', color: '#1f2937', border: '1px solid #d1d5db' }}
+                      >
+                        📍 Check Routes
+                      </button>
+                      <button
+                        type="submit"
+                        className="rd-btn rd-btn-primary"
+                        style={{ flex: 2 }}
+                      >
+                        {t('dashboard.createOrder')}
+                      </button>
+                    </div>
                   </form>
                 </>
               )}
@@ -2549,6 +2572,21 @@ export default function Dashboard() {
             </div>
           )}
           <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            {driverMapFullScreen && routeData && selectedOrderId && driverLocation && (
+              <NavigationOverlay
+                order={orders.find(o => o.id === selectedOrderId)!}
+                routeData={routeData}
+                isPickup={orders.find(o => o.id === selectedOrderId)?.status === 'ASSIGNED'}
+                onClose={() => setDriverMapFullScreen(false)}
+                onArrived={() => {
+                  const o = orders.find(x => x.id === selectedOrderId);
+                  if (!o) return;
+                  if (o.status === 'ASSIGNED') handleArrivedAtPickup(o.id);
+                  else if (o.status === 'IN_PROGRESS') setConfirmEndTripOrderId(o.id);
+                }}
+                arriving={!!arrivingId || !!statusUpdatingId}
+              />
+            )}
             <OrdersMap
               drivers={isDriver ? [] : driversForMap}
               showDriverMarkers={canAssign}
@@ -2887,6 +2925,25 @@ export default function Dashboard() {
           </aside>
         )}
       </div>
+      {showRouteSelection && (
+        <RouteSelectionModal
+          pickupAddress={pickupAddress}
+          dropoffAddress={dropoffAddress}
+          onSelect={(idx, route) => {
+            setShowRouteSelection(false);
+            // We could store the route here to save with order, but for now just showing it is enough as per Plan 1
+            toast.success(`Selected Route ${idx + 1}: ${route.distanceKm.toFixed(1)}km, ${Math.round(route.durationMinutes)}min`);
+          }}
+          onCancel={() => setShowRouteSelection(false)}
+        />
+      )}
+      {driverTripsModalId && (
+        <DriverTripsModal
+          driverId={driverTripsModalId}
+          driverName={drivers.find(d => d.id === driverTripsModalId)?.nickname}
+          onClose={() => setDriverTripsModalId(null)}
+        />
+      )}
       {selectedDriverDetail && (
         <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.driverInfoTitle')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setSelectedDriverDetail(null)} onKeyDown={(e) => e.key === 'Escape' && setSelectedDriverDetail(null)}>
           <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
@@ -2899,6 +2956,24 @@ export default function Dashboard() {
               <div className="stat-row"><span>{t('auth.carType')}</span><span>{(selectedDriverDetail.driver as User).carType ? t('auth.carType_' + (selectedDriverDetail.driver as User).carType) : '—'}</span></div>
               <div className="stat-row"><span>{t('auth.carPlateNumber')}</span><span>{(selectedDriverDetail.driver as User).carPlateNumber ?? '—'}</span></div>
               <div className="stat-row"><span>{t('dashboard.userId')}</span><span className="rd-id-compact" title={selectedDriverDetail.driver.id}>{shortId(selectedDriverDetail.driver.id)}</span></div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+              {selectedDriverDetail.driver.phone && (
+                <a href={`tel:${selectedDriverDetail.driver.phone}`} className="rd-btn" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }}>
+                  📞 Call
+                </a>
+              )}
+              {selectedDriverDetail.driver.phone && (
+                <button type="button" className="rd-btn" style={{ flex: 1 }} onClick={() => {
+                  navigator.clipboard.writeText(selectedDriverDetail.driver.phone!);
+                  toast.success(t('dashboard.phoneCopied') || 'Copied');
+                }}>
+                  📋 Copy
+                </button>
+              )}
+              <button type="button" className="rd-btn" style={{ flex: 1, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }} onClick={() => setDriverTripsModalId(selectedDriverDetail.driver.id)}>
+                📜 History
+              </button>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" className="rd-btn rd-btn-primary" onClick={() => { handleAssign(selectedDriverDetail.orderId, selectedDriverDetail.driver.id); setSelectedDriverDetail(null); }} disabled={!!assigningId}>
@@ -2964,6 +3039,7 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      {isDriver && user?.id && <DriverChatButton userId={user.id} />}
     </div>
   );
 }

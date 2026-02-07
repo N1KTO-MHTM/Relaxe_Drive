@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 @Controller('geo')
 @UseGuards(JwtAuthGuard)
 export class GeoController {
-  constructor(private readonly geo: GeoService) {}
+  constructor(private readonly geo: GeoService) { }
 
   @Get('geocode')
   async geocode(@Query('address') address: string) {
@@ -50,5 +50,20 @@ export class GeoController {
       pickupCoords,
       dropoffCoords,
     };
+  }
+  @Get('route-alternatives')
+  async routeAlternatives(
+    @Query('origin') origin: string,
+    @Query('destination') destination: string,
+  ) {
+    if (!origin?.trim() || !destination?.trim()) {
+      return [];
+    }
+    const pickupCoords = await this.geo.geocode(origin.trim());
+    const dropoffCoords = await this.geo.geocode(destination.trim());
+
+    if (!pickupCoords || !dropoffCoords) return [];
+
+    return this.geo.getRouteAlternatives(pickupCoords, dropoffCoords);
   }
 }

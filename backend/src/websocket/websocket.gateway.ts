@@ -15,7 +15,7 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
     // Auth via token in handshake; join channels: orders, drivers, alerts, eta
   }
 
-  handleDisconnect() {}
+  handleDisconnect() { }
 
   broadcastOrders(payload: unknown) {
     this.server?.emit('orders', payload);
@@ -43,8 +43,15 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
     this.server?.emit('report', payload);
   }
 
-  /** Planning result update (window, riskyOrders, shortage) for dispatcher dashboard */
   broadcastPlanning(payload: unknown) {
     this.server?.emit('planning.update', payload);
+  }
+
+  broadcastChatMessage(payload: unknown) {
+    this.server?.emit('chat.message', payload);
+  }
+
+  broadcastChatRead(payload: unknown) {
+    this.server?.emit('chat.read', payload);
   }
 }

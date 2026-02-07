@@ -26,6 +26,7 @@ const LiveWall = lazy(() => import('./pages/live-wall/LiveWall'));
 const PhoneBase = lazy(() => import('./pages/phone-base/PhoneBase'));
 const Addresses = lazy(() => import('./pages/addresses/Addresses'));
 const DriverReports = lazy(() => import('./pages/reports/DriverReports'));
+const Chat = lazy(() => import('./pages/chat/ChatPage'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/phone-base" element={<PhoneBase />} />
         <Route path="/driver-reports" element={<DriverReports />} />
+        <Route path="/chat" element={<Chat />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

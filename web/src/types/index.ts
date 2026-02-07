@@ -30,6 +30,10 @@ export interface Order {
   suggestedDriverId?: string | null;
   /** Dispatcher marked: no auto-suggest */
   manualAssignment?: boolean;
+  distanceKm?: number | null;
+  durationMinutes?: number | null;
+  driverFeeCents?: number | null;
+  totalAmountCents?: number | null;
 }
 
 export interface Driver {
@@ -89,4 +93,67 @@ export interface PlanningResult {
   riskyOrders: RiskyOrderPlanning[];
   /** Per-order risk and suggested driver (used for auto-assign). */
   orderRows?: OrderPlanningRow[];
+}
+
+export interface RouteStep {
+  type: number;
+  instruction: string;
+  distanceM: number;
+  durationS: number;
+}
+
+export interface OrderRouteData {
+  pickupCoords: { lat: number; lng: number } | null;
+  dropoffCoords: { lat: number; lng: number } | null;
+  polyline: string;
+  durationMinutes?: number;
+  distanceKm?: number;
+  steps?: RouteStep[];
+  /** Driver → pickup leg (when driver view) */
+  driverToPickupPolyline?: string;
+  driverToPickupMinutes?: number;
+  driverToPickupSteps?: RouteStep[];
+  /** Alternative routes (driver can choose) */
+  alternativeRoutes?: Array<{
+    polyline: string;
+    durationMinutes: number;
+    distanceKm: number;
+    trafficLevel?: 'low' | 'moderate' | 'heavy';
+    trafficDelayMinutes?: number;
+    hasTolls?: boolean;
+    tollCount?: number;
+    summary?: string;
+  }>;
+  /** Traffic and route information */
+  trafficLevel?: 'low' | 'moderate' | 'heavy';
+  trafficDelayMinutes?: number;
+  hasTolls?: boolean;
+  tollCount?: number;
+  summary?: string;
+}
+
+export type DriverMapStatus = 'available' | 'busy' | 'offline';
+
+export interface DriverForMap {
+  id: string;
+  nickname: string;
+  phone?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  /** For map: green=available, red=on trip (busy), gray=offline */
+  status?: DriverMapStatus;
+  carType?: string | null;
+  carPlateNumber?: string | null;
+  carId?: string | null;
+  driverId?: string | null;
+  /** Optional label for popup e.g. "Available" / "On trip" / "Offline" */
+  statusLabel?: string;
+  /** When on trip: ETA and current order info for popup */
+  etaMinutesToPickup?: number;
+  etaMinutesTotal?: number;
+  etaMinutesPickupToDropoff?: number;
+  assignedOrderPickup?: string | null;
+  assignedOrderDropoff?: string | null;
+  /** When busy: "Busy until HH:MM" */
+  busyUntil?: string | null;
 }

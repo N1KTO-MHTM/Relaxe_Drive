@@ -6,13 +6,13 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/dashboard', '/wall', '/calendar',
     '/clients', '/addresses', '/drivers', '/phone-base', '/pendings',
     '/analytics', '/driver-reports', '/cost-control', '/sessions', '/audit',
-    '/roles', '/translation', '/white-label', '/health', '/about',
+    '/roles', '/translation', '/white-label', '/health', '/about', '/chat',
   ],
   DISPATCHER: [
     '/dashboard', '/wall', '/calendar',
     '/clients', '/addresses', '/drivers', '/phone-base', '/pendings',
     '/analytics', '/driver-reports', '/sessions', '/audit',
-    '/translation', '/about',
+    '/translation', '/about', '/chat',
   ],
   /** Driver: Dashboard, My Reports, Translation, About. */
   DRIVER: ['/dashboard', '/driver-reports', '/translation', '/about'],
@@ -38,6 +38,7 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
   { path: '/addresses', key: 'addresses', group: 'dispatch' },
   { path: '/phone-base', key: 'phoneBase', group: 'dispatch' },
   { path: '/pendings', key: 'pendings', group: 'dispatch' },
+  { path: '/chat', key: 'chat', group: 'dispatch' },
 
   // Business Intelligence
   { path: '/analytics', key: 'analytics', group: 'bi' },

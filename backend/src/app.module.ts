@@ -27,6 +27,7 @@ import { PlanningModule } from './planning/planning.module';
 import { ZonesModule } from './zones/zones.module';
 import { PhoneBaseModule } from './phone-base/phone-base.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   controllers: [AppController],
@@ -57,6 +58,7 @@ import { AddressesModule } from './addresses/addresses.module';
     ZonesModule,
     PhoneBaseModule,
     AddressesModule,
+    ChatModule,
   ],
 })
 export class AppModule { }
