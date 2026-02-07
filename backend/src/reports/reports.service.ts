@@ -1,10 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class ReportsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private wsGateway: RelaxDriveWsGateway,
+  ) { }
+
+  async createReport(data: {
+    lat: number;
+    lng: number;
+    type: string;
+    description?: string;
+    userId: string;
+  }) {
+    const report = await this.prisma.driverReport.create({
+      data: {
+        lat: data.lat,
+        lng: data.lng,
+        type: data.type,
+        description: data.description,
+        userId: data.userId,
+      },
+    });
+
+    // Broadcast to all connected clients
+    this.wsGateway.broadcastReport({
+      id: report.id,
+      lat: report.lat,
+      lng: report.lng,
+      type: report.type,
+      description: report.description,
+      createdAt: report.createdAt.toISOString(),
+    });
+
+    return report;
+  }
 
   async getReportsForUser(userId: string, role: string) {
     const reports = [];

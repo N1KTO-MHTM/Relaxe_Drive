@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request, Query, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -25,6 +25,21 @@ export class ReportsController {
       minLng: minLng ? parseFloat(minLng) : undefined,
       maxLng: maxLng ? parseFloat(maxLng) : undefined,
       sinceMinutes: sinceMinutes ? parseInt(sinceMinutes, 10) : 120,
+    });
+  }
+
+  @Post()
+  @Roles('DRIVER', 'ADMIN', 'DISPATCHER')
+  async createReport(
+    @Request() req: any,
+    @Body() body: { lat: number; lng: number; type: string; description?: string },
+  ) {
+    return this.reportsService.createReport({
+      lat: body.lat,
+      lng: body.lng,
+      type: body.type,
+      description: body.description,
+      userId: req.user.userId,
     });
   }
 
