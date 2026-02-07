@@ -1186,7 +1186,9 @@ export default function Dashboard() {
     try {
       await api.post('/reports', { lat: driverLocation.lat, lng: driverLocation.lng, type: reportType, description: reportDescription || undefined });
       toast.success(t('dashboard.reportSubmitted'));
+      // Auto-close modal and reset form
       setShowReportModal(false);
+      setReportType('POLICE');
       setReportDescription('');
     } catch {
       toast.error(t('dashboard.reportFailed'));
