@@ -638,10 +638,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       try {
         const poly = L.polygon(z.points, {
           color: z.color,
-          weight: 3,
+          weight: 4,
           fill: true,
           fillColor: z.color,
-          fillOpacity: 0.2,
+          fillOpacity: 0.25,
           interactive: true,
         }).addTo(group);
         poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
