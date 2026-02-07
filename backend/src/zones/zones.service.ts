@@ -295,20 +295,29 @@ export class ZonesService implements OnModuleInit {
         ];
 
         for (const z of zones) {
-            await (this.prisma.zone as any).upsert({
+            const existing = await (this.prisma.zone as any).findFirst({
                 where: { name: z.name },
-                update: {
-                    description: z.description,
-                    color: z.color,
-                    points: JSON.stringify(z.points),
-                },
-                create: {
-                    name: z.name,
-                    description: z.description,
-                    color: z.color,
-                    points: JSON.stringify(z.points),
-                },
             });
+
+            if (existing) {
+                await (this.prisma.zone as any).update({
+                    where: { id: existing.id },
+                    data: {
+                        description: z.description,
+                        color: z.color,
+                        points: JSON.stringify(z.points),
+                    },
+                });
+            } else {
+                await (this.prisma.zone as any).create({
+                    data: {
+                        name: z.name,
+                        description: z.description,
+                        color: z.color,
+                        points: JSON.stringify(z.points),
+                    },
+                });
+            }
         }
         console.log('Seeded zones');
     }

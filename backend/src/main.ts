@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-// Version 1.0.1 - Redesigned UI & Fixed Login Logic
+// Version 1.0.6 - Build Fix: Replaced Prisma upsert with findFirst+update/create fallback for Map Zones
 import { logger } from './common/logger';
 import { AllExceptionsFilter } from './common/http-exception.filter';
 

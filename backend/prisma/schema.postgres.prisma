@@ -195,7 +195,7 @@ model SavedAddress {
 
 model Zone {
   id          String   @id @default(cuid())
-  name        String
+  name        String   @unique
   description String?
   color       String   @default("#3b82f6")
   points      String   // Stored as JSON string

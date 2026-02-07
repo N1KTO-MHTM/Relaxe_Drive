@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,15 +17,28 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { nickname } });
   }
 
-  /** Find user by nickname; tries exact match, then title-case (e.g. "admin" → "Admin") for login. */
+  /** Find user by nickname for login; tries exact, lowercase, and title-case matches to handle device variance. */
   async findByNicknameForLogin(nickname: string) {
-    const trimmed = nickname?.trim() ?? '';
-    const user = await this.prisma.user.findUnique({ where: { nickname: trimmed } });
+    const raw = nickname?.trim() ?? '';
+    if (raw.length === 0) return null;
+
+    // 1. Precise match
+    let user = await this.prisma.user.findUnique({ where: { nickname: raw } });
     if (user) return user;
-    if (trimmed.length === 0) return null;
-    const title = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
-    if (title === trimmed) return null;
-    return this.prisma.user.findUnique({ where: { nickname: title } });
+
+    // 2. Lowercase match
+    const lower = raw.toLowerCase();
+    user = await this.prisma.user.findUnique({ where: { nickname: lower } });
+    if (user) return user;
+
+    // 3. Title-case match (e.g. "admin" -> "Admin")
+    const title = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+    if (title !== raw && title !== lower) {
+      user = await this.prisma.user.findUnique({ where: { nickname: title } });
+      if (user) return user;
+    }
+
+    return null;
   }
 
   async findByEmail(email: string) {
@@ -143,8 +156,13 @@ export class UsersService {
     carCapacity?: number;
     carModelAndYear?: string;
   }) {
-    const existing = await this.findByNickname(data.nickname);
+    const nick = (data.nickname || '').trim();
+    const pass = (data.password || '').trim();
+    if (!nick || !pass) throw new BadRequestException('Nickname and password required');
+
+    const existing = await this.findByNickname(nick);
     if (existing) throw new ConflictException('Nickname already registered');
+
     if (data.email?.trim()) {
       const existingEmail = await this.findByEmail(data.email.trim());
       if (existingEmail) throw new ConflictException('Email already registered');
@@ -307,7 +325,10 @@ export class UsersService {
   }
 
   async setPassword(userId: string, newPassword: string) {
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const pass = (newPassword || '').trim();
+    if (pass.length < 6) throw new BadRequestException('Password too short');
+    const passwordHash = await bcrypt.hash(pass, 10);
+
     return this.prisma.user.update({
       where: { id: userId },
       data: { passwordHash },

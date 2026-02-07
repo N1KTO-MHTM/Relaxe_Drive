@@ -52,7 +52,7 @@ export class AddressesService {
             return existing;
         }
 
-        return (this.prisma.savedAddress as any).create({
+        return this.prisma.savedAddress.create({
             data: {
                 passengerId: passenger.id,
                 phone: data.phone,

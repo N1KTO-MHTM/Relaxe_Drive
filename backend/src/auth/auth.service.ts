@@ -37,6 +37,8 @@ export class AuthService {
       carModelAndYear?: string;
     },
   ) {
+    const nick = (nickname || '').trim();
+    const pass = (password || '').trim();
     // New registrations are DRIVER only; role override not accepted from public register
     const role: Role = 'DRIVER';
     // Drivers must fill phone and car type to submit for pending approval
@@ -47,8 +49,8 @@ export class AuthService {
       throw new BadRequestException('Car type is required for driver registration.');
     }
     const created = await this.usersService.create({
-      nickname,
-      password,
+      nickname: nick,
+      password: pass,
       role,
       phone: opts?.phone,
       email: opts?.email,
@@ -68,8 +70,10 @@ export class AuthService {
   }
 
   async validateUser(nickname: string, password: string) {
-    const user = await this.usersService.findByNicknameForLogin(nickname);
-    if (user && (await bcrypt.compare(password, user.passwordHash))) {
+    const nick = (nickname || '').trim();
+    const pass = (password || '').trim();
+    const user = await this.usersService.findByNicknameForLogin(nick);
+    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -77,7 +81,9 @@ export class AuthService {
   }
 
   async login(nickname: string, password: string, device?: string, ip?: string, rememberDevice = false) {
-    const user = await this.validateUser(nickname, password);
+    const nick = (nickname || '').trim();
+    const pass = (password || '').trim();
+    const user = await this.validateUser(nick, pass);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (user.blocked) throw new UnauthorizedException('Account is blocked');
     if (user.role === 'DRIVER' && user.approvedAt == null) {
