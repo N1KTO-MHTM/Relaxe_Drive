@@ -85,7 +85,7 @@ export default function Passengers() {
     setLoading(true);
     setError(null);
     api
-      .get<PassengerRow[]>('/passengers')
+      .get<PassengerRow[]>('/clients')
       .then((data) => {
         setList(Array.isArray(data) ? data : []);
       })
@@ -117,7 +117,7 @@ export default function Passengers() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post('/passengers', {
+      await api.post('/clients', {
         phone: formPhone.trim(),
         name: formName.trim() || undefined,
         pickupAddr: formPickup.trim() || undefined,
@@ -148,7 +148,7 @@ export default function Passengers() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.patch(`/passengers/${id}`, {
+      await api.patch(`/clients/${id}`, {
         phone: editingClient.phone?.trim() || undefined,
         name: editingClient.name?.trim() || undefined,
         pickupAddr: editingClient.pickupAddr?.trim() || undefined,
@@ -156,7 +156,7 @@ export default function Passengers() {
       });
       setEditingClient(null);
       toast.success(t('passengers.saved'));
-      const data = await api.get<PassengerRow[]>('/passengers');
+      const data = await api.get<PassengerRow[]>('/clients');
       setList(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(parseApiError(e));
@@ -170,7 +170,7 @@ export default function Passengers() {
     setDeletingId(id);
     setError(null);
     try {
-      await api.delete(`/passengers/${id}`);
+      await api.delete(`/clients/${id}`);
       toast.success(t('passengers.deleted'));
       setList((prev) => prev.filter((p) => p.id !== id));
     } catch (e) {

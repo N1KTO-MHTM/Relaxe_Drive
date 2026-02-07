@@ -774,7 +774,7 @@ export default function Dashboard() {
   // Load passengers for suggestions when create form is shown
   useEffect(() => {
     if (!canCreateOrder || !showForm) return;
-    api.get<Array<{ id: string; phone?: string; name: string | null; pickupAddr: string | null; dropoffAddr: string | null; pickupType: string | null; dropoffType: string | null }>>('/passengers').then((data) => {
+    api.get<Array<{ id: string; phone?: string; name: string | null; pickupAddr: string | null; dropoffAddr: string | null; pickupType: string | null; dropoffType: string | null }>>('/clients').then((data) => {
       setPassengersSuggestions(Array.isArray(data) ? data : []);
     }).catch(() => { });
   }, [canCreateOrder, showForm]);
@@ -790,7 +790,7 @@ export default function Dashboard() {
       setPassengerAddressHistory([]);
       return;
     }
-    api.get<Array<{ id: string; address: string; type?: string }>>(`/passengers/${p.id}/addresses`)
+    api.get<Array<{ id: string; address: string; type?: string }>>(`/clients/${p.id}/addresses`)
       .then((data) => setPassengerAddressHistory(Array.isArray(data) ? data : []))
       .catch(() => setPassengerAddressHistory([]));
   }, [orderPhone, manualEntry, passengersSuggestions]);

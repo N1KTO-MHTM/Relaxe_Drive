@@ -54,7 +54,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/wall" element={<LiveWall />} />
         <Route path="/calendar" element={<Calendar />} />
-        <Route path="/passengers" element={<Passengers />} />
+        <Route path="/clients" element={<Passengers />} />
         <Route path="/addresses" element={<Addresses />} />
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/translation" element={<Translation />} />

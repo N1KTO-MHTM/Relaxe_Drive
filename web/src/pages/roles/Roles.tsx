@@ -77,7 +77,7 @@ export default function Roles() {
   useEffect(() => {
     if (!isPassengerView) return;
     setPassengersLoading(true);
-    api.get<PassengerRow[]>('/passengers')
+    api.get<PassengerRow[]>('/clients')
       .then((data) => setPassengersList(Array.isArray(data) ? data : []))
       .catch(() => setPassengersList([]))
       .finally(() => setPassengersLoading(false));
@@ -266,7 +266,7 @@ export default function Roles() {
               )}
             </section>
             <p className="rd-text-muted" style={{ marginTop: '0.75rem' }}>
-              <button type="button" className="rd-btn rd-btn-primary" onClick={() => navigate('/passengers')}>
+              <button type="button" className="rd-btn rd-btn-primary" onClick={() => navigate('/clients')}>
                 {t('passengers.title')} — {t('passengers.addClient')}
               </button>
             </p>

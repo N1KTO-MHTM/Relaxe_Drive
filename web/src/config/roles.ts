@@ -4,13 +4,13 @@ import type { Role } from '../store/auth';
 export const ROLE_PATHS: Record<Role, string[]> = {
   ADMIN: [
     '/dashboard', '/wall', '/calendar',
-    '/passengers', '/addresses', '/drivers', '/phone-base', '/pendings',
+    '/clients', '/addresses', '/drivers', '/phone-base', '/pendings',
     '/analytics', '/driver-reports', '/cost-control', '/sessions', '/audit',
     '/roles', '/translation', '/white-label', '/health', '/about',
   ],
   DISPATCHER: [
     '/dashboard', '/wall', '/calendar',
-    '/passengers', '/addresses', '/drivers', '/phone-base', '/pendings',
+    '/clients', '/addresses', '/drivers', '/phone-base', '/pendings',
     '/analytics', '/driver-reports', '/sessions', '/audit',
     '/translation', '/about',
   ],
@@ -34,7 +34,7 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
 
   // Dispatch Center
   { path: '/drivers', key: 'drivers', group: 'dispatch' },
-  { path: '/passengers', key: 'passengers', group: 'dispatch' },
+  { path: '/clients', key: 'passengers', group: 'dispatch' },
   { path: '/addresses', key: 'addresses', group: 'dispatch' },
   { path: '/phone-base', key: 'phoneBase', group: 'dispatch' },
   { path: '/pendings', key: 'pendings', group: 'dispatch' },
