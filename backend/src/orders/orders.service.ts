@@ -166,11 +166,18 @@ export class OrdersService {
     }
 
     if (order.status !== 'IN_PROGRESS') throw new BadRequestException('Only in-progress trips can add a passenger stop');
-    const existing = (order.waypoints as unknown as { address: string }[] | null) ?? [];
+    let existing: { address: string }[] = [];
+    if (order.waypoints) {
+      try {
+        existing = JSON.parse(order.waypoints);
+      } catch {
+        existing = [];
+      }
+    }
     const next = [...existing, { address: 'Passenger stop (en route)' }];
     return this.prisma.order.update({
       where: { id: orderId },
-      data: { waypoints: next as unknown as object },
+      data: { waypoints: JSON.stringify(next) },
     });
   }
 
