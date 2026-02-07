@@ -65,7 +65,22 @@ export interface OrderRouteData {
   driverToPickupMinutes?: number;
   driverToPickupSteps?: RouteStep[];
   /** Alternative routes (driver can choose) */
-  alternativeRoutes?: Array<{ polyline: string; durationMinutes: number; distanceKm: number }>;
+  alternativeRoutes?: Array<{
+    polyline: string;
+    durationMinutes: number;
+    distanceKm: number;
+    trafficLevel?: 'low' | 'moderate' | 'heavy';
+    trafficDelayMinutes?: number;
+    hasTolls?: boolean;
+    tollCount?: number;
+    summary?: string;
+  }>;
+  /** Traffic and route information */
+  trafficLevel?: 'low' | 'moderate' | 'heavy';
+  trafficDelayMinutes?: number;
+  hasTolls?: boolean;
+  tollCount?: number;
+  summary?: string;
 }
 
 export type DriverReportMap = { id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string };
