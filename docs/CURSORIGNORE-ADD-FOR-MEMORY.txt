@@ -1,0 +1,10 @@
+# Добавьте эти строки в конец .cursorignore (в корне проекта)
+# чтобы Cursor меньше индексировал = меньше памяти, реже OOM.
+
+**/*.db
+**/*.db-journal
+**/*.bundle.js
+**/bun.lock
+
+# В первой строке .cursorignore можно заменить комментарий на:
+# Less indexing = less memory (fewer OOM)

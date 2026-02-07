@@ -25,6 +25,7 @@ interface UserRow {
   bannedUntil?: string | null;
   banReason?: string | null;
   driverId?: string | null;
+  carId?: string | null;
   carType?: string | null;
   carPlateNumber?: string | null;
 }
@@ -90,7 +91,7 @@ export default function Roles() {
         (u.email || '').toLowerCase().includes(search) ||
         (u.phone || '').toLowerCase().includes(search) ||
         (u.id || '').toLowerCase().includes(search) ||
-        (u.driverId || '').toLowerCase().includes(search);
+        (u.driverId || '').toLowerCase().includes(search) || (u.carId || '').toLowerCase().includes(search);
       if (!match) return false;
     }
     if (filterRole && u.role !== filterRole) return false;
@@ -285,6 +286,7 @@ export default function Roles() {
                   <th>{t('roles.role')}</th>
                   <th>{t('roles.userId')}</th>
                   <th>{t('roles.driverId')}</th>
+                  <th>{t('roles.carId')}</th>
                   <th>{t('roles.carType')}</th>
                   <th>{t('roles.carPlateNumber')}</th>
                   {isAdmin && <th>{t('roles.status')}</th>}
@@ -312,6 +314,7 @@ export default function Roles() {
                     </td>
                     <td className="roles-cell-id rd-id-compact" title={u.id}>{shortId(u.id)}</td>
                     <td>{u.role === 'DRIVER' ? (u.driverId ?? '—') : '—'}</td>
+                    <td>{u.role === 'DRIVER' ? (u.carId ?? '—') : '—'}</td>
                     <td>{u.role === 'DRIVER' ? (u.carType ? t('auth.carType_' + u.carType) : '—') : '—'}</td>
                     <td>{u.carPlateNumber ?? '—'}</td>
                     {isAdmin && (

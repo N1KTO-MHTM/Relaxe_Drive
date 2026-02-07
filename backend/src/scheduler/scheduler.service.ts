@@ -44,15 +44,17 @@ export class SchedulerService {
     }
   }
 
-  /** Every 5 minutes — remind about pickups in the next 15 minutes. */
+  /** Every 5 minutes — remind about pickups in the next N minutes (PICKUP_REMINDER_MINUTES, default 15). */
   @Cron('*/5 * * * *')
   async sendPickupReminders() {
     const now = new Date();
-    const in15 = new Date(now.getTime() + 15 * 60 * 1000);
+    const minutes = this.config.get<number>('PICKUP_REMINDER_MINUTES', 15);
+    const windowMs = minutes * 60 * 1000;
+    const windowEnd = new Date(now.getTime() + windowMs);
     const orders = await this.prisma.order.findMany({
       where: {
         status: { in: ['SCHEDULED', 'ASSIGNED'] },
-        pickupAt: { gte: now, lte: in15 },
+        pickupAt: { gte: now, lte: windowEnd },
       },
       select: { id: true, pickupAt: true, pickupAddress: true, driverId: true },
     });

@@ -45,6 +45,7 @@ export class UsersService {
         email: true,
         phone: true,
         driverId: true,
+        carId: true,
         carType: true,
         carPlateNumber: true,
         carCapacity: true,
@@ -83,7 +84,7 @@ export class UsersService {
     return { deleted: true };
   }
 
-  /** Next driverId: numeric sequence 1, 2, 3, ... (all drivers). */
+  /** Next driverId: numeric sequence 1, 2, 3, ... (driver = person). */
   private async nextDriverId(): Promise<string> {
     const users = await this.prisma.user.findMany({
       where: { driverId: { not: null } },
@@ -98,6 +99,21 @@ export class UsersService {
     return String(maxNum + 1);
   }
 
+  /** Next carId: separate numeric sequence 1, 2, 3, ... (car / vehicle). Driver can be 31, car 50. */
+  private async nextCarId(): Promise<string> {
+    const users = await this.prisma.user.findMany({
+      where: { carId: { not: null } },
+      select: { carId: true },
+    });
+    let maxNum = 0;
+    for (const u of users) {
+      if (!u.carId) continue;
+      const num = parseInt(u.carId, 10);
+      if (!Number.isNaN(num) && num > maxNum) maxNum = num;
+    }
+    return String(maxNum + 1);
+  }
+
   async create(data: {
     nickname: string;
     password: string;
@@ -107,6 +123,7 @@ export class UsersService {
     locale?: string;
     tenantId?: string;
     carPlateNumber?: string;
+    carId?: string;
     carType?: string;
     carCapacity?: number;
     carModelAndYear?: string;
@@ -119,8 +136,10 @@ export class UsersService {
     }
     const passwordHash = await bcrypt.hash(data.password, 10);
     let driverId: string | null = null;
+    let carId: string | null = null;
     if (data.role === 'DRIVER') {
       driverId = await this.nextDriverId();
+      carId = await this.nextCarId();
     }
     const user = await this.prisma.user.create({
       data: {
@@ -132,6 +151,7 @@ export class UsersService {
         locale: data.locale ?? 'en',
         tenantId: data.tenantId,
         carPlateNumber: data.carPlateNumber?.trim() || null,
+        carId: data.carId?.trim() || carId,
         carType: data.carType?.trim().toUpperCase() || null,
         carCapacity: data.carCapacity ?? null,
         carModelAndYear: data.carModelAndYear?.trim() || null,
@@ -145,6 +165,7 @@ export class UsersService {
         role: true,
         locale: true,
         driverId: true,
+        carId: true,
         carType: true,
         carPlateNumber: true,
         carCapacity: true,
@@ -197,13 +218,14 @@ export class UsersService {
       orderBy: { nickname: 'asc' },
       include: { sessions: { orderBy: { lastActiveAt: 'desc' }, take: 1 } },
     });
-    return users.map(({ sessions, id, nickname, email, phone, role, createdAt, driverId, carType, carPlateNumber }) => ({
+    return users.map(({ sessions, id, nickname, email, phone, role, createdAt, driverId, carId, carType, carPlateNumber }) => ({
       id,
       nickname,
       email,
       phone,
       role,
       driverId,
+      carId,
       carType,
       carPlateNumber,
       createdAt,
@@ -230,6 +252,7 @@ export class UsersService {
         bannedUntil: true,
         banReason: true,
         driverId: true,
+        carId: true,
         carType: true,
         carPlateNumber: true,
         carCapacity: true,
@@ -298,6 +321,21 @@ export class UsersService {
       where: { id: userId },
       data: { locale: lng },
       select: { id: true, nickname: true, role: true, locale: true },
+    });
+  }
+
+  /** Update driver's Car ID and/or Driver ID (admin). Driver ID = person, Car ID = vehicle; they can differ (e.g. driver 31, car 50). */
+  async updateDriverIds(userId: string, data: { driverId?: string | null; carId?: string | null }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'DRIVER') throw new NotFoundException('Driver not found');
+    const update: { driverId?: string | null; carId?: string | null } = {};
+    if (data.driverId !== undefined) update.driverId = data.driverId?.trim() || null;
+    if (data.carId !== undefined) update.carId = data.carId?.trim() || null;
+    if (Object.keys(update).length === 0) return this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, nickname: true, driverId: true, carId: true } });
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: update,
+      select: { id: true, nickname: true, driverId: true, carId: true, carType: true, carPlateNumber: true },
     });
   }
 

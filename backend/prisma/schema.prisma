@@ -26,6 +26,7 @@ model User {
   bannedUntil      DateTime? @map("banned_until")
   banReason        String?   @map("ban_reason")
   carPlateNumber   String?   @map("car_plate_number")
+  carId            String?   @map("car_id")
   carType          String?   @map("car_type")
   carCapacity      Int?      @map("car_capacity")
   carModelAndYear  String?   @map("car_model_and_year")

@@ -12,6 +12,7 @@ interface User {
   email?: string;
   phone?: string;
   driverId?: string;
+  carId?: string;
   carType?: string;
   carPlateNumber?: string;
   carCapacity?: number;

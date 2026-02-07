@@ -101,3 +101,44 @@
 .about-location-guide-phone .about-location-guide-steps {
   margin-bottom: 0;
 }
+
+.about-instructions {
+  margin-top: var(--rd-space-lg);
+}
+
+.about-instructions-title {
+  margin: 0 0 var(--rd-space-sm);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.about-instructions-intro {
+  margin: 0 0 var(--rd-space-md);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.about-instructions-section {
+  margin-top: var(--rd-space-md);
+  padding-top: var(--rd-space-md);
+  border-top: 1px solid var(--rd-border);
+}
+
+.about-instructions-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.about-instructions-heading {
+  margin: 0 0 var(--rd-space-xs);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--rd-text);
+}
+
+.about-instructions-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}

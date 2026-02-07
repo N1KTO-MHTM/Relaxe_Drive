@@ -11,6 +11,10 @@
     "test": "npm run test --prefix web",
     "typecheck": "npm run build --prefix web",
     "build:web": "npm run build --prefix web",
-    "deploy:frontends": "npm run build --prefix web"
+    "deploy:frontends": "npm run build --prefix web",
+    "check-locales": "npm run check-locales --prefix web",
+    "db:generate": "npm run prisma:generate --prefix backend",
+    "db:migrate": "npm run prisma:migrate --prefix backend",
+    "db:studio": "npm run prisma:studio --prefix backend"
   }
 }

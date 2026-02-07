@@ -32,6 +32,7 @@ export interface DriverForMap {
   status?: DriverMapStatus;
   carType?: string | null;
   carPlateNumber?: string | null;
+  carId?: string | null;
   driverId?: string | null;
   /** Optional label for popup e.g. "Available" / "On trip" / "Offline" */
   statusLabel?: string;
@@ -110,6 +111,10 @@ interface OrdersMapProps {
   currentUserStandingStartedAt?: number | null;
   /** Short label where driver is heading (e.g. "To pickup", "To dropoff"). */
   currentUserHeadingTo?: string | null;
+  /** Heading in degrees (0–360) to rotate driver icon in direction of movement. */
+  currentUserHeadingDegrees?: number | null;
+  /** When true (driver view): only show reports, route line and my location; no pickup/dropoff markers. */
+  driverView?: boolean;
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -165,32 +170,44 @@ const CAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24
 /** SVG arrow (pointing up) for driver "You" marker */
 const ARROW_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
 
-/** "You" marker: blue car icon */
-function currentUserCarIcon(): L.DivIcon {
+/** "You" marker: blue car icon, optional rotation (degrees) for heading. */
+function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
+  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);` : '';
   return L.divIcon({
     className: 'orders-map-current-user-marker',
-    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);" title="You">${CAR_ICON_SVG.replace('width="18" height="18"', 'width="22" height="22"')}</span>`,
+    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);${transform}" title="You">${CAR_ICON_SVG.replace('width="18" height="18"', 'width="22" height="22"')}</span>`,
     iconSize: [44, 44],
     iconAnchor: [22, 22],
   });
 }
 
-/** "You" marker: blue arrow icon (pointing up) */
-function currentUserArrowIcon(): L.DivIcon {
+/** "You" marker: blue arrow icon (pointing up), optional rotation for heading. */
+function currentUserArrowIcon(rotationDegrees?: number): L.DivIcon {
+  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);` : '';
   return L.divIcon({
     className: 'orders-map-current-user-marker',
-    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);" title="You">${ARROW_ICON_SVG}</span>`,
+    html: `<span style="background:#2563eb;border:3px solid #fff;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.45);${transform}" title="You">${ARROW_ICON_SVG}</span>`,
     iconSize: [44, 44],
     iconAnchor: [22, 22],
   });
 }
 
-/** Driver marker: green = available, red = on trip, gray = offline. Map view is never synced between driver and dispatcher. */
-function driverIcon(status: DriverMapStatus): L.DivIcon {
+/** Car-type emoji for driver marker: sedan, minivan, SUV. */
+function carTypeEmoji(carType?: string | null): string {
+  if (!carType) return '🚗';
+  const u = carType.toUpperCase();
+  if (u === 'MINIVAN') return '🚐';
+  if (u === 'SUV') return '🚙';
+  return '🚗'; // SEDAN or default
+}
+
+/** Driver marker: green = available, red = on trip, gray = offline. Uses car-type emoji (sedan/minivan/SUV). */
+function driverIcon(status: DriverMapStatus, carType?: string | null): L.DivIcon {
   const color = DRIVER_COLORS[status];
+  const emoji = carTypeEmoji(carType);
   return L.divIcon({
     className: 'orders-map-driver-marker orders-map-driver-car',
-    html: `<span style="background:${color};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);" title="Driver">${CAR_ICON_SVG}</span>`,
+    html: `<span style="background:${color};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.4);" title="Driver">${emoji}</span>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18],
   });
@@ -212,14 +229,23 @@ const REPORT_TYPE_KEYS: Record<string, string> = {
   OTHER: 'dashboard.reportOther',
 };
 
+/** Emoji per report type for clearer map icons. */
+const REPORT_EMOJI: Record<string, string> = {
+  POLICE: '🚔',
+  TRAFFIC: '🚦',
+  WORK_ZONE: '🚧',
+  CAR_CRASH: '🚗💥',
+  OTHER: '📍',
+};
+
 function reportIcon(type: string): L.DivIcon {
   const color = REPORT_COLORS[type] || REPORT_COLORS.OTHER;
-  const short = type === 'CAR_CRASH' ? 'CR' : type.replace('_', ' ').slice(0, 2);
+  const emoji = REPORT_EMOJI[type] || REPORT_EMOJI.OTHER;
   return L.divIcon({
     className: 'orders-map-report-marker',
-    html: `<span style="background:${color};color:#fff;border:3px solid #fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.45);">${short}</span>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    html: `<span style="background:${color};color:#fff;border:2px solid #fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.45);">${emoji}</span>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 }
 
@@ -246,7 +272,7 @@ declare global {
 }
 
 const SMOOTH_MOVE_MS = 180;
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, myLocationLabel, onMyLocation }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -259,6 +285,11 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   const currentUserMarkerRef = useRef<L.Marker | null>(null);
   const pickPointMarkerRef = useRef<L.Marker | null>(null);
   const rocklandBoundaryRef = useRef<L.Polygon | null>(null);
+  /** Driver path trail (where current user drove) — last N points. */
+  const driverPathTrailRef = useRef<[number, number][]>([]);
+  const driverPathLayerRef = useRef<L.Polyline | null>(null);
+  /** Per-driver markers for smooth position updates (no teleport). */
+  const driverMarkersByIdRef = useRef<Map<string, L.Marker>>(new Map());
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -365,16 +396,20 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     };
   }, [pickPoint?.lat, pickPoint?.lng]);
 
-  // Driver markers: status-colored icons + clustering
+  // Create or remove driver cluster when showDriverMarkers toggles
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (driverClusterRef.current) {
-      map.removeLayer(driverClusterRef.current);
-      driverClusterRef.current = null;
+    if (!showDriverMarkers) {
+      if (driverClusterRef.current) {
+        map.removeLayer(driverClusterRef.current);
+        driverClusterRef.current = null;
+      }
+      driverMarkersByIdRef.current.forEach((m) => m.remove());
+      driverMarkersByIdRef.current.clear();
+      return;
     }
-    if (!showDriverMarkers) return;
-    const withCoords = drivers.filter((d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng));
+    if (driverClusterRef.current) return;
     const clusterGroup = L.markerClusterGroup({
       maxClusterRadius: 60,
       spiderfyOnMaxZoom: true,
@@ -389,61 +424,100 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         });
       },
     });
-    withCoords.forEach((driver) => {
-      const status: DriverMapStatus = driver.status ?? (driver.lat != null && driver.lng != null ? 'available' : 'offline');
-      const marker = L.marker([driver.lat!, driver.lng!], { icon: driverIcon(status) });
-      const name = driver.nickname || 'Driver';
-      const rows: string[] = [`<strong>${escapeHtml(name)}</strong>`];
-      if (driver.phone) rows.push(`Phone: ${escapeHtml(driver.phone)}`);
-      if (driver.driverId) rows.push(`Driver ID: ${escapeHtml(driver.driverId)}`);
-      if (driver.carType) rows.push(`Car type: ${escapeHtml(driver.carType)}`);
-      if (driver.carPlateNumber) rows.push(`Plate: ${escapeHtml(driver.carPlateNumber)}`);
-      const statusLabel = driver.statusLabel ?? (status === 'busy' ? 'On trip' : status === 'available' ? 'Available' : 'Offline');
-      rows.push(`Status: ${escapeHtml(statusLabel)}`);
-      if (driver.assignedOrderPickup != null || driver.assignedOrderDropoff != null) {
-        const pickup = (driver.assignedOrderPickup ?? '').trim() || '—';
-        const dropoff = (driver.assignedOrderDropoff ?? '').trim() || '—';
-        rows.push(`${escapeHtml(t('dashboard.currentTrip'))}: ${escapeHtml(pickup)} → ${escapeHtml(dropoff)}`);
-      }
-      if (driver.etaMinutesToPickup != null && Number.isFinite(driver.etaMinutesToPickup)) {
-        rows.push(`${escapeHtml(t('dashboard.etaToPickup'))}: ${driver.etaMinutesToPickup} min`);
-      }
-      if (driver.etaMinutesTotal != null && Number.isFinite(driver.etaMinutesTotal)) {
-        rows.push(`${escapeHtml(t('dashboard.etaTotal'))}: ${driver.etaMinutesTotal} min`);
-      }
-      if (driver.busyUntil) {
-        try {
-          const busyUntilDate = new Date(driver.busyUntil);
-          rows.push(`${escapeHtml(t('dashboard.busyUntil'))}: ${busyUntilDate.toLocaleTimeString()}`);
-        } catch {
-          // ignore
-        }
-      }
-      const exitLabel = escapeHtml(t('common.close'));
-      const popupContent = rows.join('<br/>') + `<br/><button type="button" class="orders-map-popup-close rd-btn rd-btn-primary" style="margin-top:0.5rem;cursor:pointer">${exitLabel}</button>`;
-      marker.bindPopup(popupContent, { closeOnClick: false, autoClose: false });
-      clusterGroup.addLayer(marker);
-    });
     clusterGroup.addTo(map);
     driverClusterRef.current = clusterGroup;
-    if (withCoords.length > 0) {
-      map.invalidateSize();
-      // Do not auto-fit: user can click Re-center to fit. Stops map jumping when driver locations update.
-    }
     return () => {
       if (driverClusterRef.current) {
         map.removeLayer(driverClusterRef.current);
         driverClusterRef.current = null;
       }
+      driverMarkersByIdRef.current.clear();
     };
+  }, [showDriverMarkers]);
+
+  // Driver markers: add/update/remove by id so positions update smoothly (no teleport)
+  useEffect(() => {
+    const map = mapRef.current;
+    const cluster = driverClusterRef.current;
+    if (!map || !cluster || !showDriverMarkers) return;
+    const withCoords = drivers.filter((d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng));
+    const ids = new Set(withCoords.map((d) => d.id));
+
+    withCoords.forEach((driver) => {
+      const status: DriverMapStatus = driver.status ?? 'available';
+      const lat = driver.lat!;
+      const lng = driver.lng!;
+      let marker = driverMarkersByIdRef.current.get(driver.id);
+      if (marker) {
+        const prev = marker.getLatLng();
+        const distM = Math.sqrt((lat - prev.lat) ** 2 + (lng - prev.lng) ** 2) * 111320;
+        marker.setIcon(driverIcon(status, driver.carType));
+        if (distM > 100) {
+          marker.setLatLng([lat, lng]);
+        } else if (distM > 2) {
+          const startTime = performance.now();
+          const startLat = prev.lat, startLng = prev.lng;
+          const animate = () => {
+            const t = Math.min((performance.now() - startTime) / SMOOTH_MOVE_MS, 1);
+            const eased = t < 1 ? 1 - (1 - t) * (1 - t) : 1;
+            marker!.setLatLng(L.latLng(startLat + (lat - startLat) * eased, startLng + (lng - startLng) * eased));
+            if (t < 1) requestAnimationFrame(animate);
+          };
+          requestAnimationFrame(animate);
+        }
+      } else {
+        marker = L.marker([lat, lng], { icon: driverIcon(status, driver.carType) });
+        const name = driver.nickname || 'Driver';
+        const rows: string[] = [`<strong>${escapeHtml(name)}</strong>`];
+        if (driver.phone) rows.push(`Phone: ${escapeHtml(driver.phone)}`);
+        if (driver.driverId) rows.push(`${escapeHtml(t('drivers.driverId'))}: ${escapeHtml(driver.driverId)}`);
+        if (driver.carId) rows.push(`${escapeHtml(t('drivers.carId'))}: ${escapeHtml(driver.carId)}`);
+        if (driver.carType) rows.push(`Car type: ${escapeHtml(driver.carType)}`);
+        if (driver.carPlateNumber) rows.push(`Plate: ${escapeHtml(driver.carPlateNumber)}`);
+        const statusLabel = driver.statusLabel ?? (status === 'busy' ? 'On trip' : status === 'available' ? 'Available' : 'Offline');
+        rows.push(`Status: ${escapeHtml(statusLabel)}`);
+        if (driver.assignedOrderPickup != null || driver.assignedOrderDropoff != null) {
+          const pickup = (driver.assignedOrderPickup ?? '').trim() || '—';
+          const dropoff = (driver.assignedOrderDropoff ?? '').trim() || '—';
+          rows.push(`${escapeHtml(t('dashboard.currentTrip'))}: ${escapeHtml(pickup)} → ${escapeHtml(dropoff)}`);
+        }
+        if (driver.etaMinutesToPickup != null && Number.isFinite(driver.etaMinutesToPickup)) {
+          rows.push(`${escapeHtml(t('dashboard.etaToPickup'))}: ${driver.etaMinutesToPickup} min`);
+        }
+        if (driver.etaMinutesTotal != null && Number.isFinite(driver.etaMinutesTotal)) {
+          rows.push(`${escapeHtml(t('dashboard.etaTotal'))}: ${driver.etaMinutesTotal} min`);
+        }
+        if (driver.busyUntil) {
+          try {
+            const busyUntilDate = new Date(driver.busyUntil);
+            rows.push(`${escapeHtml(t('dashboard.busyUntil'))}: ${busyUntilDate.toLocaleTimeString()}`);
+          } catch {
+            // ignore
+          }
+        }
+        const exitLabel = escapeHtml(t('common.close'));
+        const popupContent = rows.join('<br/>') + `<br/><button type="button" class="orders-map-popup-close rd-btn rd-btn-primary" style="margin-top:0.5rem;cursor:pointer">${exitLabel}</button>`;
+        marker.bindPopup(popupContent, { closeOnClick: false, autoClose: false });
+        cluster.addLayer(marker);
+        driverMarkersByIdRef.current.set(driver.id, marker);
+      }
+    });
+
+    driverMarkersByIdRef.current.forEach((marker, id) => {
+      if (!ids.has(id)) {
+        cluster.removeLayer(marker);
+        driverMarkersByIdRef.current.delete(id);
+      }
+    });
   }, [drivers, showDriverMarkers, t]);
 
-  // Future order pickups overlay (semi-transparent)
+  // Future order pickups overlay (semi-transparent); skip in driver view
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     futureMarkersRef.current.forEach((m) => m.remove());
     futureMarkersRef.current = [];
+    if (driverView) return;
     futureOrderPickups.forEach((f) => {
       const icon = L.divIcon({
         className: 'orders-map-future-marker',
@@ -464,12 +538,12 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       futureMarkersRef.current.forEach((m) => m.remove());
       futureMarkersRef.current = [];
     };
-  }, [futureOrderPickups]);
+  }, [futureOrderPickups, driverView]);
 
-  // Problem zones heatmap (late pickups + cancels); fallback to circles if heatLayer missing
+  // Problem zones heatmap (late pickups + cancels); skip in driver view
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !problemZones) return;
+    if (!map || !problemZones || driverView) return;
     if (heatLayerRef.current) {
       map.removeLayer(heatLayerRef.current);
       heatLayerRef.current = null;
@@ -503,7 +577,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         heatLayerRef.current = null;
       }
     };
-  }, [problemZones]);
+  }, [problemZones, driverView]);
 
   // "You" marker for driver view: create once, then smooth-move on location change
   const currentUserTargetRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -520,7 +594,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     }
     const target = { lat: currentUserLocation.lat, lng: currentUserLocation.lng };
     if (!currentUserMarkerRef.current) {
-      const icon = driverMarkerStyle === 'arrow' ? currentUserArrowIcon() : currentUserCarIcon();
+      const icon = driverMarkerStyle === 'arrow' ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined) : currentUserCarIcon(currentUserHeadingDegrees ?? undefined);
       const m = L.marker([target.lat, target.lng], { icon }).addTo(map);
       const popupLines = ['You'];
       if (currentUserStandingStartedAt != null) {
@@ -541,9 +615,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         currentUserTargetRef.current = null;
       };
     }
-    currentUserMarkerRef.current.setIcon(driverMarkerStyle === 'arrow' ? currentUserArrowIcon() : currentUserCarIcon());
+    currentUserMarkerRef.current.setIcon(driverMarkerStyle === 'arrow' ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined) : currentUserCarIcon(currentUserHeadingDegrees ?? undefined));
     currentUserTargetRef.current = target;
-  }, [driverMarkerStyle, currentUserLocation?.lat, currentUserLocation?.lng]);
+  }, [driverMarkerStyle, currentUserLocation?.lat, currentUserLocation?.lng, currentUserHeadingDegrees]);
 
   // Smooth animate marker to new position when location updates (instant if jump is large)
   useEffect(() => {
@@ -569,6 +643,34 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
+  }, [currentUserLocation?.lat, currentUserLocation?.lng]);
+
+  // Driver path trail: line showing where the current user (driver) has driven
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!currentUserLocation || !Number.isFinite(currentUserLocation.lat) || !Number.isFinite(currentUserLocation.lng)) {
+      if (driverPathLayerRef.current) {
+        map.removeLayer(driverPathLayerRef.current);
+        driverPathLayerRef.current = null;
+      }
+      driverPathTrailRef.current = [];
+      return;
+    }
+    const trail = driverPathTrailRef.current;
+    trail.push([currentUserLocation.lat, currentUserLocation.lng]);
+    if (trail.length > 50) trail.shift();
+    if (driverPathLayerRef.current) map.removeLayer(driverPathLayerRef.current);
+    if (trail.length < 2) return;
+    const latLngs = trail.map(([lat, lng]) => L.latLng(lat, lng));
+    const line = L.polyline(latLngs, { color: '#2563eb', weight: 5, opacity: 0.7, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+    driverPathLayerRef.current = line;
+    return () => {
+      if (driverPathLayerRef.current) {
+        map.removeLayer(driverPathLayerRef.current);
+        driverPathLayerRef.current = null;
+      }
+    };
   }, [currentUserLocation?.lat, currentUserLocation?.lng]);
 
   // Update popup when speed, standing, or heading changes (tick when standing so "here for X min" updates)
@@ -612,22 +714,28 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         allLatLngs.push(L.latLng(d.lat!, d.lng!));
       });
     }
-    if (pickupCoords) {
-      const m = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: orderPickupIcon(orderRiskLevel) }).addTo(map);
-      const popupRows: string[] = ['<strong>Pickup</strong>'];
-      if (selectedOrderTooltip) {
-        if (selectedOrderTooltip.eta) popupRows.push(`ETA: ${escapeHtml(selectedOrderTooltip.eta)}`);
-        popupRows.push(selectedOrderTooltip.onTime ? 'On time' : 'At risk / Late');
-        if (selectedOrderTooltip.driverName) popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
+    if (!driverView) {
+      if (pickupCoords) {
+        const m = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: orderPickupIcon(orderRiskLevel) }).addTo(map);
+        const popupRows: string[] = ['<strong>Pickup</strong>'];
+        if (selectedOrderTooltip) {
+          if (selectedOrderTooltip.eta) popupRows.push(`ETA: ${escapeHtml(selectedOrderTooltip.eta)}`);
+          popupRows.push(selectedOrderTooltip.onTime ? 'On time' : 'At risk / Late');
+          if (selectedOrderTooltip.driverName) popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
+        }
+        m.bindPopup(popupRows.join('<br/>'), { closeOnClick: false });
+        orderMarkersRef.current.push(m);
+        allLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
       }
-      m.bindPopup(popupRows.join('<br/>'), { closeOnClick: false });
-      orderMarkersRef.current.push(m);
+      if (dropoffCoords) {
+        const m = L.marker([dropoffCoords.lat, dropoffCoords.lng]).addTo(map);
+        m.bindPopup('Dropoff', { closeOnClick: false });
+        orderMarkersRef.current.push(m);
+        allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
+      }
+    } else if (pickupCoords) {
       allLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
-    }
-    if (dropoffCoords) {
-      const m = L.marker([dropoffCoords.lat, dropoffCoords.lng]).addTo(map);
-      m.bindPopup('Dropoff', { closeOnClick: false });
-      orderMarkersRef.current.push(m);
+    } else if (dropoffCoords) {
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
     // Route style: more visible roads (thicker outline + brighter main line)
@@ -681,18 +789,23 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       orderMarkersRef.current.forEach((m) => m.remove());
       orderMarkersRef.current = [];
     };
-  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode, selectedRouteIndex, orderRiskLevel, selectedOrderTooltip]);
+  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode, selectedRouteIndex, orderRiskLevel, selectedOrderTooltip, driverView]);
 
   useEffect(() => {
-    if (!mapRef.current || reports.length === 0) return;
     const map = mapRef.current;
+    if (!map) return;
+    reportMarkersRef.current.forEach((m) => m.remove());
+    reportMarkersRef.current = [];
+    if (reports.length === 0) return;
     reports.forEach((r) => {
       const m = L.marker([r.lat, r.lng], { icon: reportIcon(r.type) }).addTo(map);
       const typeLabel = t(REPORT_TYPE_KEYS[r.type] || 'dashboard.reportOther');
+      const emoji = REPORT_EMOJI[r.type] || REPORT_EMOJI.OTHER;
       const ageSec = r.createdAt ? Math.max(0, Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 1000)) : 0;
       const ageStr = ageSec < 60 ? `${ageSec}s ago` : `${Math.floor(ageSec / 60)}m ago`;
-      const desc = r.description?.trim() ? `<br><span class="rd-text-muted">${r.description}</span>` : '';
-      m.bindPopup(`<strong>${typeLabel}</strong><br><span class="rd-text-muted">${ageStr}</span>${desc}`, { closeOnClick: false });
+      const desc = r.description?.trim() ? escapeHtml(r.description) : '';
+      const content = `<div class="orders-map-report-popup" data-report-id="${escapeHtml(r.id)}"><span style="font-size:1.25em">${emoji}</span> <strong>${escapeHtml(typeLabel)}</strong><br><span class="rd-text-muted">${ageStr}</span>${desc ? `<br><span class="rd-text-muted">${desc}</span>` : ''}</div>`;
+      m.bindPopup(content, { closeOnClick: false, autoClose: true, closeButton: true });
       reportMarkersRef.current.push(m);
     });
     return () => {

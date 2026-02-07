@@ -6,6 +6,13 @@ import { CircuitBreaker } from '../common/http-resilience';
 const OSRM_BASE = process.env.OSRM_URL || 'https://router.project-osrm.org';
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
 const USER_AGENT = 'RelaxDrive/1.0 (https://github.com/relaxdrive)';
+const GOOGLE_MAPS_API_KEY = (process.env.GOOGLE_MAPS_API_KEY ?? '').trim();
+
+/** Strip HTML tags for Google step instructions. */
+function stripHtml(html?: string): string {
+  if (!html) return '';
+  return html.replace(/<[^>]+>/g, '').trim() || '';
+}
 
 /** OSRM maneuver type to our step type (0=left, 1=right, 6=straight, 10=arrive, 11=depart, etc.) */
 function osrmManeuverToType(maneuver?: string): number {
@@ -76,6 +83,14 @@ export class GeoService {
     dropoff: { lat: number; lng: number },
   ): Promise<RouteResult> {
     this.costTracker.increment('maps');
+    if (GOOGLE_MAPS_API_KEY) {
+      try {
+        const r = await this.fetchRouteGoogle([pickup, dropoff], { departureTime: 'now' });
+        if (r.polyline) return r;
+      } catch (e) {
+        console.warn('[GeoService] Google getRoute failed, falling back to OSRM:', e);
+      }
+    }
     try {
       const r = await this.circuit.run(() =>
         withRetry(() => this.fetchRoute(pickup, dropoff, false), { retries: 3, backoffMs: 500 }),
@@ -91,6 +106,14 @@ export class GeoService {
   async getRouteMulti(points: Array<{ lat: number; lng: number }>): Promise<RouteResult> {
     if (points.length < 2) return { distanceKm: 0, durationMinutes: 0, polyline: '' };
     this.costTracker.increment('maps');
+    if (GOOGLE_MAPS_API_KEY) {
+      try {
+        const r = await this.fetchRouteGoogle(points, { departureTime: 'now' });
+        if (r.polyline) return r;
+      } catch (e) {
+        console.warn('[GeoService] Google getRouteMulti failed, falling back to OSRM:', e);
+      }
+    }
     try {
       const coords = points.map((p) => `${p.lng},${p.lat}`).join(';');
       const url = `${OSRM_BASE}/route/v1/driving/${coords}?overview=full&geometries=polyline&steps=true`;
@@ -136,6 +159,14 @@ export class GeoService {
     maxAlternatives = 3,
   ): Promise<RouteResult[]> {
     this.costTracker.increment('maps');
+    if (GOOGLE_MAPS_API_KEY) {
+      try {
+        const routes = await this.fetchRouteAlternativesGoogle(pickup, dropoff, maxAlternatives);
+        if (routes.length > 0) return routes;
+      } catch (e) {
+        console.warn('[GeoService] Google getRouteAlternatives failed, falling back to OSRM:', e);
+      }
+    }
     try {
       const result = await this.circuit.run(() =>
         withRetry(() => this.fetchRoute(pickup, dropoff, true, maxAlternatives), { retries: 3, backoffMs: 500 }),
@@ -145,6 +176,101 @@ export class GeoService {
       console.warn('[GeoService] OSRM getRouteAlternatives failed:', e);
       return [{ distanceKm: 0, durationMinutes: 0, polyline: '' }];
     }
+  }
+
+  /** Google Directions API: single route through points. Returns same format as OSRM for use on our map. */
+  private async fetchRouteGoogle(
+    points: Array<{ lat: number; lng: number }>,
+    options?: { departureTime?: 'now' },
+  ): Promise<RouteResult> {
+    const origin = `${points[0].lat},${points[0].lng}`;
+    const destination = `${points[points.length - 1].lat},${points[points.length - 1].lng}`;
+    const waypoints =
+      points.length > 2
+        ? '&waypoints=' + points.slice(1, -1).map((p) => `${p.lat},${p.lng}`).join('|')
+        : '';
+    const departure = options?.departureTime === 'now' ? '&departure_time=now' : '';
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}${waypoints}&mode=driving${departure}&key=${GOOGLE_MAPS_API_KEY}`;
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    if (!res.ok) throw new Error(`Google Directions ${res.status}`);
+    const data = (await res.json()) as {
+      status?: string;
+      routes?: Array<{
+        overview_polyline?: { points?: string };
+        legs?: Array<{
+          duration?: { value?: number };
+          duration_in_traffic?: { value?: number };
+          distance?: { value?: number };
+          steps?: Array<{ duration?: { value?: number }; distance?: { value?: number }; maneuver?: string; html_instructions?: string }>;
+        }>;
+      }>;
+    };
+    if (data.status !== 'OK' || !data.routes?.[0]) throw new Error(data.status || 'No route');
+    const route = data.routes[0];
+    const polyline = route.overview_polyline?.points ?? '';
+    let distanceM = 0;
+    let durationS = 0;
+    const steps: RouteStep[] = [];
+    for (const leg of route.legs ?? []) {
+      distanceM += leg.distance?.value ?? 0;
+      durationS += leg.duration_in_traffic?.value ?? leg.duration?.value ?? 0;
+      for (const s of leg.steps ?? []) {
+        steps.push({
+          type: 6,
+          instruction: stripHtml(s.html_instructions) || 'Continue',
+          distanceM: s.distance?.value ?? 0,
+          durationS: s.duration?.value ?? 0,
+        });
+      }
+    }
+    return {
+      distanceKm: Math.round((distanceM / 1000) * 100) / 100,
+      durationMinutes: Math.round((durationS / 60) * 10) / 10,
+      polyline,
+      steps: steps.length > 0 ? steps : undefined,
+    };
+  }
+
+  /** Google Directions with alternatives (multiple routes). */
+  private async fetchRouteAlternativesGoogle(
+    pickup: { lat: number; lng: number },
+    dropoff: { lat: number; lng: number },
+    maxAlternatives: number,
+  ): Promise<RouteResult[]> {
+    const origin = `${pickup.lat},${pickup.lng}`;
+    const destination = `${dropoff.lat},${dropoff.lng}`;
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&alternatives=true&departure_time=now&key=${GOOGLE_MAPS_API_KEY}`;
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+    if (!res.ok) throw new Error(`Google Directions ${res.status}`);
+    const data = (await res.json()) as {
+      status?: string;
+      routes?: Array<{
+        overview_polyline?: { points?: string };
+        legs?: Array<{
+          duration?: { value?: number };
+          duration_in_traffic?: { value?: number };
+          distance?: { value?: number };
+          steps?: Array<{ duration?: { value?: number }; distance?: { value?: number }; html_instructions?: string }>;
+        }>;
+      }>;
+    };
+    if (data.status !== 'OK' || !data.routes?.length) return [];
+    const results: RouteResult[] = [];
+    for (const route of data.routes.slice(0, maxAlternatives + 1)) {
+      const polyline = route.overview_polyline?.points ?? '';
+      let distanceM = 0;
+      let durationS = 0;
+      for (const leg of route.legs ?? []) {
+        distanceM += leg.distance?.value ?? 0;
+        durationS += leg.duration_in_traffic?.value ?? leg.duration?.value ?? 0;
+      }
+      results.push({
+        distanceKm: Math.round((distanceM / 1000) * 100) / 100,
+        durationMinutes: Math.round((durationS / 60) * 10) / 10,
+        polyline,
+      });
+    }
+    return results;
   }
 
   private async fetchRoute(

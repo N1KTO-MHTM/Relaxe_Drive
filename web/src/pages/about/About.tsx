@@ -68,6 +68,26 @@ export default function About() {
           </div>
           <p className="rd-text-muted about-location-guide-success">{t('about.locationGuideSuccess')}</p>
         </div>
+        <div className="about-block about-instructions">
+          <h2 className="about-instructions-title">{t('about.instructionsTitle')}</h2>
+          <p className="rd-text-muted about-instructions-intro">{t('about.instructionsIntro')}</p>
+          <section className="about-instructions-section">
+            <h3 className="about-instructions-heading">{t('about.instructionsGeneralTitle')}</h3>
+            <p className="rd-text-muted about-instructions-text">{t('about.instructionsGeneral')}</p>
+          </section>
+          <section className="about-instructions-section">
+            <h3 className="about-instructions-heading">{t('about.instructionsDispatcherTitle')}</h3>
+            <p className="rd-text-muted about-instructions-text">{t('about.instructionsDispatcher')}</p>
+          </section>
+          <section className="about-instructions-section">
+            <h3 className="about-instructions-heading">{t('about.instructionsDriverTitle')}</h3>
+            <p className="rd-text-muted about-instructions-text">{t('about.instructionsDriver')}</p>
+          </section>
+          <section className="about-instructions-section">
+            <h3 className="about-instructions-heading">{t('about.instructionsAdminTitle')}</h3>
+            <p className="rd-text-muted about-instructions-text">{t('about.instructionsAdmin')}</p>
+          </section>
+        </div>
         <p className="rd-text-muted" style={{ marginTop: '1rem' }}>{t('about.description')}</p>
         <p className="rd-text-muted" style={{ marginTop: '0.75rem', fontWeight: 500 }}>{t('about.staffOnly')}</p>
       </div>

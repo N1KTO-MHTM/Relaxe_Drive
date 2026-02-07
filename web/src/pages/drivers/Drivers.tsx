@@ -30,6 +30,7 @@ interface DriverRow {
   blocked?: boolean;
   bannedUntil?: string | null;
   driverId?: string | null;
+  carId?: string | null;
   carType?: string | null;
   carPlateNumber?: string | null;
   carCapacity?: number | null;
@@ -73,8 +74,13 @@ export default function Drivers() {
     const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10);
   });
   const [tripHistoryTo, setTripHistoryTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [editDriverIds, setEditDriverIds] = useState(false);
+  const [editDriverIdValue, setEditDriverIdValue] = useState('');
+  const [editCarIdValue, setEditCarIdValue] = useState('');
+  const [savingDriverIds, setSavingDriverIds] = useState(false);
   const showPhone = canSeeDriverPhones(user?.role);
   const canViewDriverDetail = showPhone;
+  const canEditDriverIds = user?.role === 'ADMIN';
 
   const listByCarType = useMemo(() => {
     if (carTypeTab === 'ALL') return list;
@@ -94,6 +100,7 @@ export default function Drivers() {
           (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (d.carId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (d.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : listByLocation;
@@ -131,9 +138,19 @@ export default function Drivers() {
     if (driver) {
       setSelectedDriver(driver);
       setDetailTab('info');
+      setEditDriverIdValue(driver.driverId ?? '');
+      setEditCarIdValue(driver.carId ?? '');
+      setEditDriverIds(false);
       setSearchParams((p) => { const next = new URLSearchParams(p); next.delete('open'); return next; }, { replace: true });
     }
   }, [openDriverId, list, canViewDriverDetail, setSearchParams]);
+
+  useEffect(() => {
+    if (selectedDriver) {
+      setEditDriverIdValue(selectedDriver.driverId ?? '');
+      setEditCarIdValue(selectedDriver.carId ?? '');
+    }
+  }, [selectedDriver?.id, selectedDriver?.driverId, selectedDriver?.carId]);
 
   useEffect(() => {
     if (!selectedDriver || !canViewDriverDetail) {
@@ -186,6 +203,24 @@ export default function Drivers() {
     return `https://www.google.com/maps/dir/?api=1&${params.toString()}`;
   }
 
+  async function saveDriverIds() {
+    if (!selectedDriver || !canEditDriverIds) return;
+    setSavingDriverIds(true);
+    try {
+      const updated = await api.patch<{ driverId?: string | null; carId?: string | null }>(
+        `/users/${selectedDriver.id}/driver-ids`,
+        { driverId: editDriverIdValue.trim() || null, carId: editCarIdValue.trim() || null }
+      );
+      setSelectedDriver((prev) => prev ? { ...prev, driverId: updated.driverId ?? null, carId: updated.carId ?? null } : null);
+      setList((prev) => prev.map((d) => d.id === selectedDriver.id ? { ...d, driverId: updated.driverId ?? null, carId: updated.carId ?? null } : d));
+      setEditDriverIds(false);
+    } catch {
+      // keep edit mode; user can retry
+    } finally {
+      setSavingDriverIds(false);
+    }
+  }
+
   return (
     <div className="rd-page">
       <div className="drivers-page rd-panel">
@@ -205,6 +240,7 @@ export default function Drivers() {
               { key: 'phone', label: t('drivers.phone') },
               { key: 'email', label: t('auth.email') },
               { key: 'driverId', label: t('drivers.driverId') },
+              { key: 'carId', label: t('drivers.carId') },
               { key: 'carType', label: t('auth.carType') },
               { key: 'carPlateNumber', label: t('auth.carPlateNumber') },
             ])}>
@@ -288,6 +324,7 @@ export default function Drivers() {
                 {showPhone && <th>{t('auth.email')}</th>}
                 {showPhone && <th>{t('drivers.userId')}</th>}
                 <th>{t('drivers.driverId')}</th>
+                <th>{t('drivers.carId')}</th>
                 <th>{t('auth.carType')}</th>
                 <th>{t('auth.carPlateNumber')}</th>
                 <th>{t('drivers.status')}</th>
@@ -360,7 +397,28 @@ export default function Drivers() {
                     <div className="drivers-detail-stat-row"><span>{t('drivers.nickname')}</span><span>{selectedDriver.nickname}</span></div>
                     {showPhone && <div className="drivers-detail-stat-row"><span>{t('drivers.phone')}</span><span>{selectedDriver.phone ?? '—'}</span></div>}
                     {showPhone && <div className="drivers-detail-stat-row"><span>{t('auth.email')}</span><span>{selectedDriver.email ?? '—'}</span></div>}
-                    <div className="drivers-detail-stat-row"><span>{t('drivers.driverId')}</span><span>{selectedDriver.driverId ?? '—'}</span></div>
+                    <div className="drivers-detail-stat-row">
+                      <span>{t('drivers.driverId')}</span>
+                      {editDriverIds && canEditDriverIds ? (
+                        <input type="text" className="rd-input" style={{ width: '6rem' }} value={editDriverIdValue} onChange={(e) => setEditDriverIdValue(e.target.value)} placeholder="—" />
+                      ) : (
+                        <span>{selectedDriver.driverId ?? '—'}{canEditDriverIds && <button type="button" className="rd-link drivers-edit-ids-btn" onClick={() => setEditDriverIds(true)}>{t('common.edit')}</button>}</span>
+                      )}
+                    </div>
+                    <div className="drivers-detail-stat-row">
+                      <span>{t('drivers.carId')}</span>
+                      {editDriverIds && canEditDriverIds ? (
+                        <input type="text" className="rd-input" style={{ width: '6rem' }} value={editCarIdValue} onChange={(e) => setEditCarIdValue(e.target.value)} placeholder="—" />
+                      ) : (
+                        <span>{selectedDriver.carId ?? '—'}</span>
+                      )}
+                    </div>
+                    {editDriverIds && canEditDriverIds && (
+                      <div className="drivers-detail-stat-row" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button type="button" className="rd-btn rd-btn-primary" disabled={savingDriverIds} onClick={saveDriverIds}>{savingDriverIds ? t('common.saving') : t('common.save')}</button>
+                        <button type="button" className="rd-btn rd-btn-secondary" disabled={savingDriverIds} onClick={() => { setEditDriverIds(false); setEditDriverIdValue(selectedDriver.driverId ?? ''); setEditCarIdValue(selectedDriver.carId ?? ''); }}>{t('common.cancel')}</button>
+                      </div>
+                    )}
                     <div className="drivers-detail-stat-row"><span>{t('auth.carType')}</span><span>{selectedDriver.carType ? t('auth.carType_' + selectedDriver.carType) : '—'}</span></div>
                     <div className="drivers-detail-stat-row"><span>{t('auth.carPlateNumber')}</span><span>{selectedDriver.carPlateNumber ?? '—'}</span></div>
                     {selectedDriver.carModelAndYear && <div className="drivers-detail-stat-row"><span>{t('auth.carModelAndYear')}</span><span>{selectedDriver.carModelAndYear}</span></div>}

@@ -29,6 +29,7 @@ export class UsersController {
       ...(user.role === 'DRIVER' && {
         available: user.available ?? true,
         driverId: user.driverId ?? undefined,
+        carId: user.carId ?? undefined,
         carType: user.carType ?? undefined,
         carPlateNumber: user.carPlateNumber ?? undefined,
         carCapacity: user.carCapacity ?? undefined,
@@ -207,6 +208,20 @@ export class UsersController {
   ) {
     const updated = await this.usersService.setBan(id, null, null);
     await this.audit.log(req.user.id, 'user.unban', 'user', { targetUserId: id });
+    return updated;
+  }
+
+  @Patch(':id/driver-ids')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async updateDriverIds(
+    @Param('id') id: string,
+    @Body() body: { driverId?: string | null; carId?: string | null },
+    @Request() req: { user: { id: string } },
+  ) {
+    const updated = await this.usersService.updateDriverIds(id, body);
+    await this.audit.log(req.user.id, 'user.driver_ids_update', 'user', { targetUserId: id });
+    this.ws.emitUserUpdated(id);
     return updated;
   }
 

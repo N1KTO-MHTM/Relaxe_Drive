@@ -10,6 +10,7 @@ interface PendingDriver {
   email?: string | null;
   phone?: string | null;
   driverId?: string | null;
+  carId?: string | null;
   carType?: string | null;
   carPlateNumber?: string | null;
   carCapacity?: number | null;
@@ -103,6 +104,7 @@ export default function Pendings() {
                   <th>{t('auth.phone')}</th>
                   <th>{t('auth.email')}</th>
                   <th>{t('drivers.driverId')}</th>
+                  <th>{t('drivers.carId')}</th>
                   <th>{t('auth.carType')}</th>
                   <th>{t('auth.carPlateNumber')}</th>
                   <th>{t('pendings.registered')}</th>
@@ -118,6 +120,7 @@ export default function Pendings() {
                       {d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}
                     </td>
                     <td className="pendings-cell-driver-id">{d.driverId ?? '—'}</td>
+                    <td>{d.carId ?? '—'}</td>
                     <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
                     <td className="pendings-cell-plate">{d.carPlateNumber ?? '—'}</td>
                     <td className="pendings-cell-date">{d.createdAt ? new Date(d.createdAt).toLocaleString() : '—'}</td>

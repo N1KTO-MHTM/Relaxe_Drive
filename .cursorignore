@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 **/node_modules/
 dist/
 **/dist/
@@ -11,7 +11,7 @@ backend/prisma/migrations/
 web/dist/
 desktop/dist-electron/
 
-# Ð”Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ (Ð¼ÐµÐ½ÑŒÑˆÐµ Ð¸Ð½Ð´ÐµÐºÑÐ°Ñ†Ð¸Ð¸ = Ð¼ÐµÐ½ÑŒÑˆÐµ ÐºÑ€Ð°ÑˆÐµÐ¹)
+# Less indexing = less memory (fewer OOM)
 *.tsbuildinfo
 **/*.tsbuildinfo
 backend/prisma/*.sql
@@ -23,3 +23,28 @@ backend/prisma/*.sql
 desktop/out/
 backend/prisma/*.db
 backend/prisma/*.db-journal
+
+build/
+**/build/
+**/*.map
+**/yarn.lock
+**/pnpm-lock.yaml
+.cursor/
+**/node_modules/.prisma/
+**/*.min.js
+**/.turbo/
+**/.next/
+
+**/*.db
+**/*.db-journal
+**/*.bundle.js
+**/bun.lock
+ 
+**/test/**
+**/tests/**
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/vite.config.ts
+**/vitest.config.ts
+**/tsconfig.build.json

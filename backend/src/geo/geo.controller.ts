@@ -27,4 +27,28 @@ export class GeoController {
     const result = await this.geo.reverseGeocode(lat, lng);
     return result ?? { address: null };
   }
+
+  /** Route between two addresses (for map preview, e.g. Addresses tab). Returns polyline + duration/distance. */
+  @Get('route')
+  async route(
+    @Query('origin') origin: string,
+    @Query('destination') destination: string,
+  ) {
+    if (!origin?.trim() || !destination?.trim()) {
+      return { polyline: '', durationMinutes: 0, distanceKm: 0, pickupCoords: null, dropoffCoords: null };
+    }
+    const pickupCoords = await this.geo.geocode(origin.trim());
+    const dropoffCoords = await this.geo.geocode(destination.trim());
+    if (!pickupCoords || !dropoffCoords) {
+      return { polyline: '', durationMinutes: 0, distanceKm: 0, pickupCoords: pickupCoords ?? null, dropoffCoords: dropoffCoords ?? null };
+    }
+    const result = await this.geo.getRoute(pickupCoords, dropoffCoords);
+    return {
+      polyline: result.polyline,
+      durationMinutes: result.durationMinutes,
+      distanceKm: result.distanceKm,
+      pickupCoords,
+      dropoffCoords,
+    };
+  }
 }

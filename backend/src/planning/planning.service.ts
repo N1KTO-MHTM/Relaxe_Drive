@@ -62,6 +62,13 @@ export class PlanningService implements OnModuleInit {
     const result = await this.getPlanningResult(PLAN_WINDOW_MINUTES);
     await this.persistRiskAndSuggestions(result);
     this.ws.broadcastPlanning(result);
+    if (result.riskyOrders.length > 0) {
+      this.ws.broadcastAlerts({
+        type: 'planning.risky_unassigned',
+        count: result.riskyOrders.length,
+        at: new Date().toISOString(),
+      });
+    }
     return result;
   }
 

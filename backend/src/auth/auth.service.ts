@@ -31,6 +31,7 @@ export class AuthService {
       phone?: string;
       email?: string;
       carPlateNumber?: string;
+      carId?: string;
       carType?: string;
       carCapacity?: number;
       carModelAndYear?: string;
@@ -52,6 +53,7 @@ export class AuthService {
       phone: opts?.phone,
       email: opts?.email,
       carPlateNumber: opts?.carPlateNumber,
+      carId: opts?.carId,
       carType: opts?.carType,
       carCapacity: opts?.carCapacity,
       carModelAndYear: opts?.carModelAndYear,
@@ -120,6 +122,7 @@ export class AuthService {
         phone: user.phone ?? undefined,
         ...(user.role === 'DRIVER' && {
           driverId: user.driverId ?? undefined,
+          carId: user.carId ?? undefined,
           carType: user.carType ?? undefined,
           carPlateNumber: user.carPlateNumber ?? undefined,
           carCapacity: user.carCapacity ?? undefined,

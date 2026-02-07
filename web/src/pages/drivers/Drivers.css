@@ -180,6 +180,11 @@ tbody tr[role="button"] {
   flex-shrink: 0;
 }
 
+.drivers-edit-ids-btn {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+}
+
 .drivers-trip-history {
   margin-top: 0.25rem;
 }
