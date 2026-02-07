@@ -39,9 +39,10 @@ interface TripCardMapProps {
   pickupAddress: string;
   dropoffAddress: string;
   className?: string;
+  polyline?: string | null;
 }
 
-export function TripCardMap({ pickupAddress, dropoffAddress, className }: TripCardMapProps) {
+export function TripCardMap({ pickupAddress, dropoffAddress, className, polyline }: TripCardMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const [coords, setCoords] = useState<{
@@ -122,6 +123,31 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className }: TripCa
       mapRef.current = null;
     };
   }, [coords]);
+
+  // Handle polyline if provided
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !polyline) return;
+
+    // Decode polyline logic (copied from OrdersMap to avoid circular dep or move to utils)
+    const points: [number, number][] = [];
+    let index = 0, lat = 0, lng = 0;
+    while (index < polyline.length) {
+      let b, shift = 0, result = 0;
+      do { b = polyline.charCodeAt(index++) - 63; result |= (b & 31) << shift; shift += 5; } while (b >= 32);
+      lat += ((result & 1) ? ~(result >> 1) : result >> 1);
+      shift = 0; result = 0;
+      do { b = polyline.charCodeAt(index++) - 63; result |= (b & 31) << shift; shift += 5; } while (b >= 32);
+      lng += ((result & 1) ? ~(result >> 1) : result >> 1);
+      points.push([lat / 1e5, lng / 1e5]);
+    }
+
+    const line = L.polyline(points, { color: '#9333ea', weight: 4 }).addTo(map);
+    const bounds = line.getBounds();
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
+
+    return () => { map.removeLayer(line); };
+  }, [polyline, coords]); // Re-run if coords change (map re-init) or polyline changes
 
   if (!coords) {
     return (

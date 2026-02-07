@@ -52,6 +52,7 @@ interface TripSummary {
   completedAt: string;
   distanceKm: number;
   earningsCents: number;
+  polyline?: string | null;
 }
 
 export default function Drivers() {
@@ -95,14 +96,14 @@ export default function Drivers() {
 
   const filteredList = searchQuery.trim()
     ? listByLocation.filter(
-        (d) =>
-          (d.nickname ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.carId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (d.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      (d) =>
+        (d.nickname ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.email ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.driverId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.carId ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : listByLocation;
 
   const paginatedList = useMemo(
@@ -317,21 +318,21 @@ export default function Drivers() {
         {!loading && !error && filteredList.length > 0 && (
           <div className="rd-table-wrapper">
             <table className="rd-table" style={{ width: '100%' }}>
-<thead>
-              <tr>
-                <th>{t('drivers.nickname')}</th>
-                {showPhone && <th>{t('drivers.phone')}</th>}
-                {showPhone && <th>{t('auth.email')}</th>}
-                {showPhone && <th>{t('drivers.userId')}</th>}
-                <th>{t('drivers.driverId')}</th>
-                <th>{t('drivers.carId')}</th>
-                <th>{t('auth.carType')}</th>
-                <th>{t('auth.carPlateNumber')}</th>
-                <th>{t('drivers.status')}</th>
-                {canViewDriverDetail && <th></th>}
-              </tr>
-            </thead>
-            <tbody>
+              <thead>
+                <tr>
+                  <th>{t('drivers.nickname')}</th>
+                  {showPhone && <th>{t('drivers.phone')}</th>}
+                  {showPhone && <th>{t('auth.email')}</th>}
+                  {showPhone && <th>{t('drivers.userId')}</th>}
+                  <th>{t('drivers.driverId')}</th>
+                  <th>{t('drivers.carId')}</th>
+                  <th>{t('auth.carType')}</th>
+                  <th>{t('auth.carPlateNumber')}</th>
+                  <th>{t('drivers.status')}</th>
+                  {canViewDriverDetail && <th></th>}
+                </tr>
+              </thead>
+              <tbody>
                 {paginatedList.map((d) => {
                   const hasLocation = d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng);
                   const statusKey = d.blocked ? 'blocked' : d.bannedUntil && new Date(d.bannedUntil) > new Date() ? 'banned' : hasLocation ? 'onMap' : 'offline';
@@ -348,7 +349,7 @@ export default function Drivers() {
                       <td><strong>{d.nickname}</strong></td>
                       {showPhone && <td>{d.phone ?? '—'}</td>}
                       {showPhone && <td className="drivers-cell-email">{d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}</td>}
-                      {showPhone && <td className="drivers-cell-id rd-id-compact" title={d.id}>{shortId(d.id)}</td>}
+                      {showPhone && <td className="drivers-cell-id rd-id-compact" title={d.id}>{paginatedList.indexOf(d) + 1 + (page - 1) * DEFAULT_PAGE_SIZE}</td>}
                       <td>{d.driverId ?? '—'}</td>
                       <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
                       <td>{d.carPlateNumber ?? '—'}</td>
@@ -485,6 +486,7 @@ export default function Drivers() {
                                 <TripCardMap
                                   pickupAddress={trip.pickupAddress}
                                   dropoffAddress={trip.dropoffAddress}
+                                  polyline={trip.polyline}
                                   className="drivers-trip-card-map"
                                 />
                                 <span className="drivers-trip-card-map-hint">{t('drivers.viewRoute')}</span>

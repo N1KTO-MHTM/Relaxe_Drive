@@ -201,13 +201,14 @@ function carTypeEmoji(carType?: string | null): string {
   return '🚗'; // SEDAN or default
 }
 
-/** Driver marker: green = available, red = on trip, gray = offline. Uses car-type emoji (sedan/minivan/SUV). */
-function driverIcon(status: DriverMapStatus, carType?: string | null): L.DivIcon {
+/** Driver marker: green = available, red = on trip, gray = offline. Uses car-type emoji (sedan/minivan/SUV). Rotates if heading provided. */
+function driverIcon(status: DriverMapStatus, carType?: string | null, rotation?: number): L.DivIcon {
   const color = DRIVER_COLORS[status];
   const emoji = carTypeEmoji(carType);
+  const transform = rotation != null && Number.isFinite(rotation) ? `transform:rotate(${rotation}deg);transform-origin:center center;` : '';
   return L.divIcon({
     className: 'orders-map-driver-marker orders-map-driver-car',
-    html: `<span style="background:${color};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.4);" title="Driver">${emoji}</span>`,
+    html: `<div style="${transform}transition:transform 0.3s linear;"><span style="background:${color};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.4);" title="Driver">${emoji}</span></div>`,
     iconSize: [36, 36],
     iconAnchor: [18, 18],
   });
@@ -448,10 +449,33 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       const lat = driver.lat!;
       const lng = driver.lng!;
       let marker = driverMarkersByIdRef.current.get(driver.id);
+
+      // Calculate heading if moving
+      let rotation = 0;
+      if (marker) {
+        const prev = marker.getLatLng();
+        if (prev.lat !== lat || prev.lng !== lng) {
+          // Simple bearing calculation
+          const y = Math.sin(lng - prev.lng) * Math.cos(lat);
+          const x = Math.cos(prev.lat) * Math.sin(lat) - Math.sin(prev.lat) * Math.cos(lat) * Math.cos(lng - prev.lng);
+          const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+          rotation = brng;
+        }
+      }
+
+      const icon = driverIcon(status, driver.carType, rotation);
+
       if (marker) {
         const prev = marker.getLatLng();
         const distM = Math.sqrt((lat - prev.lat) ** 2 + (lng - prev.lng) ** 2) * 111320;
-        marker.setIcon(driverIcon(status, driver.carType));
+
+        // Update icon (for status/color/rotation changes)
+        // Note: L.Marker setIcon might flicker if not careful, but divIcon with inner HTML transition should be okay
+        const currentIcon = marker.getIcon() as L.DivIcon;
+        if (currentIcon.options.html !== icon.options.html) {
+          marker.setIcon(icon);
+        }
+
         if (distM > 100) {
           marker.setLatLng([lat, lng]);
         } else if (distM > 2) {
@@ -466,7 +490,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           requestAnimationFrame(animate);
         }
       } else {
-        marker = L.marker([lat, lng], { icon: driverIcon(status, driver.carType) });
+        marker = L.marker([lat, lng], { icon }); // Use initial icon with rotation 0
         const name = driver.nickname || 'Driver';
         const rows: string[] = [`<strong>${escapeHtml(name)}</strong>`];
         if (driver.phone) rows.push(`Phone: ${escapeHtml(driver.phone)}`);
