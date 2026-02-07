@@ -78,6 +78,55 @@ export class ReportsService {
     return header + rows.join('\n');
   }
 
+  async getMapReports(params: {
+    minLat?: number;
+    maxLat?: number;
+    minLng?: number;
+    maxLng?: number;
+    sinceMinutes?: number;
+  }) {
+    const sinceMinutes = params.sinceMinutes || 120;
+    const since = new Date(Date.now() - sinceMinutes * 60 * 1000);
+
+    const where: any = {
+      createdAt: { gte: since },
+    };
+
+    // Geo-filtering if provided
+    if (params.minLat !== undefined && params.maxLat !== undefined) {
+      where.lat = { gte: params.minLat, lte: params.maxLat };
+    }
+    if (params.minLng !== undefined && params.maxLng !== undefined) {
+      where.lng = { gte: params.minLng, lte: params.maxLng };
+    }
+
+    const reports = await this.prisma.driverReport.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 100, // Limit to prevent overload
+    });
+
+    return reports.map(r => ({
+      id: r.id,
+      lat: r.lat,
+      lng: r.lng,
+      type: r.type,
+      description: r.description,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+
+  // Auto-delete reports older than 1 minute every 30 seconds
+  @Cron('*/30 * * * * *')
+  async autoDeleteOldReports() {
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    await this.prisma.driverReport.deleteMany({
+      where: {
+        createdAt: { lt: oneMinuteAgo },
+      },
+    });
+  }
+
   // Run at 00:00 on the 1st day of every month
   @Cron(CronExpression.EVERY_1ST_DAY_OF_MONTH_AT_MIDNIGHT)
   async handleMonthlyReports() {

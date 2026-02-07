@@ -10,6 +10,24 @@ import { Roles } from '../common/decorators/roles.decorator';
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) { }
 
+  @Get()
+  @Roles('DRIVER', 'ADMIN', 'DISPATCHER')
+  async getMapReports(
+    @Query('minLat') minLat?: string,
+    @Query('maxLat') maxLat?: string,
+    @Query('minLng') minLng?: string,
+    @Query('maxLng') maxLng?: string,
+    @Query('sinceMinutes') sinceMinutes?: string,
+  ) {
+    return this.reportsService.getMapReports({
+      minLat: minLat ? parseFloat(minLat) : undefined,
+      maxLat: maxLat ? parseFloat(maxLat) : undefined,
+      minLng: minLng ? parseFloat(minLng) : undefined,
+      maxLng: maxLng ? parseFloat(maxLng) : undefined,
+      sinceMinutes: sinceMinutes ? parseInt(sinceMinutes, 10) : 120,
+    });
+  }
+
   @Get('driver')
   @Roles('DRIVER', 'ADMIN', 'DISPATCHER')
   async getDriverReports(@Request() req: any) {
