@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PassengersService } from '../passengers/passengers.service';
 
@@ -149,10 +149,22 @@ export class OrdersService {
   }
 
   /** Passenger requested an extra stop (not in original route). Add waypoint and keep trip IN_PROGRESS. */
-  async stopUnderway(orderId: string, driverId: string) {
+  async stopUnderway(orderId: string, userId: string) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
-    if (order.driverId !== driverId) throw new BadRequestException('This order is not assigned to you');
+
+    // Get user to check role
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Only allow if user is the assigned driver OR is admin/dispatcher
+    const isAssignedDriver = order.driverId === userId;
+    const isAdminOrDispatcher = user.role === 'ADMIN' || user.role === 'DISPATCHER';
+
+    if (!isAssignedDriver && !isAdminOrDispatcher) {
+      throw new ForbiddenException('Only the assigned driver, admins, or dispatchers can add passenger stops');
+    }
+
     if (order.status !== 'IN_PROGRESS') throw new BadRequestException('Only in-progress trips can add a passenger stop');
     const existing = (order.waypoints as unknown as { address: string }[] | null) ?? [];
     const next = [...existing, { address: 'Passenger stop (en route)' }];

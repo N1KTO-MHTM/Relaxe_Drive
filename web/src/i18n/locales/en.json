@@ -94,7 +94,57 @@
     "instructionsDriverTitle": "Driver",
     "instructionsDriver": "Dashboard: 'Today's rides: N' shows your assigned trips. For each order: Accept (or Reject), then Arrived at pickup → Start ride → Complete. For roundtrips: Arrive at middle stop → wait timer (first 5 min free, billing after) → Start to final → Complete. GPS Tracking: Share location ('Go online') so dispatchers see you in real time with smooth marker animation (1s smoothing). Your marker shows car icon or arrow (rotates with heading), displays speed in mph, standing timer ('here for X min'), and heading direction ('To pickup', 'To dropoff'). Navigation: View route on map with turn-by-turn instructions, alternative routes with traffic info, distance and ETA. Use Google Maps/Waze for external navigation. Reports: Post real-time reports on map (Police, Traffic, Work Zone, Car Crash) - auto-expire after 1 minute. Translation: Voice-to-text and history for multilingual support. Stats: View today's rides and total earnings/miles.",
     "instructionsAdminTitle": "Admin",
-    "instructionsAdmin": "All dispatcher features plus: Drivers Management: Edit Driver IDs (sequential: 1, 2, 3...) and Car IDs (type-based: Minivan1, Sedan1, SUV1), delete drivers with confirmation modal, view driver details (trip history, earnings, stats). Roles: Change user roles (Driver/Dispatcher/Admin), block/ban users with reason and expiry, reset passwords. Phone Database: Manage transferred phone numbers (old → new mappings) for seamless client transitions. Zones: Create and manage service area polygons (geofencing) with custom colors, view on map. Pending Drivers: Approve or reject new driver registrations. Cost Control: View API usage and limits (maps, translation, AI, TTS), receive alerts when limits are exceeded. White Label: Customize logo, colors, domains for branding. Audit Logs: Filter by user/action/resource, track all system changes. System Health: Monitor service status, view error logs. Session Monitor: See all online users with device, IP, last active time. Analytics: Export comprehensive data, view system-wide statistics."
+    "instructionsAdmin": "All dispatcher features plus: Drivers Management: Edit Driver IDs (sequential: 1, 2, 3...) and Car IDs (type-based: Minivan1, Sedan1, SUV1), delete drivers with confirmation modal, view driver details (trip history, earnings, stats). Roles: Change user roles (Driver/Dispatcher/Admin), block/ban users with reason and expiry, reset passwords. Phone Database: Manage transferred phone numbers (old → new mappings) for seamless client transitions. Zones: Create and manage service area polygons (geofencing) with custom colors, view on map. Pending Drivers: Approve or reject new driver registrations. Cost Control: View API usage and limits (maps, translation, AI, TTS), receive alerts when limits are exceeded. White Label: Customize logo, colors, domains for branding. Audit Logs: Filter by user/action/resource, track all system changes. System Health: Monitor service status, view error logs. Session Monitor: See all online users with device, IP, last active time. Analytics: Export comprehensive data, view system-wide statistics.",
+    "roleExplanations": {
+      "admin": {
+        "title": "Administrator Role",
+        "description": "Full system access with all dispatcher capabilities plus administrative controls",
+        "keyFeatures": [
+          "User Management: Create, edit, delete users; change roles; block/ban with expiry dates",
+          "System Configuration: White label branding, cost control limits, service area zones",
+          "Security: Audit logs, session monitoring, password resets, role-based access control",
+          "Analytics: System-wide statistics, export data, driver performance metrics",
+          "Oversight: Approve/reject driver registrations, manage phone number transfers"
+        ],
+        "workflows": [
+          "Onboarding: Approve pending drivers → Assign Driver ID and Car ID → Set availability",
+          "Monitoring: Check audit logs for suspicious activity → Review cost control alerts → Monitor session activity",
+          "Troubleshooting: Reset user passwords → Unblock accounts → Review system health status"
+        ]
+      },
+      "dispatcher": {
+        "title": "Dispatcher Role",
+        "description": "Operational control for order management and driver coordination",
+        "keyFeatures": [
+          "Order Creation: Manual entry or map-based pickup/dropoff selection with scheduling",
+          "Driver Assignment: View ETAs, assign manually or use AI suggestions, swap drivers mid-trip",
+          "Live Monitoring: Real-time map with driver locations, order statuses, and route tracking",
+          "Client Management: Search passengers by phone/name, view address history, create orders from profiles",
+          "Planning: Calendar view for scheduling conflicts, risk assessment for unassigned orders"
+        ],
+        "workflows": [
+          "New Order: Create order → Check driver ETAs → Assign best driver → Monitor progress → Mark complete",
+          "Emergency: Passenger requests stop → Add waypoint → Driver sees updated route",
+          "Scheduling: View calendar → Identify conflicts → Adjust pickup times → Assign drivers in advance"
+        ]
+      },
+      "driver": {
+        "title": "Driver Role",
+        "description": "Field operations for trip execution and navigation",
+        "keyFeatures": [
+          "Trip Management: Accept/reject assignments, update status (arrived, started, completed)",
+          "Navigation: Turn-by-turn instructions, alternative routes, traffic info, Google Maps/Waze integration",
+          "Location Sharing: Real-time GPS tracking with heading, speed (mph), and standing time display",
+          "Reports: Submit road hazards (police, traffic, construction, accidents) visible to other drivers",
+          "Earnings: View today's rides, total earnings, miles driven, wait time charges"
+        ],
+        "workflows": [
+          "Standard Trip: Receive assignment → Accept → Navigate to pickup → Arrive → Start ride → Navigate to dropoff → Complete",
+          "Roundtrip: Arrive at pickup → Start → Arrive at middle stop → Wait (billing after 5 min) → Start to final → Complete",
+          "Passenger Stop: During trip → Passenger requests stop → Dispatcher adds waypoint → Continue to final destination"
+        ]
+      }
+    }
   },
   "nav": {
     "dashboard": "Dashboard",

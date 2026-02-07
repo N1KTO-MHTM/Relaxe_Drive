@@ -292,6 +292,16 @@ export default function Addresses() {
                                             />
                                         </div>
                                         <div className="addresses-form-group">
+                                            <label>📞 Phone Number</label>
+                                            <input
+                                                type="tel"
+                                                className="rd-input"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                                placeholder="(555) 123-4567"
+                                            />
+                                        </div>
+                                        <div className="addresses-form-group">
                                             <label>{t('addresses.category')}</label>
                                             <select
                                                 className="rd-input"
