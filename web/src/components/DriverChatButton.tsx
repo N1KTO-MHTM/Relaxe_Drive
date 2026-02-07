@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { useSocket } from '../ws/useSocket';
 import ChatWindow from '../pages/chat/ChatWindow';
@@ -10,7 +9,6 @@ interface DriverChatButtonProps {
 }
 
 export default function DriverChatButton({ userId }: DriverChatButtonProps) {
-    const { t } = useTranslation();
     const { socket } = useSocket();
 
     const [isOpen, setIsOpen] = useState(false);

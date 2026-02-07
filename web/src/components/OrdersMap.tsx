@@ -2,8 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 import L from './leafletWithCluster';
-import { DriverForMap, DriverMapStatus, OrderRouteData, RouteStep } from '../types';
-// import { DriverForMap, DriverMapStatus, OrderRouteData, RouteStep } from '../types'; // import moved to top
+import { DriverForMap, DriverMapStatus, OrderRouteData } from '../types';
 
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY
 const DEFAULT_ZOOM = 12;
