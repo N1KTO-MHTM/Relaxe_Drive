@@ -96,60 +96,86 @@ export default function Pendings() {
           <p className="rd-text-muted">{t('pendings.noPending')}</p>
         )}
         {!loading && !error && list.length > 0 && (
-          <div className="pendings-table-wrapper rd-table-wrapper">
-            <table className="rd-table pendings-table" style={{ width: '100%' }}>
-              <thead>
-                <tr>
-                  <th>{t('auth.nickname')}</th>
-                  <th>{t('auth.phone')}</th>
-                  <th>{t('auth.email')}</th>
-                  <th>{t('drivers.driverId')}</th>
-                  <th>{t('drivers.carId')}</th>
-                  <th>{t('auth.carType')}</th>
-                  <th>{t('auth.carPlateNumber')}</th>
-                  <th>{t('pendings.registered')}</th>
-                  <th className="pendings-th-actions">{t('pendings.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((d) => (
-                  <tr key={d.id} className="pendings-row">
-                    <td className="pendings-cell-nickname"><strong>{d.nickname}</strong></td>
-                    <td className="pendings-cell-phone">{d.phone ?? '—'}</td>
-                    <td className="pendings-cell-email" title={d.email ?? undefined}>
-                      {d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}
-                    </td>
-                    <td className="pendings-cell-driver-id">{d.driverId ?? '—'}</td>
-                    <td>{d.carId ?? '—'}</td>
-                    <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
-                    <td className="pendings-cell-plate">{d.carPlateNumber ?? '—'}</td>
-                    <td className="pendings-cell-date">{d.createdAt ? new Date(d.createdAt).toLocaleString() : '—'}</td>
-                    <td className="pendings-cell-actions">
-                      <div className="pendings-actions">
-                        <button
-                          type="button"
-                          className="rd-btn rd-btn-primary pendings-btn-approve"
-                          disabled={approvingId === d.id || rejectingId === d.id}
-                          onClick={() => handleApprove(d.id)}
-                          title={t('pendings.approve')}
-                        >
-                          {approvingId === d.id ? '…' : t('pendings.approve')}
-                        </button>
-                        <button
-                          type="button"
-                          className="rd-btn rd-btn-danger pendings-btn-reject"
-                          disabled={approvingId === d.id || rejectingId === d.id}
-                          onClick={() => openRejectConfirm(d)}
-                          title={t('pendings.reject')}
-                        >
-                          {rejectingId === d.id ? '…' : t('pendings.reject')}
-                        </button>
+          <div className="pendings-grid">
+            {list.map((d) => (
+              <div key={d.id} className="pendings-card rd-panel">
+                <div className="pendings-card-header">
+                  <div className="pendings-card-title">
+                    <h3>{d.nickname}</h3>
+                    <span className="pendings-card-date">{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—'}</span>
+                  </div>
+                </div>
+
+                <div className="pendings-card-body">
+                  <div className="pendings-info-grid">
+                    <div className="pendings-info-item">
+                      <span className="pendings-info-label">{t('auth.phone')}</span>
+                      <span className="pendings-info-value">{d.phone ?? '—'}</span>
+                    </div>
+
+                    <div className="pendings-info-item">
+                      <span className="pendings-info-label">{t('auth.email')}</span>
+                      <span className="pendings-info-value pendings-email">
+                        {d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}
+                      </span>
+                    </div>
+
+                    <div className="pendings-info-item">
+                      <span className="pendings-info-label">{t('drivers.driverId')}</span>
+                      <span className="pendings-info-value pendings-driver-id">{d.driverId ?? '—'}</span>
+                    </div>
+
+                    <div className="pendings-info-item">
+                      <span className="pendings-info-label">{t('drivers.carId')}</span>
+                      <span className="pendings-info-value">{d.carId ?? '—'}</span>
+                    </div>
+
+                    <div className="pendings-info-item">
+                      <span className="pendings-info-label">{t('auth.carType')}</span>
+                      <span className="pendings-info-value">{d.carType ? t('auth.carType_' + d.carType) : '—'}</span>
+                    </div>
+
+                    <div className="pendings-info-item">
+                      <span className="pendings-info-label">{t('auth.carPlateNumber')}</span>
+                      <span className="pendings-info-value pendings-plate">{d.carPlateNumber ?? '—'}</span>
+                    </div>
+
+                    {d.carModelAndYear && (
+                      <div className="pendings-info-item pendings-info-item-full">
+                        <span className="pendings-info-label">{t('auth.carModelAndYear')}</span>
+                        <span className="pendings-info-value">{d.carModelAndYear}</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+
+                    {d.carCapacity && (
+                      <div className="pendings-info-item">
+                        <span className="pendings-info-label">{t('auth.carCapacity')}</span>
+                        <span className="pendings-info-value">{d.carCapacity} {t('auth.passengers')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pendings-card-actions">
+                  <button
+                    type="button"
+                    className="rd-btn pendings-btn-reject"
+                    disabled={approvingId === d.id || rejectingId === d.id}
+                    onClick={() => openRejectConfirm(d)}
+                  >
+                    {rejectingId === d.id ? '⏳ ' + t('pendings.rejecting') : '✕ ' + t('pendings.reject')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rd-btn pendings-btn-approve"
+                    disabled={approvingId === d.id || rejectingId === d.id}
+                    onClick={() => handleApprove(d.id)}
+                  >
+                    {approvingId === d.id ? '⏳ ' + t('pendings.approving') : '✓ ' + t('pendings.approve')}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
