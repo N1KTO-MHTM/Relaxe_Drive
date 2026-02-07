@@ -181,6 +181,7 @@ model SavedAddress {
   id          String   @id @default(cuid())
   passengerId String?  @map("passenger_id")
   passenger   Passenger? @relation(fields: [passengerId], references: [id])
+  phone       String?  // Phone number associated with this address
   address     String
   category    String?
   type        String?  // pickup, dropoff, both

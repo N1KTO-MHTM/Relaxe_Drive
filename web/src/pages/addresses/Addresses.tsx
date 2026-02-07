@@ -1,0 +1,303 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { api } from '../../api/client';
+import { useToastStore } from '../../store/toast';
+import './Addresses.css';
+
+interface SavedAddress {
+    id: string;
+    phone?: string | null;
+    address: string;
+    category?: string | null;
+    type?: string | null;
+    useCount: number;
+    lastUsedAt: string;
+    createdAt: string;
+}
+
+export default function Addresses() {
+    const { t } = useTranslation();
+    const toast = useToastStore();
+    const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [editingAddress, setEditingAddress] = useState<SavedAddress | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState<SavedAddress | null>(null);
+    const [formData, setFormData] = useState({
+        phone: '',
+        address: '',
+        category: 'other',
+        type: 'both',
+    });
+
+    function loadAddresses() {
+        setLoading(true);
+        setError(null);
+        api
+            .get<SavedAddress[]>('/addresses')
+            .then((data) => setAddresses(Array.isArray(data) ? data : []))
+            .catch(() => {
+                setError('Failed to load addresses');
+                setAddresses([]);
+            })
+            .finally(() => setLoading(false));
+    }
+
+    useEffect(() => {
+        loadAddresses();
+    }, []);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        try {
+            if (editingAddress) {
+                await api.patch(`/addresses/${editingAddress.id}`, formData);
+                toast.success('Address updated');
+            } else {
+                await api.post('/addresses', formData);
+                toast.success('Address added');
+            }
+            loadAddresses();
+            setShowAddForm(false);
+            setEditingAddress(null);
+            setFormData({ phone: '', address: '', category: 'other', type: 'both' });
+        } catch {
+            toast.error('Failed to save address');
+        }
+    }
+
+    async function handleDelete(id: string) {
+        try {
+            await api.delete(`/addresses/${id}`);
+            toast.success('Address deleted');
+            loadAddresses();
+            setDeleteConfirm(null);
+        } catch {
+            toast.error('Failed to delete address');
+        }
+    }
+
+    function openEditForm(addr: SavedAddress) {
+        setEditingAddress(addr);
+        setFormData({
+            phone: addr.phone || '',
+            address: addr.address,
+            category: addr.category || 'other',
+            type: addr.type || 'both',
+        });
+        setShowAddForm(true);
+    }
+
+    function closeForm() {
+        setShowAddForm(false);
+        setEditingAddress(null);
+        setFormData({ phone: '', address: '', category: 'other', type: 'both' });
+    }
+
+    function getCategoryBadge(category?: string | null) {
+        const cat = category || 'other';
+        const colors: Record<string, string> = {
+            home: 'badge-home',
+            work: 'badge-work',
+            frequent: 'badge-frequent',
+            other: 'badge-other',
+        };
+        return colors[cat] || 'badge-other';
+    }
+
+    function getTypeBadge(type?: string | null) {
+        const t = type || 'both';
+        const colors: Record<string, string> = {
+            pickup: 'badge-pickup',
+            dropoff: 'badge-dropoff',
+            both: 'badge-both',
+        };
+        return colors[t] || 'badge-both';
+    }
+
+    return (
+        <div className="rd-page">
+            <div className="addresses-page rd-panel">
+                <div className="rd-panel-header">
+                    <h1>{t('addresses.title')}</h1>
+                    <div className="addresses-header-actions">
+                        <button
+                            type="button"
+                            className="rd-btn rd-btn-secondary"
+                            onClick={() => loadAddresses()}
+                            disabled={loading}
+                        >
+                            {t('common.refresh')}
+                        </button>
+                        <button
+                            type="button"
+                            className="rd-btn rd-btn-primary"
+                            onClick={() => setShowAddForm(true)}
+                        >
+                            + {t('addresses.addNew')}
+                        </button>
+                    </div>
+                </div>
+                <p className="rd-text-muted addresses-subtitle">{t('addresses.subtitle')}</p>
+
+                {error && <p className="rd-text-critical addresses-error">{error}</p>}
+                {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
+                {!loading && !error && addresses.length === 0 && (
+                    <p className="rd-text-muted">{t('addresses.noAddresses')}</p>
+                )}
+
+                {!loading && !error && addresses.length > 0 && (
+                    <div className="addresses-grid">
+                        {addresses.map((addr) => (
+                            <div key={addr.id} className="addresses-card rd-panel">
+                                <div className="addresses-card-header">
+                                    <div className="addresses-card-phone">
+                                        📞 {addr.phone || 'No phone'}
+                                    </div>
+                                    <div className="addresses-card-actions-top">
+                                        <button
+                                            type="button"
+                                            className="rd-btn-icon"
+                                            onClick={() => openEditForm(addr)}
+                                            title="Edit"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="rd-btn-icon addresses-btn-delete"
+                                            onClick={() => setDeleteConfirm(addr)}
+                                            title="Delete"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="addresses-card-body">
+                                    <div className="addresses-card-address">{addr.address}</div>
+                                    <div className="addresses-card-meta">
+                                        <span className={`addresses-badge ${getCategoryBadge(addr.category)}`}>
+                                            {addr.category || 'other'}
+                                        </span>
+                                        <span className={`addresses-badge ${getTypeBadge(addr.type)}`}>
+                                            {addr.type || 'both'}
+                                        </span>
+                                        <span className="addresses-use-count">
+                                            Used {addr.useCount}×
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Add/Edit Form Modal */}
+                {showAddForm && (
+                    <div className="addresses-modal">
+                        <div className="addresses-modal-backdrop" onClick={closeForm} />
+                        <div className="addresses-modal-content rd-panel">
+                            <h3>{editingAddress ? t('addresses.editAddress') : t('addresses.addNew')}</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="addresses-form-group">
+                                    <label>{t('addresses.phone')}</label>
+                                    <input
+                                        type="tel"
+                                        className="rd-input"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        placeholder="(555) 123-4567"
+                                    />
+                                </div>
+
+                                <div className="addresses-form-group">
+                                    <label>{t('addresses.address')} *</label>
+                                    <input
+                                        type="text"
+                                        className="rd-input"
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                        placeholder="123 Main St, City, State ZIP"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="addresses-form-row">
+                                    <div className="addresses-form-group">
+                                        <label>{t('addresses.category')}</label>
+                                        <select
+                                            className="rd-input"
+                                            value={formData.category}
+                                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        >
+                                            <option value="home">🏠 Home</option>
+                                            <option value="work">💼 Work</option>
+                                            <option value="frequent">⭐ Frequent</option>
+                                            <option value="other">📍 Other</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="addresses-form-group">
+                                        <label>{t('addresses.type')}</label>
+                                        <select
+                                            className="rd-input"
+                                            value={formData.type}
+                                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                        >
+                                            <option value="both">🔄 Both</option>
+                                            <option value="pickup">📍 Pickup</option>
+                                            <option value="dropoff">🎯 Dropoff</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="addresses-form-actions">
+                                    <button type="button" className="rd-btn rd-btn-secondary" onClick={closeForm}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="rd-btn rd-btn-primary">
+                                        {editingAddress ? 'Update' : 'Add'} Address
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Confirmation Modal */}
+                {deleteConfirm && (
+                    <div className="addresses-modal">
+                        <div className="addresses-modal-backdrop" onClick={() => setDeleteConfirm(null)} />
+                        <div className="addresses-modal-content rd-panel">
+                            <h3>{t('addresses.deleteAddress')}</h3>
+                            <p className="rd-text-muted">{t('addresses.confirmDelete')}</p>
+                            <p className="addresses-delete-preview">
+                                <strong>{deleteConfirm.phone}</strong>
+                                <br />
+                                {deleteConfirm.address}
+                            </p>
+                            <div className="addresses-form-actions">
+                                <button
+                                    type="button"
+                                    className="rd-btn rd-btn-secondary"
+                                    onClick={() => setDeleteConfirm(null)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="rd-btn rd-btn-danger"
+                                    onClick={() => handleDelete(deleteConfirm.id)}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

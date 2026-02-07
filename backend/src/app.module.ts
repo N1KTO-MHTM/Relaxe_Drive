@@ -26,6 +26,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { PlanningModule } from './planning/planning.module';
 import { ZonesModule } from './zones/zones.module';
 import { PhoneBaseModule } from './phone-base/phone-base.module';
+import { AddressesModule } from './addresses/addresses.module';
 
 @Module({
   controllers: [AppController],
@@ -55,6 +56,7 @@ import { PhoneBaseModule } from './phone-base/phone-base.module';
     PlanningModule,
     ZonesModule,
     PhoneBaseModule,
+    AddressesModule,
   ],
 })
 export class AppModule { }
