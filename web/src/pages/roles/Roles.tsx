@@ -138,7 +138,7 @@ export default function Roles() {
       const res = await api.post<{ token: string; link: string }>('/auth/admin/generate-reset-token', { userId });
       setGeneratedLinkFor({ userId, link: res.link });
       if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(res.link).catch(() => {});
+        navigator.clipboard.writeText(res.link).catch(() => { });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate link');
@@ -284,7 +284,6 @@ export default function Roles() {
                   <th>{t('roles.email')}</th>
                   <th>{t('roles.phone')}</th>
                   <th>{t('roles.role')}</th>
-                  <th>{t('roles.userId')}</th>
                   <th>{t('roles.driverId')}</th>
                   <th>{t('roles.carId')}</th>
                   <th>{t('roles.carType')}</th>
@@ -312,7 +311,6 @@ export default function Roles() {
                         ))}
                       </select>
                     </td>
-                    <td className="roles-cell-id rd-id-compact" title={u.id}>{shortId(u.id)}</td>
                     <td>{u.role === 'DRIVER' ? (u.driverId ?? '—') : '—'}</td>
                     <td>{u.role === 'DRIVER' ? (u.carId ?? '—') : '—'}</td>
                     <td>{u.role === 'DRIVER' ? (u.carType ? t('auth.carType_' + u.carType) : '—') : '—'}</td>

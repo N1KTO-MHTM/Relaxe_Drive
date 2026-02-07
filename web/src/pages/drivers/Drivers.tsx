@@ -323,7 +323,7 @@ export default function Drivers() {
                   <th>{t('drivers.nickname')}</th>
                   {showPhone && <th>{t('drivers.phone')}</th>}
                   {showPhone && <th>{t('auth.email')}</th>}
-                  {showPhone && <th>{t('drivers.userId')}</th>}
+                  {showPhone && <th title={t('drivers.userId')}>#</th>}
                   <th>{t('drivers.driverId')}</th>
                   <th>{t('drivers.carId')}</th>
                   <th>{t('auth.carType')}</th>
@@ -351,6 +351,7 @@ export default function Drivers() {
                       {showPhone && <td className="drivers-cell-email">{d.email ? <a href={`mailto:${d.email}`}>{d.email}</a> : '—'}</td>}
                       {showPhone && <td className="drivers-cell-id rd-id-compact" title={d.id}>{paginatedList.indexOf(d) + 1 + (page - 1) * DEFAULT_PAGE_SIZE}</td>}
                       <td>{d.driverId ?? '—'}</td>
+                      <td>{d.carId ?? '—'}</td>
                       <td>{d.carType ? t('auth.carType_' + d.carType) : '—'}</td>
                       <td>{d.carPlateNumber ?? '—'}</td>
                       <td>
