@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import axios from '../../api/axios';
+import { api } from '../../api/client';
 
 interface PhoneMapping {
     id: string;
@@ -19,8 +19,8 @@ export default function PhoneBase() {
     const fetchMappings = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('/phone-base');
-            setMappings(res.data);
+            const res = await api.get<PhoneMapping[]>('/phone-base');
+            setMappings(res);
         } catch (error) {
             console.error(error);
         } finally {
@@ -36,9 +36,9 @@ export default function PhoneBase() {
         e.preventDefault();
         try {
             if (editingId) {
-                await axios.patch(`/phone-base/${editingId}`, formData);
+                await api.patch(`/phone-base/${editingId}`, formData);
             } else {
-                await axios.post('/phone-base', formData);
+                await api.post('/phone-base', formData);
             }
             setFormData({ originalPhone: '', targetPhone: '', description: '' });
             setEditingId(null);
@@ -57,7 +57,7 @@ export default function PhoneBase() {
     const handleDelete = async (id: string) => {
         if (!window.confirm(t('Are you sure?'))) return;
         try {
-            await axios.delete(`/phone-base/${id}`);
+            await api.delete(`/phone-base/${id}`);
             fetchMappings();
         } catch (error) {
             console.error(error);
