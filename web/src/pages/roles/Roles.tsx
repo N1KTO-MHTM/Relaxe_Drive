@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/auth';
 import type { Role } from '../../store/auth';
 import { PassengersMap } from '../passengers/PassengersMap';
 import type { PassengerRow } from '../../types';
-import { shortId } from '../../utils/shortId';
+
 import '../passengers/Passengers.css';
 import './Roles.css';
 

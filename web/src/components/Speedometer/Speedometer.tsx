@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './Speedometer.css';
 
@@ -8,7 +8,7 @@ interface SpeedometerProps {
 }
 
 export default function Speedometer({ speedMph, standingStartedAt }: SpeedometerProps) {
-    const { t } = useTranslation();
+    useTranslation();
     const [standingTime, setStandingTime] = useState(0);
 
     useEffect(() => {

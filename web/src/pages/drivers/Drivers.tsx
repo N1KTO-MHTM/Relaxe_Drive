@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import { downloadCsv } from '../../utils/exportCsv';
-import { shortId } from '../../utils/shortId';
+
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import { TripCardMap } from '../../components/TripCardMap';
 import './Drivers.css';
