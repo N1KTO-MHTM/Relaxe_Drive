@@ -16,6 +16,7 @@ services:
       npm install --include=dev
       npx prisma generate
       npm run build
+    autoDeploy: true
 
     # One-time: resolve failed migration P3009 (remove "resolve" line after deploy succeeds)
     startCommand: npx prisma migrate resolve --rolled-back 20260219000000_add_order_completed_at 2>/dev/null || true && npx prisma migrate deploy && npm run start:prod
@@ -38,6 +39,7 @@ services:
     rootDir: . # Run from repo root to avoid confusion
     buildCommand: cd web && npm install --include=dev && npm run build
     staticPublishPath: web/dist
+    autoDeploy: true
     envVars:
       - key: VITE_API_URL
         value: https://relaxdrive-api.onrender.com
