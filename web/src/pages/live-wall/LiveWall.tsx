@@ -219,7 +219,13 @@ export default function LiveWall() {
             <option key={type} value={type}>{t('auth.carType_' + type)}</option>
           ))}
         </select>
-        <button type="button" className="rd-btn rd-btn-secondary" onClick={() => { setFocusCenter(null); setCenterTrigger((c) => c + 1); }}>
+        <button
+          type="button"
+          className="rd-btn rd-btn-secondary"
+          onClick={() => { setFocusCenter(null); setCenterTrigger((c) => c + 1); }}
+          disabled={!focusCenter}
+          title={!focusCenter ? t('liveWall.selectDriverFirst') : t('dashboard.recenter')}
+        >
           {t('dashboard.recenter')}
         </button>
         <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setReportsTrigger((r) => r + 1)}>
@@ -233,7 +239,7 @@ export default function LiveWall() {
           {' · '}{activeCount} {t('liveWall.active')}
         </span>
       </div>
-      <div style={{ flex: 1, minHeight: 320, position: 'relative', borderRadius: 'var(--rd-radius-lg)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 600, position: 'relative', borderRadius: 'var(--rd-radius-lg)', overflow: 'hidden' }}>
         <OrdersMap
           drivers={filteredDrivers}
           showDriverMarkers={canAssign}
