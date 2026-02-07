@@ -46,6 +46,11 @@
 
 .passengers-map-section {
   margin-bottom: var(--rd-space-lg);
+  min-height: 320px;
+}
+
+.passengers-map-section .passengers-map {
+  min-height: 280px;
 }
 
 .passengers-map-heading {

@@ -225,7 +225,7 @@ export default function LiveWall() {
           {' · '}{activeCount} {t('liveWall.active')}
         </span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, position: 'relative', borderRadius: 'var(--rd-radius-lg)', overflow: 'hidden' }}>
+      <div style={{ flex: 1, minHeight: 320, position: 'relative', borderRadius: 'var(--rd-radius-lg)', overflow: 'hidden' }}>
         <OrdersMap
           drivers={filteredDrivers}
           showDriverMarkers={canAssign}

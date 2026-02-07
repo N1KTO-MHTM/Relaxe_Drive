@@ -34,3 +34,6 @@ Thumbs.db
 
 # Electron
 desktop/out/
+
+# Временные копии картинок из чата (не коммитить)
+docs/sent-images/

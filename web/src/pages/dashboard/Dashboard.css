@@ -1,3 +1,33 @@
+/* Loading skeleton for orders list */
+.dashboard-order-item-skeleton {
+  padding: var(--rd-space-md);
+  border-radius: var(--rd-radius);
+  border: 1px solid var(--rd-border);
+  background: var(--rd-bg-panel);
+  margin-bottom: 0.5rem;
+}
+.dashboard-order-item-skeleton__line {
+  height: 0.875rem;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--rd-border) 25%, var(--rd-surface) 50%, var(--rd-border) 75%);
+  background-size: 200% 100%;
+  animation: dashboard-skeleton-shine 1.2s ease-in-out infinite;
+  margin-bottom: 0.5rem;
+}
+.dashboard-order-item-skeleton__line:last-child {
+  margin-bottom: 0;
+}
+.dashboard-order-item-skeleton__line--short {
+  width: 60%;
+}
+.dashboard-order-item-skeleton__line--medium {
+  width: 85%;
+}
+@keyframes dashboard-skeleton-shine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .dashboard-page__top {
   display: flex;
   align-items: center;

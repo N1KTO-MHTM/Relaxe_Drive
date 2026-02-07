@@ -92,10 +92,15 @@ export function PassengersMap({ clients, className }: PassengersMapProps) {
 
   useEffect(() => {
     if (points.length === 0 || !containerRef.current) return;
-    const map = L.map(containerRef.current, {
+    const el = containerRef.current;
+    const map = L.map(el, {
       zoomControl: false,
       attributionControl: false,
     });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
     mapRef.current = map;
 
@@ -134,9 +139,10 @@ export function PassengersMap({ clients, className }: PassengersMapProps) {
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
     }
-    const tId = window.setTimeout(() => map.invalidateSize(), 100);
+    const timeouts: number[] = [];
+    [100, 400, 1000].forEach((ms) => timeouts.push(window.setTimeout(() => map.invalidateSize(), ms)));
     return () => {
-      window.clearTimeout(tId);
+      timeouts.forEach((id) => clearTimeout(id));
       map.remove();
       mapRef.current = null;
     };

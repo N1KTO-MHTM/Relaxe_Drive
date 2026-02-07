@@ -183,6 +183,7 @@ export default function Passengers() {
             aria-label={t('passengers.search')}
           />
           <button type="button" className="rd-btn" onClick={() => downloadCsv(filteredList, 'clients.csv', [
+            { key: 'id', label: t('passengers.id') },
             { key: 'phone', label: t('passengers.phone') },
             { key: 'name', label: t('passengers.name') },
             { key: 'pickupAddr', label: t('passengers.pickup') },

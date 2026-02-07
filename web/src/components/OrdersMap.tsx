@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 import L from './leafletWithCluster';
@@ -106,6 +106,8 @@ interface OrdersMapProps {
   driverMarkerStyle?: 'car' | 'arrow';
   /** Current speed in mph (shown near driver marker). */
   currentUserSpeedMph?: number | null;
+  /** When set, driver is standing; show "here for X min". */
+  currentUserStandingStartedAt?: number | null;
   /** Short label where driver is heading (e.g. "To pickup", "To dropoff"). */
   currentUserHeadingTo?: string | null;
 }
@@ -244,7 +246,7 @@ declare global {
 }
 
 const SMOOTH_MOVE_MS = 180;
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserHeadingTo, myLocationLabel, onMyLocation }: OrdersMapProps) {
+export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, myLocationLabel, onMyLocation }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -261,14 +263,17 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) return;
+    const el = containerRef.current;
     const startCenter = (initialCenter && initialCenter.length === 2 && Number.isFinite(initialCenter[0]) && Number.isFinite(initialCenter[1]))
       ? initialCenter as [number, number]
       : DEFAULT_CENTER;
     const startZoom = typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
-    const map = L.map(containerRef.current!).setView(startCenter, startZoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const map = L.map(el).setView(startCenter, startZoom);
+    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+      maxZoom: 19,
+    });
+    tileLayer.addTo(map);
     const rocklandLatLngs = ROCKLAND_COUNTY_BOUNDARY.map(([lat, lng]) => L.latLng(lat, lng));
     const rocklandLine = L.polygon(rocklandLatLngs, {
       color: '#0d9488',
@@ -298,8 +303,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     map.getContainer().addEventListener('click', onPopupExitClick);
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
-    setTimeout(() => map.invalidateSize(), 100);
+    const timeouts: number[] = [];
+    [100, 400, 1000].forEach((ms) => timeouts.push(window.setTimeout(() => { map.invalidateSize(); }, ms)));
     return () => {
+      timeouts.forEach((id) => clearTimeout(id));
       if (handleMoveEnd) {
         map.off('moveend', handleMoveEnd);
         map.off('zoomend', handleMoveEnd);
@@ -516,7 +523,12 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       const icon = driverMarkerStyle === 'arrow' ? currentUserArrowIcon() : currentUserCarIcon();
       const m = L.marker([target.lat, target.lng], { icon }).addTo(map);
       const popupLines = ['You'];
-      if (currentUserSpeedMph != null && Number.isFinite(currentUserSpeedMph)) popupLines.push(`${Math.round(currentUserSpeedMph)} mph`);
+      if (currentUserStandingStartedAt != null) {
+        const min = Math.floor((Date.now() - currentUserStandingStartedAt) / 60000);
+        popupLines.push(`here for ${min} min`);
+      } else if (currentUserSpeedMph != null && Number.isFinite(currentUserSpeedMph)) {
+        popupLines.push(`${Math.round(currentUserSpeedMph)} mph`);
+      }
       if (currentUserHeadingTo) popupLines.push(currentUserHeadingTo);
       m.bindPopup(popupLines.join(' · '), { closeOnClick: false });
       currentUserMarkerRef.current = m;
@@ -559,16 +571,27 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     return () => cancelAnimationFrame(rafId);
   }, [currentUserLocation?.lat, currentUserLocation?.lng]);
 
-  // Update popup when speed or heading changes
+  // Update popup when speed, standing, or heading changes (tick when standing so "here for X min" updates)
+  const [standingTick, setStandingTick] = useState(0);
+  useEffect(() => {
+    if (currentUserStandingStartedAt == null) return;
+    const id = setInterval(() => setStandingTick((n) => n + 1), 30000);
+    return () => clearInterval(id);
+  }, [currentUserStandingStartedAt]);
   useEffect(() => {
     const marker = currentUserMarkerRef.current;
     if (!marker) return;
     const popupLines = ['You'];
-    if (currentUserSpeedMph != null && Number.isFinite(currentUserSpeedMph)) popupLines.push(`${Math.round(currentUserSpeedMph)} mph`);
+    if (currentUserStandingStartedAt != null) {
+      const min = Math.floor((Date.now() - currentUserStandingStartedAt) / 60000);
+      popupLines.push(`here for ${min} min`);
+    } else if (currentUserSpeedMph != null && Number.isFinite(currentUserSpeedMph)) {
+      popupLines.push(`${Math.round(currentUserSpeedMph)} mph`);
+    }
     if (currentUserHeadingTo) popupLines.push(currentUserHeadingTo);
     const content = popupLines.join(' · ');
     if (marker.getPopup()?.getContent() !== content) marker.getPopup()?.setContent(content);
-  }, [currentUserSpeedMph, currentUserHeadingTo]);
+  }, [currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, standingTick]);
 
   // Route and pickup/dropoff markers; fit map to route (geo update)
   useEffect(() => {

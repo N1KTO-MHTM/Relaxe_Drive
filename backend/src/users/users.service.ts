@@ -83,24 +83,19 @@ export class UsersService {
     return { deleted: true };
   }
 
-  /** Next driverId for carType (e.g. 001suv, 002sedan). */
-  private async nextDriverIdForCarType(carType: string): Promise<string> {
-    const normalized = (carType || '').toUpperCase();
-    if (!['SEDAN', 'MINIVAN', 'SUV'].includes(normalized)) return '';
-    const suffix = normalized.toLowerCase();
+  /** Next driverId: numeric sequence 1, 2, 3, ... (all drivers). */
+  private async nextDriverId(): Promise<string> {
     const users = await this.prisma.user.findMany({
-      where: { driverId: { not: null }, carType: normalized },
+      where: { driverId: { not: null } },
       select: { driverId: true },
     });
     let maxNum = 0;
-    const prefix = suffix; // e.g. "001" + "suv"
     for (const u of users) {
-      if (!u.driverId || !u.driverId.endsWith(suffix)) continue;
-      const num = parseInt(u.driverId.slice(0, -suffix.length), 10);
+      if (!u.driverId) continue;
+      const num = parseInt(u.driverId, 10);
       if (!Number.isNaN(num) && num > maxNum) maxNum = num;
     }
-    const next = (maxNum + 1).toString().padStart(3, '0');
-    return next + suffix;
+    return String(maxNum + 1);
   }
 
   async create(data: {
@@ -124,8 +119,8 @@ export class UsersService {
     }
     const passwordHash = await bcrypt.hash(data.password, 10);
     let driverId: string | null = null;
-    if (data.role === 'DRIVER' && data.carType?.trim()) {
-      driverId = await this.nextDriverIdForCarType(data.carType.trim());
+    if (data.role === 'DRIVER') {
+      driverId = await this.nextDriverId();
     }
     const user = await this.prisma.user.create({
       data: {

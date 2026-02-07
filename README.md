@@ -1,6 +1,6 @@
 # RelaxDrive — Control Center Platform
 
-Диспетчерская платформа: единый backend, Web Dashboard, Desktop Control Center. Управление заказами, водителями, пассажирами в реальном времени.
+Диспетчерская платформа: единый backend и Web Dashboard. Управление заказами, водителями, пассажирами в реальном времени.
 
 ---
 
@@ -14,7 +14,7 @@
 npm run install:all
 ```
 
-Или по частям: `npm install` в корне, затем `npm install` в `backend`, `web`, `desktop`.
+Или по частям: `npm install` в корне, затем `npm install` в `backend` и `web`.
 
 **Нужно установить:** Node.js 18+ (с [nodejs.org](https://nodejs.org)).
 
@@ -26,7 +26,7 @@ npm run install:all
 |-----|--------|
 | **PostgreSQL** | Для продакшена вместо SQLite: задать `DATABASE_URL` в `backend/.env`. |
 | **Переменные в backend** | `JWT_SECRET`, `CORS_ORIGINS`, при лимитах — `COST_LIMIT_MAPS`, `COST_LIMIT_TRANSLATION`, `COST_LIMIT_AI`, `COST_LIMIT_TTS`. |
-| **Переменные в web/desktop** | `VITE_API_URL`, `VITE_WS_URL` — если API не на localhost. |
+| **Переменные в web** | `VITE_API_URL`, `VITE_WS_URL` — если API не на localhost. |
 | **Свой OSRM** | Переменная `OSRM_URL` в backend — свои маршруты/альтернативы вместо публичного сервера. |
 
 ---
@@ -45,11 +45,10 @@ npm run install:all
 
 3. **Сборки**  
    - Backend: `cd backend && npm run build`  
-   - Web: `cd web && npm run build`  
-   - Desktop exe: `cd desktop && npm run build:win` → `dist-electron/RelaxDrive-Desktop.exe`
+   - Web: `cd web && npm run build`
 
 4. **Обновить зависимости до последних версий**  
-   В каждой папке (`backend`, `web`, `desktop`):
+   В каждой папке (`backend`, `web`):
    ```bash
    npm update
    ```
@@ -73,8 +72,6 @@ npm run install:all
 |-------|----------|
 | **backend/** | NestJS API (REST + WebSocket), JWT, роли, заказы, гео, пассажиры, аудит |
 | **web/** | React + Vite: Dashboard, календарь, клиенты, перевод, аналитика, роли, сессии |
-| **desktop/** | Electron: Control, Live Wall, System Health, Logs & Audit, Клиенты, Админ |
-| **docs/** | Доп. материалы (скриншоты и т.п.) |
 
 ---
 
@@ -107,34 +104,13 @@ npm run dev
 
 Открыть http://localhost:5173. API по умолчанию: `/api` → backend.
 
-### Desktop
-
-```bash
-cd desktop
-npm install
-npm run dev
-```
-
-В папке `desktop` создайте `.env` для прод API:
-
-```env
-VITE_API_URL=https://relaxdrive-api.onrender.com
-VITE_WS_URL=https://relaxdrive-api.onrender.com
-```
-
-Без `.env` приложение обращается к `http://localhost:3000`.
-
-**Сборка exe (Windows):** `npm run build:win` → `desktop/dist-electron/RelaxDrive-Desktop.exe`
-
----
-
 ## Роли и доступ
 
-| Роль | Web | Desktop |
-|------|-----|---------|
-| **Admin** | Всё: Dashboard, календарь, клиенты, перевод, аналитика, роли, сессии, контроль затрат, white label, About | Всё: Control, Live Wall, System Health, Logs & Audit, Клиенты, Админ, About |
-| **Dispatcher** | Dashboard, календарь, клиенты, перевод, аналитика, сессии, About | Соответствующие режимы по правам |
-| **Driver** | Dashboard (мои заказы, карта, геолокация), перевод, About | Dashboard-режим, About |
+| Роль | Web |
+|------|-----|
+| **Admin** | Всё: Dashboard, календарь, клиенты, перевод, аналитика, роли, сессии, контроль затрат, white label, About |
+| **Dispatcher** | Dashboard, календарь, клиенты, перевод, аналитика, сессии, About |
+| **Driver** | Dashboard (мои заказы, карта, геолокация), перевод, About |
 
 Смена ролей: только Admin в разделе «Роли». После смены роли на другом устройстве обновится по WebSocket или при следующем входе.
 
@@ -173,13 +149,10 @@ VITE_WS_URL=https://relaxdrive-api.onrender.com
 
 ---
 
-## Сборка и обновление (web + desktop)
+## Сборка и обновление
 
 - **Web:** `cd web` → `npm run build` → артефакты в `web/dist`.  
-- **Backend:** `cd backend` → `npm run build`.  
-- **Desktop:** `cd desktop` → `npm run build:win` → exe в `desktop/dist-electron/RelaxDrive-Desktop.exe`.
-
-Раздайте exe пользователям или загрузите в GitHub Releases.
+- **Backend:** `cd backend` → `npm run build`.
 
 ---
 
@@ -195,7 +168,6 @@ VITE_WS_URL=https://relaxdrive-api.onrender.com
 
 - **Backend:** NestJS, Prisma (SQLite/PostgreSQL), JWT, Socket.IO  
 - **Web:** React 18, Vite, React Router, Zustand, i18next, Leaflet  
-- **Desktop:** Electron, тот же React-стек  
 - **Стиль:** тёмная тема, панели, карточки (см. `web/src/styles/variables.css`)
 
 Вся актуальная информация и инструкции собраны в этом README. Дополнительные материалы — в папке `docs/` (при необходимости).

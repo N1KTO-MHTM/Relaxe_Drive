@@ -1,0 +1,25 @@
+﻿node_modules/
+**/node_modules/
+dist/
+**/dist/
+**/dist-electron/
+**/out/
+.git/
+*.log
+**/package-lock.json
+backend/prisma/migrations/
+web/dist/
+desktop/dist-electron/
+
+# Ð”Ð¾Ð¿Ð¾Ð»Ð½Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð¾ (Ð¼ÐµÐ½ÑŒÑˆÐµ Ð¸Ð½Ð´ÐµÐºÑÐ°Ñ†Ð¸Ð¸ = Ð¼ÐµÐ½ÑŒÑˆÐµ ÐºÑ€Ð°ÑˆÐµÐ¹)
+*.tsbuildinfo
+**/*.tsbuildinfo
+backend/prisma/*.sql
+.cursor/projects/
+**/coverage/
+**/.vite/
+**/vite.config.js
+**/vite.config.d.ts
+desktop/out/
+backend/prisma/*.db
+backend/prisma/*.db-journal

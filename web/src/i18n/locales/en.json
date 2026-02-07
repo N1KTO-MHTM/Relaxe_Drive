@@ -124,6 +124,7 @@
     "passenger": "Passenger",
     "preferredCarType": "Car type",
     "preferredCarTypeNone": "Any",
+    "addressCategoryPickupDropoff": "Address (Pick up / Drop off)",
     "pickupAddress": "Pickup address",
     "dropoffAddress": "Dropoff address",
     "createOrder": "Create order",
@@ -209,6 +210,9 @@
     "noCompletedOrders": "No completed orders",
     "completedOrders": "Completed orders",
     "exportCsv": "Export CSV",
+    "exportByPeriod": "Export by period",
+    "exportFrom": "From (date)",
+    "exportTo": "To (date)",
     "placeType": "Place type",
     "placeTypePickup": "Place type (pickup)",
     "placeTypeDropoff": "Place type (dropoff)",
@@ -370,7 +374,8 @@
   "whiteLabel": { "title": "White Label", "logo": "Logo", "colors": "Colors", "domains": "Domains", "languages": "Languages", "logoUrl": "Logo URL", "primaryColor": "Primary color", "domain": "Domain", "locales": "Locales (comma-separated)", "save": "Save", "saved": "Settings saved", "loadError": "Could not load settings" },
   "audit": { "title": "Audit Logs", "subtitle": "Filter and view system audit log entries.", "userId": "User ID", "action": "Action", "resource": "Resource", "from": "From", "to": "To", "limit": "Limit", "time": "Time", "user": "User", "payload": "Payload", "noData": "No entries" },
   "health": { "title": "System Health", "subtitle": "Service status and last check.", "lastCheck": "Last check", "services": "Services" },
-  "toast": { "orderCreated": "Order created", "orderCreateFailed": "Failed to create order", "driverAssigned": "Driver assigned", "assignFailed": "Failed to assign driver", "orderCompleted": "Order completed", "rideStarted": "Ride started", "statusUpdateFailed": "Failed to update status", "orderDeleted": "Order deleted", "orderCancelled": "Order cancelled", "deleteFailed": "Failed to delete order", "orderRejected": "Order rejected", "rejectFailed": "Failed to reject order", "clientAdded": "Client added", "exportDone": "Export finished", "driverApproved": "Driver approved", "driverRejected": "Driver rejected", "approveFailed": "Failed to approve", "rejectDriverFailed": "Failed to reject driver", "locationRequiredForMap": "Allow location access to appear on the map. Check browser or device settings.", "youAreOnMap": "You're on the map" },
+  "toast": { "orderCreated": "Order created", "orderCreateFailed": "Failed to create order", "driverAssigned": "Driver assigned", "assignFailed": "Failed to assign driver", "orderCompleted": "Order completed", "rideStarted": "Ride started", "statusUpdateFailed": "Failed to update status", "orderDeleted": "Order deleted", "orderCancelled": "Order cancelled", "deleteFailed": "Failed to delete order", "orderRejected": "Order rejected", "rejectFailed": "Failed to reject order", "clientAdded": "Client added", "exportDone": "Export finished",
+    "exportFailed": "Export failed", "driverApproved": "Driver approved", "driverRejected": "Driver rejected", "approveFailed": "Failed to approve", "rejectDriverFailed": "Failed to reject driver", "locationRequiredForMap": "Allow location access to appear on the map. Check browser or device settings.", "youAreOnMap": "You're on the map" },
   "status": { "ok": "OK", "warning": "Warning", "critical": "Critical", "connected": "Connected" },
   "pagination": { "prev": "Previous", "next": "Next", "page": "Page {{current}} of {{total}}" }
 }

@@ -1,0 +1,28 @@
+---
+description: Build web frontend when applying or loading frontend updates
+alwaysApply: true
+---
+
+# Сборка веб-фронта
+
+Когда нужно **собрать или задеплоить обновления** веб-приложения:
+
+## Локальная сборка
+
+Из корня репозитория:
+
+```bash
+npm run build:web
+```
+
+или:
+
+```bash
+npm run deploy:frontends
+```
+
+Результат в `web/dist/`.
+
+## Деплой
+
+- **Веб и API на Render:** после пуша в `main`/`master` Render по `render.yaml` пересобирает и деплоит `relaxdrive-web` и `relaxdrive-api`. Обновления веб загружаются при `git push`.
