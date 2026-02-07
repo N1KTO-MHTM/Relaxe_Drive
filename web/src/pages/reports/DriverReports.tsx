@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api } from '../../api/client';
+import { api, API_BASE_URL } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 
 interface DriverReport {
@@ -34,15 +34,25 @@ export default function DriverReports() {
     const handleDownload = async (report: DriverReport) => {
         if (!report.url) return;
         try {
+            // Fix URL: backend returns /api/reports/... but we need to respect API_BASE_URL
+            // In dev (proxy): API_BASE_URL=/api, report.url=/api/... -> strip one /api
+            // In prod: API_BASE_URL=https://..., report.url=/api/... -> strip /api
+            let path = report.url;
+            if (path.startsWith('/api/')) path = path.substring(4); // leaves /reports/...
+
+            // Adjust API_BASE_URL if it ends with / (it shouldn't usually but be safe)
+            const base = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+            const url = `${base}${path}`;
+
             const token = localStorage.getItem('relaxdrive-access-token');
-            const res = await fetch(report.url, {
+            const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!res.ok) throw new Error('Download failed');
             const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
+            const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
+            a.href = downloadUrl;
             a.download = `report-${report.month}.csv`;
             document.body.appendChild(a);
             a.click();

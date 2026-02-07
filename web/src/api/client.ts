@@ -1,4 +1,5 @@
-const BASE = import.meta.env.VITE_API_URL || '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const BASE = API_BASE_URL;
 
 function isDebug(): boolean {
   return import.meta.env.DEV || typeof localStorage !== 'undefined' && localStorage.getItem('relaxdrive_debug') === '1';
