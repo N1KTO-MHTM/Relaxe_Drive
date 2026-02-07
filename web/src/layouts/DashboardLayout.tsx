@@ -31,7 +31,6 @@ export default function DashboardLayout() {
 
   const nav = getAllowedNavItems(user?.role ?? null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('operations');
   const [theme, setThemeState] = useState(themeStore.getTheme());
   useEffect(() => {
     const unsub = themeStore.subscribe(setThemeState);
@@ -45,16 +44,6 @@ export default function DashboardLayout() {
   if (!canAccessPath(user?.role ?? null, location.pathname)) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  // Group navigation items
-  const groups: Record<string, typeof nav> = { operations: [], dispatch: [], bi: [], system: [] };
-  nav.forEach(item => {
-    if (item.group && groups[item.group]) groups[item.group].push(item);
-    else groups.operations.push(item); // Fallback
-  });
-
-  // Get items for active tab
-  const activeItems = groups[activeTab] || [];
 
   return (
     <div className="dashboard-layout">
@@ -73,36 +62,33 @@ export default function DashboardLayout() {
             <span className="brand-tagline">{t('app.tagline')} <span className="app-version">v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0'}</span></span>
           </div>
         </div>
-
-        {/* Horizontal Tabs */}
-        <div className="dashboard-layout__tabs">
-          {Object.keys(groups).map(groupKey => {
-            if (groups[groupKey].length === 0) return null;
-            return (
-              <button
-                key={groupKey}
-                type="button"
-                className={`dashboard-layout__tab ${activeTab === groupKey ? 'dashboard-layout__tab--active' : ''}`}
-                onClick={() => setActiveTab(groupKey)}
-              >
-                {t(`nav.group.${groupKey}`) || groupKey.toUpperCase()}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Navigation items for active tab */}
         <nav className={`dashboard-layout__nav ${mobileNavOpen ? 'dashboard-layout__nav--open' : ''}`}>
-          {activeItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-              onClick={() => setMobileNavOpen(false)}
-            >
-              {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
-            </Link>
-          ))}
+          {(() => {
+            const groups: Record<string, typeof nav> = { operations: [], dispatch: [], bi: [], system: [] };
+            nav.forEach(item => {
+              if (item.group && groups[item.group]) groups[item.group].push(item);
+              else groups.operations.push(item); // Fallback
+            });
+
+            return Object.entries(groups).map(([groupKey, items]) => {
+              if (items.length === 0) return null;
+              return (
+                <div key={groupKey} className="nav-group">
+                  <div className="nav-group-title">{t(`nav.group.${groupKey}`) || groupKey.toUpperCase()}</div>
+                  {items.map(item => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
+                    </Link>
+                  ))}
+                </div>
+              );
+            });
+          })()}
         </nav>
         <div className="dashboard-layout__right">
           {(user?.role === 'ADMIN' || user?.role === 'DISPATCHER') && (
