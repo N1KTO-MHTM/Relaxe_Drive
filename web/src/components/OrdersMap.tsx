@@ -300,8 +300,6 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   const driverMarkersByIdRef = useRef<Map<string, L.Marker>>(new Map());
   const trafficLayerRef = useRef<L.TileLayer | null>(null);
 
-  const [showTraffic, setShowTraffic] = useState(false);
-
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) return;
@@ -317,13 +315,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     });
     tileLayer.addTo(map);
 
-    // Traffic layer (initially hidden)
-    const trafficLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-      attribution: 'Traffic data',
-      maxZoom: 19,
-      opacity: 0.6,
-    });
-    trafficLayerRef.current = trafficLayer;
+    // Traffic layer removed (not implemented)
 
     mapRef.current = map;
     let handleMoveEnd: (() => void) | undefined;
@@ -933,45 +925,13 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     onMapClick(latlng.lat, latlng.lng);
   };
 
-  // Toggle traffic layer visibility
-  useEffect(() => {
-    const map = mapRef.current;
-    const trafficLayer = trafficLayerRef.current;
-    if (!map || !trafficLayer) return;
 
-    if (showTraffic) {
-      trafficLayer.addTo(map);
-    } else {
-      map.removeLayer(trafficLayer);
-    }
-  }, [showTraffic]);
 
   return (
     <div className="orders-map-container" style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480 }} />
 
-      {/* Traffic Toggle Button */}
-      <button
-        type="button"
-        onClick={() => setShowTraffic(!showTraffic)}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          zIndex: 1000,
-          padding: '8px 16px',
-          backgroundColor: showTraffic ? '#0d9488' : '#fff',
-          color: showTraffic ? '#fff' : '#000',
-          border: '2px solid #0d9488',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontWeight: 'bold',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-        }}
-        title={showTraffic ? t('Hide Traffic') : t('Show Traffic')}
-      >
-        🚦 {showTraffic ? t('Hide Traffic') : t('Show Traffic')}
-      </button>
+
 
       {onMapClick && !navMode && (
         <div
