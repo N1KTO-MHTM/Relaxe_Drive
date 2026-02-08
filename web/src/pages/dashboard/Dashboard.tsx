@@ -660,7 +660,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!canAssign) return;
     api.get<Array<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }>>('/planning/order-coords').then(setFutureOrderCoords).catch(() => { });
-    api.get<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>('/zones').then(setZones).catch(() => { });
   }, [canAssign]);
 
   useEffect(() => {

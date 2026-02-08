@@ -105,12 +105,7 @@ export default function LiveWall() {
       .catch(() => setFutureOrderCoords([]));
   }, [canAssign, orders]);
 
-  useEffect(() => {
-    if (!canAssign) return;
-    api.get<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>('/zones')
-      .then(setZones)
-      .catch(() => setZones([]));
-  }, [canAssign]);
+
 
   useEffect(() => {
     const minLat = 40.9;
