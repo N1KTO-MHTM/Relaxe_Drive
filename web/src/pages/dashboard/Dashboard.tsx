@@ -586,7 +586,7 @@ export default function Dashboard() {
   /** Load all data everywhere when dashboard opens (and when user changes). */
   const refreshZones = async () => {
     try {
-      const res = await api.get('/zones');
+      const res: any = await api.get('/zones');
       setZones(res.data as any[]);
     } catch (err) {
       console.error('Failed to fetch zones:', err);
