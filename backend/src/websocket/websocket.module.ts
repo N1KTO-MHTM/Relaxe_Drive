@@ -5,7 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [AuthModule, forwardRef(() => UsersModule), JwtModule],
+  imports: [forwardRef(() => AuthModule), forwardRef(() => UsersModule), JwtModule],
   providers: [RelaxDriveWsGateway],
   exports: [RelaxDriveWsGateway],
 })
