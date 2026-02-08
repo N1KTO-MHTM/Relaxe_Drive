@@ -107,7 +107,9 @@ export class PlanningService implements OnModuleInit {
 
     for (const order of orders) {
       const pickupCoords = await this.geo.geocode(order.pickupAddress);
-      const dropoffCoords = await this.geo.geocode(order.dropoffAddress);
+      const dropoffCoords = order.dropoffAddress
+        ? await this.geo.geocode(order.dropoffAddress)
+        : null;
       let driverList = drivers;
       const preferred = order.preferredCarType?.trim()?.toUpperCase();
       if (preferred) {
@@ -148,8 +150,13 @@ export class PlanningService implements OnModuleInit {
           }
         }
       }
-      const riskLevel: OrderPlanningRow['riskLevel'] =
-        manual ? 'LOW' : (reason === 'NO_DRIVER' ? 'HIGH' : reason === 'FAR_DRIVER' ? 'MEDIUM' : 'LOW');
+      const riskLevel: OrderPlanningRow['riskLevel'] = manual
+        ? 'LOW'
+        : reason === 'NO_DRIVER'
+          ? 'HIGH'
+          : reason === 'FAR_DRIVER'
+            ? 'MEDIUM'
+            : 'LOW';
       orderRows.push({ orderId: order.id, riskLevel, suggestedDriverId });
       if (reason) {
         riskyOrders.push({
@@ -176,7 +183,9 @@ export class PlanningService implements OnModuleInit {
   }
 
   /** Problem zones for heatmap: late pickups and cancelled orders (last daysDays). */
-  async getProblemZones(daysDays: number): Promise<{ late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] }> {
+  async getProblemZones(
+    daysDays: number,
+  ): Promise<{ late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] }> {
     const since = new Date(Date.now() - daysDays * 24 * 60 * 60 * 1000);
     const orders = await this.prisma.order.findMany({
       where: {
@@ -189,7 +198,14 @@ export class PlanningService implements OnModuleInit {
           },
         ],
       },
-      select: { id: true, status: true, pickupAt: true, arrivedAtPickupAt: true, bufferMinutes: true, pickupAddress: true },
+      select: {
+        id: true,
+        status: true,
+        pickupAt: true,
+        arrivedAtPickupAt: true,
+        bufferMinutes: true,
+        pickupAddress: true,
+      },
     });
     const late: { lat: number; lng: number }[] = [];
     const cancelled: { lat: number; lng: number }[] = [];
@@ -209,7 +225,9 @@ export class PlanningService implements OnModuleInit {
   }
 
   /** Return pickup coords for orders in the next windowMinutes (for map future overlay). */
-  async getOrderCoords(windowMinutes: number): Promise<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }[]> {
+  async getOrderCoords(
+    windowMinutes: number,
+  ): Promise<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }[]> {
     const now = new Date();
     const windowEnd = new Date(now.getTime() + windowMinutes * 60 * 1000);
     const orders = await this.prisma.order.findMany({

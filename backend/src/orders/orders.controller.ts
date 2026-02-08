@@ -71,10 +71,8 @@ export class OrdersController {
     const orders = await this.ordersService.findLastByPhone(phone, 10);
     const results = await Promise.all(
       orders.map(async (o) => {
-        const [pickup, dropoff] = await Promise.all([
-          this.geo.geocode(o.pickupAddress),
-          this.geo.geocode(o.dropoffAddress),
-        ]);
+        const pickup = await this.geo.geocode(o.pickupAddress);
+        const dropoff = o.dropoffAddress ? await this.geo.geocode(o.dropoffAddress) : null;
         return {
           ...this.transformOrder(o),
           pickupCoords: pickup,
@@ -91,10 +89,12 @@ export class OrdersController {
   async getDriverEtas(@Param('id') orderId: string) {
     const order = await this.ordersService.findById(orderId);
     if (!order) return { drivers: [], pickupCoords: null, dropoffCoords: null };
-    const [pickupCoords, dropoffCoords] = await Promise.all([
-      this.geo.geocode(order.pickupAddress),
-      this.geo.geocode(order.dropoffAddress),
-    ]);
+
+    const pickupCoords = await this.geo.geocode(order.pickupAddress);
+    const dropoffCoords = order.dropoffAddress
+      ? await this.geo.geocode(order.dropoffAddress)
+      : null;
+
     const drivers = await this.usersService.findAll();
     let driverList = drivers.filter(
       (u) =>
@@ -165,7 +165,9 @@ export class OrdersController {
       throw new ForbiddenException('You can only view the route for orders assigned to you');
     }
     const pickupCoords = await this.geo.geocode(order.pickupAddress);
-    const dropoffCoords = await this.geo.geocode(order.dropoffAddress);
+    const dropoffCoords = order.dropoffAddress
+      ? await this.geo.geocode(order.dropoffAddress)
+      : null;
     if (!pickupCoords || !dropoffCoords) {
       return {
         pickupCoords: pickupCoords ?? null,

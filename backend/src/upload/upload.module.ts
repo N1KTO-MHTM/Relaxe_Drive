@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UploadController } from './upload.controller';
 import { MulterModule } from '@nestjs/platform-express';
+// @ts-ignore
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 

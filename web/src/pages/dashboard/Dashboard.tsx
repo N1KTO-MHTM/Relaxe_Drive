@@ -112,7 +112,7 @@ export default function Dashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmOrderId, setDeleteConfirmOrderId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const [sharingLocation, setSharingLocation] = useState(false);
+
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectConfirmOrderId, setRejectConfirmOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -1857,7 +1857,7 @@ export default function Dashboard() {
   /** Open full route (pickup → stops → dropoff) in Google Maps with traffic, ETA, tolls. Uses addresses. */
   function openFullRouteInGoogleMaps(order: Order) {
     const origin = order.pickupAddress.trim();
-    const dest = order.dropoffAddress.trim();
+    const dest = order.dropoffAddress?.trim() || '';
     const stops = getOrderStops(order);
     const waypointsParam =
       stops.length > 0
@@ -1874,7 +1874,7 @@ export default function Dashboard() {
 
   /** Open full route in Waze. Waze URL supports one destination; we use dropoff so driver can navigate to final. */
   function openFullRouteInWaze(order: Order) {
-    const dest = order.dropoffAddress.trim();
+    const dest = order.dropoffAddress?.trim() || '';
     window.open(`https://waze.com/ul?q=${encodeURIComponent(dest)}&navigate=yes`, '_blank');
   }
 
@@ -1900,27 +1900,6 @@ export default function Dashboard() {
       openAddressInWaze(order.pickupAddress);
     } else {
       openFullRouteInWaze(order);
-    }
-  }
-
-  async function handleShareLocation() {
-    if (!navigator.geolocation) return;
-    setSharingLocation(true);
-    try {
-      const pos = await new Promise<GeolocationPosition>((ok, err) => {
-        navigator.geolocation.getCurrentPosition(ok, err, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-      });
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      await api.patch('/users/me/location', { lat, lng });
-      updateDriverLocation(lat, lng);
-    } catch {
-      // ignore
-    } finally {
-      setSharingLocation(false);
     }
   }
 
