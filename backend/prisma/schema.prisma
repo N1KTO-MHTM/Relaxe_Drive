@@ -58,7 +58,7 @@ model Order {
   pickupAddress            String    @map("pickup_address")
   middleAddress           String?   @map("middle_address")
   waypoints               String?    @map("waypoints") // SQLite: JSON stringified
-  dropoffAddress           String    @map("dropoff_address")
+  dropoffAddress           String?   @map("dropoff_address")
   pickupType               String?   @map("pickup_type")
   dropoffType              String?   @map("dropoff_type")
   dropoffImageUrl          String?   @map("dropoff_image_url")
@@ -245,6 +245,8 @@ model ChatMessage {
   senderId   String   @map("sender_id")
   senderRole String   @map("sender_role") // DRIVER or DISPATCHER
   message    String
+  fileUrl    String?  @map("file_url")
+  fileType   String?  @map("file_type")
   read       Boolean  @default(false)
   createdAt  DateTime @default(now()) @map("created_at")
   
