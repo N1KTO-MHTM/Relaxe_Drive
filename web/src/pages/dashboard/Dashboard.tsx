@@ -361,16 +361,7 @@ export default function Dashboard() {
   }, [existingAddresses, middleAddress]);
 
   /** Addresses tab: up to 5 suggestions for pickup/dropoff (no duplicates). */
-  const addressesTabPickupSuggestions = useMemo(() => {
-    const q = addressesTabPickup.trim().toLowerCase();
-    if (!q) return existingAddresses.slice(0, 5);
-    return existingAddresses.filter((a) => a.toLowerCase().includes(q)).slice(0, 5);
-  }, [existingAddresses, addressesTabPickup]);
-  const addressesTabDropoffSuggestions = useMemo(() => {
-    const q = addressesTabDropoff.trim().toLowerCase();
-    if (!q) return existingAddresses.slice(0, 5);
-    return existingAddresses.filter((a) => a.toLowerCase().includes(q)).slice(0, 5);
-  }, [existingAddresses, addressesTabDropoff]);
+  // Removed unused suggestion variables - suggestions are computed inline in the UI
 
   /** Drivers filtered by status (active/busy/offline) and car type for sidebar and map. */
   const filteredDrivers = useMemo(() => {
@@ -595,8 +586,8 @@ export default function Dashboard() {
   /** Load all data everywhere when dashboard opens (and when user changes). */
   const refreshZones = async () => {
     try {
-      const res = await api.get('/zones');
-      setZones(res.data as any[]);
+      const res = await api.get<any[]>('/zones');
+      setZones(res.data);
     } catch (err) {
       console.error('Failed to fetch zones:', err);
     }

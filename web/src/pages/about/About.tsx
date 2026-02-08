@@ -7,7 +7,6 @@ const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '
 export default function About() {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
-  const isDriver = user?.role === 'DRIVER';
   const isDispatcher = user?.role === 'DISPATCHER';
   const isAdmin = user?.role === 'ADMIN';
 
