@@ -32,6 +32,17 @@ body {
   padding: var(--rd-space-lg);
 }
 
+/* Premium glassmorphism panel */
+.rd-premium-panel {
+  background: var(--rd-premium-card);
+  backdrop-filter: var(--rd-premium-blur);
+  -webkit-backdrop-filter: var(--rd-premium-blur);
+  border: 1px solid var(--rd-premium-border);
+  border-radius: var(--rd-radius-lg);
+  padding: var(--rd-space-lg);
+  box-shadow: var(--rd-premium-shadow);
+}
+
 .rd-panel-header {
   display: flex;
   align-items: center;
@@ -422,6 +433,7 @@ a:hover {
 .orders-map-dark-popup a.leaflet-popup-close-button:hover {
   color: #fff !important;
 }
+
 /* Driver Active Panel (Bottom Sheet) */
 .driver-active-panel {
   position: fixed;
@@ -464,6 +476,11 @@ a:hover {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }

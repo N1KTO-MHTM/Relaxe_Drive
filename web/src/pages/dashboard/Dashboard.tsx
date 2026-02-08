@@ -12,12 +12,10 @@ import NavBar, { formatDistanceHint, STEP_TYPE_ICON } from '../../components/Nav
 import DriverChatButton from '../../components/DriverChatButton';
 import RouteSelectionModal from '../../components/RouteSelectionModal';
 import DriverTripsModal from '../../components/DriverTripsModal';
-import NavigationOverlay from '../../components/NavigationOverlay';
 import { useToastStore } from '../../store/toast';
 import { downloadCsv } from '../../utils/exportCsv';
 import { shortId } from '../../utils/shortId';
 import type { Order, DriverEta, PlanningResult } from '../../types';
-import Speedometer from '../../components/Speedometer/Speedometer';
 import './Dashboard.css';
 
 
@@ -155,6 +153,8 @@ export default function Dashboard() {
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [reports, setReports] = useState<DriverReportMap[]>([]);
+  const [pickupAddressSuggestions] = useState<string[]>([]);
+  const [dropoffAddressSuggestions] = useState<string[]>([]);
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
   const [showZones, setShowZones] = useState(true);
@@ -1328,7 +1328,28 @@ export default function Dashboard() {
   async function handleStopUnderway(orderId: string) {
     setStopUnderwayId(orderId);
     try {
-      await api.patch(`/orders/${orderId}/stop-underway`, {});
+      // Capture driver's current location when stopping
+      const payload: { lat?: number; lng?: number; address?: string } = {};
+
+      if (driverLocation) {
+        payload.lat = driverLocation.lat;
+        payload.lng = driverLocation.lng;
+
+        // Try to get address from reverse geocoding
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${driverLocation.lat}&lon=${driverLocation.lng}`
+          );
+          const data = await response.json();
+          if (data.display_name) {
+            payload.address = data.display_name;
+          }
+        } catch {
+          // Ignore geocoding errors
+        }
+      }
+
+      await api.patch(`/orders/${orderId}/stop-underway`, payload);
       toast.success(t('dashboard.stoppedUnderway'));
       const data = await api.get<Order[]>('/orders');
       setOrders(Array.isArray(data) ? data : []);
@@ -1878,7 +1899,7 @@ export default function Dashboard() {
         );
       })()}
       <div className="dashboard-page__grid">
-        <aside className={`dashboard-page__sidebar rd-panel ${isDriver && driverMapFullScreen ? 'dashboard-page__sidebar--hidden' : ''}`}>
+        <aside className={`dashboard-page__sidebar rd-premium-panel ${isDriver && driverMapFullScreen ? 'dashboard-page__sidebar--hidden' : ''}`}>
           <div className="rd-panel-header">
             <h2>{ordersTitle}</h2>
             {canCreateOrder && (
@@ -2238,11 +2259,12 @@ export default function Dashboard() {
             </div>
           )}
           {orderTab === 'addresses' ? (
-            <div className="dashboard-addresses-panel rd-panel" style={{ padding: '1rem', marginBottom: '1rem' }}>
-              <h3 className="rd-section-title" style={{ marginTop: 0 }}>{t('dashboard.tabAddresses')}</h3>
-              <p className="rd-text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>{t('dashboard.addressesPanelHint')}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 480 }}>
-                <div>
+            <div className="dashboard-addresses-panel rd-premium-panel" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+              <h3 className="rd-section-title" style={{ marginTop: 0, color: 'var(--rd-accent-neon)' }}>{t('dashboard.tabAddresses')}</h3>
+              <p className="rd-text-muted" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>{t('dashboard.addressesPanelHint')}</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div className="rd-form-group">
                   <label className="dashboard-form-label">{t('dashboard.phone')}</label>
                   <input
                     type="tel"
@@ -2250,11 +2272,10 @@ export default function Dashboard() {
                     value={addressesTabPhone}
                     onChange={(e) => setAddressesTabPhone(e.target.value)}
                     placeholder="(555) 123-4567"
-                    aria-label={t('dashboard.phone')}
                     style={{ width: '100%' }}
                   />
                 </div>
-                <div>
+                <div className="rd-form-group">
                   <label className="dashboard-form-label">{t('dashboard.pickup')}</label>
                   <input
                     type="text"
@@ -2263,16 +2284,10 @@ export default function Dashboard() {
                     onChange={(e) => setAddressesTabPickup(e.target.value)}
                     placeholder={t('dashboard.pickupAddressPlaceholder')}
                     list="addresses-tab-pickup-list"
-                    aria-label={t('dashboard.pickup')}
                     style={{ width: '100%' }}
                   />
-                  <datalist id="addresses-tab-pickup-list">
-                    {addressesTabPickupSuggestions.map((addr) => (
-                      <option key={addr} value={addr} />
-                    ))}
-                  </datalist>
                 </div>
-                <div>
+                <div className="rd-form-group">
                   <label className="dashboard-form-label">{t('dashboard.dropoff')}</label>
                   <input
                     type="text"
@@ -2281,28 +2296,51 @@ export default function Dashboard() {
                     onChange={(e) => setAddressesTabDropoff(e.target.value)}
                     placeholder={t('dashboard.dropoffAddressPlaceholder')}
                     list="addresses-tab-dropoff-list"
-                    aria-label={t('dashboard.dropoff')}
                     style={{ width: '100%' }}
                   />
-                  <datalist id="addresses-tab-dropoff-list">
-                    {addressesTabDropoffSuggestions.map((addr) => (
-                      <option key={addr} value={addr} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
-              <div style={{ marginTop: '1rem' }}>
-                <AddressRouteMap pickupAddress={addressesTabPickup} dropoffAddress={addressesTabDropoff} />
+
+              <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--rd-premium-border)', marginBottom: '2rem' }}>
+                <AddressRouteMap pickupAddress={addressesTabPickup} dropoffAddress={addressesTabDropoff} height={300} />
               </div>
+
               {existingAddresses.length > 0 && (
-                <details style={{ marginTop: '1rem' }}>
-                  <summary className="rd-text-muted" style={{ cursor: 'pointer', fontSize: '0.875rem' }}>{t('dashboard.existingAddressesCount', { count: existingAddresses.length })}</summary>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: '0.25rem 0 0', fontSize: '0.875rem', maxHeight: 200, overflowY: 'auto' }}>
-                    {existingAddresses.map((addr) => (
-                      <li key={addr} style={{ padding: '0.2rem 0', borderBottom: '1px solid var(--rd-border)' }}>{addr}</li>
-                    ))}
-                  </ul>
-                </details>
+                <div className="dashboard-addresses-history">
+                  <h4 style={{ marginBottom: '1rem' }}>{t('dashboard.addressHistory')}</h4>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    <table className="dashboard-addresses-table">
+                      <thead>
+                        <tr>
+                          <th>{t('dashboard.address')}</th>
+                          <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {existingAddresses.map((addr) => (
+                          <tr key={addr}>
+                            <td>{addr}</td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button
+                                className="rd-btn rd-btn--small"
+                                onClick={() => setAddressesTabPickup(addr)}
+                                style={{ marginRight: '0.5rem' }}
+                              >
+                                {t('dashboard.useAsPickup')}
+                              </button>
+                              <button
+                                className="rd-btn rd-btn--small"
+                                onClick={() => setAddressesTabDropoff(addr)}
+                              >
+                                {t('dashboard.useAsDropoff')}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
             </div>
           ) : (loading || (orderTab === 'completed' && completedLoading)) ? (
@@ -2344,13 +2382,34 @@ export default function Dashboard() {
               )}
               <ul className="dashboard-orders-list">
                 {(focusMode && canAssign && selectedOrderId ? filteredOrders.filter((o) => o.id === selectedOrderId) : filteredOrders).map((o) => (
-                  <li key={o.id} className={`dashboard-order-item ${o.riskLevel === 'HIGH' ? 'dashboard-order-item--risk-high' : o.riskLevel === 'MEDIUM' ? 'dashboard-order-item--risk-medium' : ''}`}>
+                  <li
+                    key={o.id}
+                    className={`dashboard-order-item ${isDriver ? 'rd-premium-card' : ''} ${o.riskLevel === 'HIGH' ? 'dashboard-order-item--risk-high' : o.riskLevel === 'MEDIUM' ? 'dashboard-order-item--risk-medium' : ''}`}
+                    onClick={() => {
+                      if (isDriver) {
+                        setSelectedOrderId(o.id);
+                        setDriverMapFullScreen(true);
+                        setMapCenterTrigger((prev) => prev + 1);
+                      }
+                    }}
+                    style={{ cursor: isDriver ? 'pointer' : 'default' }}
+                  >
                     <span className={`rd-badge ${o.status === 'ASSIGNED' ? 'rd-badge-assigned' : o.status === 'IN_PROGRESS' ? 'rd-badge-ok' : o.status === 'SCHEDULED' ? 'rd-badge-pending' : ''}`}>{o.status}</span>
                     {o.riskLevel && (
                       <span className={`rd-badge ${o.riskLevel === 'HIGH' ? 'rd-badge-critical' : o.riskLevel === 'MEDIUM' ? 'rd-badge-warning' : ''}`} style={{ marginLeft: '0.25rem', fontSize: '0.7rem' }} title={t('dashboard.riskLevel')}>{o.riskLevel}</span>
                     )}
                     {getOrderStops(o).length > 0 && (
-                      <span className="rd-badge rd-badge-pending" style={{ marginLeft: '0.25rem', fontSize: '0.75rem' }}>{t('dashboard.stopsCount', { count: getOrderStops(o).length })}</span>
+                      <span className="rd-badge rd-badge-pending" style={{ marginLeft: '0.25rem', fontSize: '0.75rem' }}>{t('dashboard.roundtrip')}</span>
+                    )}
+                    {isDriver && o.status === 'ASSIGNED' && o.arrivedAtPickupAt && !o.leftPickupAt && (
+                      <span className="wait-timer-badge" style={{ marginLeft: '0.5rem', transform: 'scale(0.8)', transformOrigin: 'left' }}>
+                        ⏱ {o.manualWaitMinutes ?? (manualTimerStart[o.id] ? Math.floor((now - manualTimerStart[o.id]) / 60000) : 0)}m
+                      </span>
+                    )}
+                    {isDriver && o.status === 'IN_PROGRESS' && o.arrivedAtMiddleAt && !o.leftMiddleAt && (
+                      <span className="wait-timer-badge" style={{ marginLeft: '0.5rem', transform: 'scale(0.8)', transformOrigin: 'left', background: 'var(--rd-accent-neon)' }}>
+                        🛑 {t('dashboard.atMiddleStop')}
+                      </span>
                     )}
                     {autoAssignEnabled && o.suggestedDriverId && (
                       <div className="rd-text-muted" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
@@ -2728,21 +2787,7 @@ export default function Dashboard() {
             </div>
           )}
           <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {driverMapFullScreen && routeData && selectedOrderId && driverLocation && (
-              <NavigationOverlay
-                order={orders.find(o => o.id === selectedOrderId)!}
-                routeData={routeData}
-                isPickup={orders.find(o => o.id === selectedOrderId)?.status === 'ASSIGNED'}
-                onClose={() => setDriverMapFullScreen(false)}
-                onArrived={() => {
-                  const o = orders.find(x => x.id === selectedOrderId);
-                  if (!o) return;
-                  if (o.status === 'ASSIGNED') handleArrivedAtPickup(o.id);
-                  else if (o.status === 'IN_PROGRESS') setConfirmEndTripOrderId(o.id);
-                }}
-                arriving={!!arrivingId || !!statusUpdatingId}
-              />
-            )}
+            {/* NavigationOverlay removed to clear up the map area. Actions moved to the docked drawer below. */}
             <OrdersMap
               drivers={isDriver ? [] : driversForMap}
               showDriverMarkers={canAssign}
@@ -2760,7 +2805,19 @@ export default function Dashboard() {
               centerTrigger={mapCenterTrigger}
               reports={reportsOnMap}
               selectedRouteIndex={selectedRouteIndex}
-              onRecenter={() => setMapCenterTrigger((t) => t + 1)}
+              onRecenter={() => {
+                if (!isDriver && selectedOrderId) {
+                  // For dispatchers: center on selected driver if available
+                  const selectedOrder = orders.find(o => o.id === selectedOrderId);
+                  if (selectedOrder?.driverId) {
+                    const driver = driversForMap.find(d => d.id === selectedOrder.driverId);
+                    if (driver && driver.lat != null && driver.lng != null) {
+                      setMyLocationCenter({ lat: driver.lat, lng: driver.lng });
+                    }
+                  }
+                }
+                setMapCenterTrigger((t) => t + 1);
+              }}
               recenterLabel={t('dashboard.recenter')}
               orderRiskLevel={selectedOrderId ? (orders.find((x) => x.id === selectedOrderId)?.riskLevel ?? null) : null}
               selectedOrderTooltip={selectedOrderTooltip}
@@ -2772,8 +2829,8 @@ export default function Dashboard() {
               initialCenter={savedMapView?.center}
               initialZoom={savedMapView?.zoom}
               onMapViewChange={handleMapViewChange}
-              myLocationLabel={!isDriver && canAssign ? t('dashboard.myLocation') : undefined}
-              onMyLocation={!isDriver && canAssign ? () => {
+              myLocationLabel={isDriver ? t('dashboard.myLocation') : undefined}
+              onMyLocation={isDriver ? () => {
                 if (!navigator.geolocation) return;
                 navigator.geolocation.getCurrentPosition(
                   (pos) => {
@@ -2787,7 +2844,7 @@ export default function Dashboard() {
                 );
               } : undefined}
             />
-            <Speedometer speedMph={driverSpeedMph} standingStartedAt={standingStartedAt} />
+            {/* Speedometer removed from map to avoid clutter. */}
             {/* Driver Trip Card moved to bottom panel */}
           </div>
         </div>
@@ -2848,11 +2905,23 @@ export default function Dashboard() {
           </div>
         )}
         {!isDriver && (
-          <aside className="dashboard-page__sidebar dashboard-drivers-sidebar rd-panel">
+          <aside className="dashboard-page__sidebar dashboard-drivers-sidebar rd-premium-panel">
             <div className="rd-panel-header">
               <h2>{t('dashboard.drivers')}</h2>
             </div>
             <p className="rd-text-muted dashboard-drivers-subtitle">{t('dashboard.driversSubtitle')}</p>
+            {alerts.length > 0 && (
+              <div className="dashboard-alerts-panel">
+                <h3 className="rd-section-title" style={{ fontSize: '0.85rem', color: 'var(--rd-accent-neon)' }}>{t('dashboard.recentAlerts')}</h3>
+                {alerts.map((a) => (
+                  <div key={a.id} className={`dashboard-alert-item ${a.type === 'RISK' ? 'dashboard-alert-item--critical' : ''}`}>
+                    <div style={{ fontWeight: 600 }}>{a.type}</div>
+                    <div>{a.orderId ? `Order: ${a.orderId.slice(0, 8)}` : ''} {a.pickupAddress}</div>
+                    <div className="rd-text-muted" style={{ fontSize: '0.75rem' }}>{new Date(a.at).toLocaleTimeString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             {canAssign && (
               <>
                 <div className="dashboard-drivers-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -3166,76 +3235,120 @@ export default function Dashboard() {
       }
       {
         isDriver && currentDriverOrder && (
-          <div className="driver-active-panel">
-            <div className="driver-active-panel__header">
+          <div className={`driver-docked-actions ${!driverMapFullScreen ? 'driver-docked-actions--hidden' : ''}`}>
+            <div className="driver-docked-actions__header">
               <div>
-                <h3 className="driver-active-panel__title">
+                <div className="driver-docked-actions__title">
                   {currentDriverOrder.status === 'ASSIGNED' ? t('dashboard.navToPickup') : t('dashboard.navToDropoff')}
-                </h3>
+                </div>
                 {(currentDriverOrder.passenger?.name || currentDriverOrder.passenger?.phone) && (
-                  <div style={{ fontSize: '0.875rem', color: 'var(--rd-text-muted)' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
                     {[currentDriverOrder.passenger?.name, currentDriverOrder.passenger?.phone].filter(Boolean).join(' · ')}
                   </div>
                 )}
               </div>
               {routeData && (routeData.driverToPickupMinutes != null || routeData.durationMinutes != null) && (
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--rd-accent)' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--rd-accent-neon)' }}>
                   ~{Math.round(currentDriverOrder.status === 'ASSIGNED' ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0))} min
                 </div>
               )}
             </div>
 
+            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.9rem', color: 'white' }}>
+              <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                📍 {currentDriverOrder.status === 'ASSIGNED' ? currentDriverOrder.pickupAddress : currentDriverOrder.dropoffAddress}
+              </div>
+            </div>
+
             {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
-              <div className="driver-active-panel__timer" style={{ background: 'var(--rd-surface)', padding: '0.5rem', borderRadius: 'var(--rd-radius)', marginBottom: '0.5rem', border: '1px solid var(--rd-border)' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
                 {currentDriverOrder.manualWaitMinutes != null ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 500 }}>Waited: {currentDriverOrder.manualWaitMinutes} min</span>
-                    <button type="button" className="rd-btn rd-btn--small" onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
+                  <div className="wait-timer-badge" style={{ animation: 'none' }}>
+                    <span>⏱ {currentDriverOrder.manualWaitMinutes} min</span>
+                    <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
                   </div>
                 ) : manualTimerStart[currentDriverOrder.id] ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ flex: 1, fontWeight: 'bold', color: 'var(--rd-critical)', fontSize: '1.1rem' }}>
-                      ⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s
-                    </div>
-                    <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => setShowTimerNoteModal(currentDriverOrder.id)}>Stop</button>
+                  <div className="wait-timer-badge">
+                    ⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s
+                    <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => setShowTimerNoteModal(currentDriverOrder.id)}>Stop</button>
                   </div>
                 ) : (
-                  <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%' }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
+                  <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%', fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
                 )}
               </div>
             )}
 
-            <div className="driver-active-panel__actions">
-              <button type="button" className="rd-btn rd-btn-primary" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
+            <div className="driver-docked-actions__grid">
+              <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
+                <span style={{ fontSize: '1.25rem' }}>🗺️</span>
                 {t('dashboard.navigate')}
               </button>
-              <button type="button" className="rd-btn" style={{ background: '#000', color: '#fff', border: '1px solid #333' }} onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
+              <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
+                <span style={{ fontSize: '1.25rem' }}>🚙</span>
                 Waze
               </button>
-              <div className="driver-active-panel__full-width">
-                {currentDriverOrder.status === 'ASSIGNED' && (
-                  currentDriverOrder.arrivedAtPickupAt ? (
-                    <button type="button" className="rd-btn rd-btn-primary" style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!statusUpdatingId} onClick={() => handleStatusChange(currentDriverOrder.id, 'IN_PROGRESS')}>
-                      {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.startRide')}
+
+              {currentDriverOrder.status === 'ASSIGNED' && (
+                currentDriverOrder.arrivedAtPickupAt ? (
+                  <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--primary" disabled={!!statusUpdatingId} onClick={() => handleStatusChange(currentDriverOrder.id, 'IN_PROGRESS')}>
+                    {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.startRide')}
+                  </button>
+                ) : (
+                  <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--primary" style={{ background: 'var(--rd-accent-emerald)' }} disabled={!!arrivingId} onClick={() => handleArrivedAtPickup(currentDriverOrder.id)}>
+                    {arrivingId === currentDriverOrder.id ? '…' : t('dashboard.arrivedAtPickup')}
+                  </button>
+                )
+              )}
+
+              {currentDriverOrder.status === 'IN_PROGRESS' && (
+                <>
+                  {currentDriverOrder.tripType === 'ROUNDTRIP' && !currentDriverOrder.arrivedAtMiddleAt && (
+                    <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--primary" style={{ background: 'var(--rd-accent-neon)', color: '#0f172a' }} disabled={!!arrivingId} onClick={() => handleArrivedAtMiddle(currentDriverOrder.id)}>
+                      {arrivingId === currentDriverOrder.id ? '…' : t('dashboard.arrivedAtSecondStop')}
                     </button>
-                  ) : (
-                    <button type="button" className="rd-btn rd-btn-success" style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!arrivingId} onClick={() => handleArrivedAtPickup(currentDriverOrder.id)}>
-                      {arrivingId === currentDriverOrder.id ? '…' : t('dashboard.arrivedAtPickup')}
-                    </button>
-                  )
-                )}
-                {currentDriverOrder.status === 'IN_PROGRESS' && (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" className="rd-btn rd-btn-primary" style={{ flex: 2, fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!statusUpdatingId} onClick={() => setConfirmEndTripOrderId(currentDriverOrder.id)}>
+                  )}
+                  {currentDriverOrder.tripType === 'ROUNDTRIP' && currentDriverOrder.arrivedAtMiddleAt && !currentDriverOrder.leftMiddleAt && (
+                    <>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        {currentDriverOrder.manualWaitMiddleMinutes != null ? (
+                          <div className="wait-timer-badge" style={{ animation: 'none', width: '100%', justifyContent: 'center' }}>
+                            <span>⏱ {currentDriverOrder.manualWaitMiddleMinutes} min</span>
+                            <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => submitWaitInfoReset(currentDriverOrder.id, 'middle')}>Reset</button>
+                          </div>
+                        ) : manualTimerStart[`${currentDriverOrder.id}_middle`] ? (
+                          <div className="wait-timer-badge" style={{ width: '100%', justifyContent: 'center' }}>
+                            ⏱ {Math.floor((now - manualTimerStart[`${currentDriverOrder.id}_middle`]) / 60000)}m {Math.floor(((now - manualTimerStart[`${currentDriverOrder.id}_middle`]) % 60000) / 1000)}s
+                            <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => handleStopTimer(currentDriverOrder.id, 'middle')}>Stop</button>
+                          </div>
+                        ) : (
+                          <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%', fontWeight: 700, marginBottom: '0.5rem' }} onClick={() => handleStartTimer(currentDriverOrder.id, 'middle')}>Start Wait Timer</button>
+                        )}
+                      </div>
+                      <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--primary" style={{ background: 'var(--rd-accent-emerald)', gridColumn: 'span 2' }} disabled={!!leftMiddleId} onClick={() => handleLeftMiddle(currentDriverOrder.id)}>
+                        {leftMiddleId === currentDriverOrder.id ? '…' : t('dashboard.startToFinal')}
+                      </button>
+                    </>
+                  )}
+                  {(currentDriverOrder.tripType !== 'ROUNDTRIP' || currentDriverOrder.leftMiddleAt) && (
+                    <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--primary" disabled={!!statusUpdatingId} onClick={() => setConfirmEndTripOrderId(currentDriverOrder.id)}>
                       {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.complete')}
                     </button>
-                    <button type="button" className="rd-btn rd-btn-danger" style={{ flex: 1 }} disabled={!!stopUnderwayId || !!statusUpdatingId} onClick={() => handleStopUnderway(currentDriverOrder.id)} title={t('dashboard.stopUnderwayHint')}>
-                      {stopUnderwayId === currentDriverOrder.id ? '…' : t('dashboard.stopUnderway')}
-                    </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                  <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--ruby" style={{ gridColumn: (currentDriverOrder.tripType === 'ROUNDTRIP' && !currentDriverOrder.leftMiddleAt) ? 'span 2' : 'auto' }} disabled={!!stopUnderwayId || !!statusUpdatingId} onClick={() => handleStopUnderway(currentDriverOrder.id)}>
+                    {t('dashboard.stopUnderway')}
+                  </button>
+                  <button type="button" className="driver-docked-actions__btn" onClick={() => setDriverMapFullScreen(false)}>
+                    {t('dashboard.showList')}
+                  </button>
+                </>
+              )}
             </div>
+
+            {currentDriverOrder.status !== 'IN_PROGRESS' && (
+              <button type="button" className="rd-btn" style={{ width: '100%', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', marginTop: '0.5rem' }} onClick={() => setDriverMapFullScreen(false)}>
+                {t('dashboard.showList')}
+              </button>
+            )}
           </div>
         )
       }

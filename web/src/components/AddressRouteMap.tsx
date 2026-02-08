@@ -9,9 +9,10 @@ interface AddressRouteMapProps {
   pickupAddress: string;
   dropoffAddress: string;
   className?: string;
+  height?: number;
 }
 
-export function AddressRouteMap({ pickupAddress, dropoffAddress, className }: AddressRouteMapProps) {
+export function AddressRouteMap({ pickupAddress, dropoffAddress, className, height }: AddressRouteMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -139,8 +140,8 @@ export function AddressRouteMap({ pickupAddress, dropoffAddress, className }: Ad
     );
   }
   return (
-    <div className={className} style={{ width: '100%', minHeight: 200, borderRadius: 'var(--rd-radius)', overflow: 'hidden' }}>
-      <div ref={containerRef} style={{ width: '100%', height: 220 }} aria-label="Route map" />
+    <div className={className} style={{ width: '100%', minHeight: height || 200, borderRadius: 'var(--rd-radius)', overflow: 'hidden' }}>
+      <div ref={containerRef} style={{ width: '100%', height: height || 220 }} aria-label="Route map" />
       <p className="rd-text-muted" style={{ marginTop: '0.35rem', fontSize: '0.875rem' }}>
         ~{routeData.durationMinutes} min · {routeData.distanceKm} km
       </p>

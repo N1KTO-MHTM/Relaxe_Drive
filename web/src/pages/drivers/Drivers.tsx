@@ -265,7 +265,7 @@ export default function Drivers() {
 
   return (
     <div className="rd-page">
-      <div className="drivers-page rd-panel">
+      <div className="drivers-page rd-premium-panel">
         <div className="rd-panel-header">
           <h1>{t('drivers.title')}</h1>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -444,7 +444,7 @@ export default function Drivers() {
         )}
 
         {canViewDriverDetail && selectedDriver && (
-          <div className="drivers-detail-panel rd-panel">
+          <div className="drivers-detail-panel rd-premium-panel">
             <div className="drivers-detail-header">
               <h2>{selectedDriver.nickname} — {t('drivers.driverInfo')}</h2>
               <button type="button" className="rd-btn" onClick={() => setSelectedDriver(null)} aria-label={t('common.close')}>×</button>

@@ -82,8 +82,8 @@ export default function Pendings() {
 
   return (
     <div className="rd-page">
-      <div className="pendings-page rd-panel">
-        <div className="rd-panel-header">
+      <div className="pendings-page rd-premium-panel">
+        <div className="rd-premium-panel-header">
           <h1>{t('pendings.title')}</h1>
           <button type="button" className="rd-btn rd-btn-secondary" onClick={() => load()} disabled={loading}>
             {t('common.refresh')}

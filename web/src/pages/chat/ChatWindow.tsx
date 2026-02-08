@@ -32,22 +32,22 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
     };
 
     return (
-        <div className="chat-window" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f9fafb' }}>
+        <div className="chat-window" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent' }}>
             {/* Header */}
             <div style={{
                 padding: '1rem',
-                background: '#fff',
-                borderBottom: '1px solid #e5e7eb',
+                background: 'rgba(15, 23, 42, 0.8)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
             }}>
                 <div>
-                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#fff' }}>
                         {chat.driver?.nickname || chat.driver?.phone || 'Driver'}
                     </h3>
-                    <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
                         {chat.driver?.driverId ? `ID: ${chat.driver.driverId}` : ''}
                     </span>
                 </div>
@@ -56,11 +56,11 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
                         onClick={onCloseChat}
                         style={{
                             padding: '0.5rem',
-                            background: 'transparent',
-                            border: '1px solid #d1d5db',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
                             borderRadius: '4px',
                             cursor: 'pointer',
-                            color: '#374151'
+                            color: '#fff'
                         }}
                     >
                         {t('common.close')}
@@ -80,8 +80,8 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
                             style={{
                                 alignSelf: isMe ? 'flex-end' : 'flex-start',
                                 maxWidth: '70%',
-                                background: isMe ? '#2563eb' : '#fff',
-                                color: isMe ? '#fff' : '#1f2937',
+                                background: isMe ? 'var(--rd-accent-neon, #38bdf8)' : 'rgba(255, 255, 255, 0.1)',
+                                color: '#fff',
                                 padding: '0.75rem 1rem',
                                 borderRadius: '12px',
                                 borderBottomRightRadius: isMe ? '2px' : '12px',
@@ -93,7 +93,7 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
                             <div style={{ marginBottom: '0.25rem' }}>{msg.message}</div>
                             <div style={{
                                 fontSize: '0.7rem',
-                                color: isMe ? 'rgba(255,255,255,0.8)' : '#9ca3af',
+                                color: isMe ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.6)',
                                 textAlign: 'right',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -116,8 +116,8 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
                 onSubmit={handleSubmit}
                 style={{
                     padding: '1rem',
-                    background: '#fff',
-                    borderTop: '1px solid #e5e7eb',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
                     display: 'flex',
                     gap: '0.5rem'
                 }}
@@ -130,7 +130,9 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
                     style={{
                         flex: 1,
                         padding: '0.75rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        color: '#fff',
                         borderRadius: '9999px',
                         outline: 'none',
                         fontSize: '0.95rem'
@@ -141,7 +143,7 @@ export default function ChatWindow({ chat, messages, currentUserId, onSendMessag
                     disabled={!inputText.trim()}
                     style={{
                         padding: '0.75rem 1.5rem',
-                        background: '#2563eb',
+                        background: 'var(--rd-accent-neon, #38bdf8)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '9999px',

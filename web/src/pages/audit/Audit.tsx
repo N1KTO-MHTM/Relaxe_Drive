@@ -49,7 +49,7 @@ export default function Audit() {
 
   return (
     <div className="rd-page">
-      <div className="rd-panel">
+      <div className="rd-premium-panel">
         <div className="rd-panel-header">
           <h1>{t('audit.title')}</h1>
         </div>

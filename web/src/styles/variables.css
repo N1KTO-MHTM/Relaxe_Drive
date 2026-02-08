@@ -41,6 +41,17 @@
   --rd-font-sans: 'Outfit', system-ui, sans-serif;
   --rd-font-mono: 'JetBrains Mono', monospace;
   --rd-transition: 0.2s ease;
+
+  /* Premium Glassmorphism Design System */
+  --rd-premium-bg: #0f172a;
+  --rd-premium-card: rgba(30, 41, 59, 0.7);
+  --rd-premium-border: rgba(255, 255, 255, 0.1);
+  --rd-premium-blur: blur(12px);
+  --rd-premium-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --rd-accent-neon: #38bdf8;
+  --rd-accent-emerald: #10b981;
+  --rd-accent-ruby: #ef4444;
+  --rd-accent-amber: #f59e0b;
 }
 
 /* Light theme */
@@ -59,6 +70,14 @@
 }
 
 /* Status helpers */
-.status-ok { color: var(--rd-ok); }
-.status-warning { color: var(--rd-warning); }
-.status-critical { color: var(--rd-critical); }
+.status-ok {
+  color: var(--rd-ok);
+}
+
+.status-warning {
+  color: var(--rd-warning);
+}
+
+.status-critical {
+  color: var(--rd-critical);
+}

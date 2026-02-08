@@ -1,39 +1,14 @@
-# Dependencies
 node_modules/
-
-# Build / dist
 dist/
 *.tsbuildinfo
-web/vite.config.js
-web/vite.config.d.ts
-backend/dist/
-web/dist/
-desktop/dist/
-desktop/dist-electron/
-
-# Env (секреты не пушить)
+*.d.ts
+vite.config.js
 .env
-.env.local
-.env.*.local
-backend/.env
-web/.env
-desktop/.env
-
-# SQLite (локальная БД)
-*.db
-*.db-journal
-backend/prisma/*.db
-backend/prisma/*.db-journal
-
-# IDE / OS
-.idea/
-.vscode/
-*.log
 .DS_Store
 Thumbs.db
-
-# Electron
-desktop/out/
-
-# Временные копии картинок из чата (не коммитить)
-docs/sent-images/
+*.log
+.cache/
+coverage/
+build/
+.vscode/
+.idea/

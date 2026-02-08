@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useSocket } from '../ws/useSocket';
 import ChatWindow from '../pages/chat/ChatWindow';
 import { Chat, ChatMessage } from '../types/chat';
+import { useAuthStore } from '../store/auth';
 
 interface DriverChatButtonProps {
     userId: string; // Driver's user ID
@@ -16,6 +17,7 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
     const [chat, setChat] = useState<Chat | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loading, setLoading] = useState(false);
+    const currentUser = useAuthStore((state) => state.user);
 
     // Fetch unread count
     useEffect(() => {
@@ -95,7 +97,7 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
                     width: '60px',
                     height: '60px',
                     borderRadius: '50%',
-                    background: '#2563eb',
+                    background: 'var(--rd-accent-neon, #38bdf8)',
                     color: '#fff',
                     border: 'none',
                     boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
@@ -104,7 +106,16 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '24px'
+                    fontSize: '24px',
+                    transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(56, 189, 248, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(56, 189, 248, 0.4)';
                 }}
                 aria-label="Open Chat"
             >
@@ -139,9 +150,11 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
                     width: '350px',
                     height: '500px',
                     maxWidth: 'calc(100vw - 40px)',
-                    background: '#fff',
+                    background: 'rgba(30, 41, 59, 0.95)',
+                    backdropFilter: 'blur(12px)',
                     borderRadius: '16px',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
                     zIndex: 9999,
                     overflow: 'hidden',
                     display: 'flex',
@@ -151,7 +164,7 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
                         <ChatWindow
                             chat={chat}
                             messages={messages}
-                            currentUserId={userId}
+                            currentUserId={currentUser?.id || ''}
                             onSendMessage={handleSendMessage}
                             onCloseChat={() => setIsOpen(false)}
                             loading={loading}

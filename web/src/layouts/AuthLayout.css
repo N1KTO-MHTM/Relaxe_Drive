@@ -8,7 +8,7 @@
   padding-left: max(var(--rd-space-lg), env(safe-area-inset-left));
   padding-right: max(var(--rd-space-lg), env(safe-area-inset-right));
   position: relative;
-  background: var(--rd-bg);
+  background: var(--rd-premium-bg, var(--rd-bg));
 }
 
 @media (max-width: 480px) {

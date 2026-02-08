@@ -213,7 +213,7 @@ export default function Roles() {
 
   return (
     <div className="rd-page">
-      <div className="rd-panel roles-panel">
+      <div className="rd-premium-panel roles-panel">
         <div className="roles-header-row">
           <h1>{t('roles.title')}</h1>
           <p className="rd-text-muted">{t('roles.usersList')}</p>
@@ -431,7 +431,7 @@ export default function Roles() {
             padding: 16,
           }}
         >
-          <div className="rd-panel" style={{ maxWidth: 400, width: '100%' }}>
+          <div className="rd-premium-panel" style={{ maxWidth: 400, width: '100%' }}>
             <h3>{t('roles.delete')}: {deleteConfirmUser.nickname}</h3>
             <p className="rd-text-muted" style={{ marginTop: 8 }}>{t('roles.deleteConfirm')}</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
@@ -466,7 +466,7 @@ export default function Roles() {
             padding: 16,
           }}
         >
-          <div className="rd-panel" style={{ maxWidth: 400, width: '100%' }}>
+          <div className="rd-premium-panel" style={{ maxWidth: 400, width: '100%' }}>
             <h3>{t('roles.banUser')}: {banModal.user.nickname}</h3>
             <div style={{ marginTop: '1rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>

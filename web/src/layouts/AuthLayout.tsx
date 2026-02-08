@@ -25,7 +25,7 @@ export default function AuthLayout() {
           </button>
         ))}
       </div>
-      <div className="auth-layout__center rd-panel">
+      <div className="auth-layout__center rd-premium-panel">
         <Outlet />
       </div>
       <div className="auth-layout__version">

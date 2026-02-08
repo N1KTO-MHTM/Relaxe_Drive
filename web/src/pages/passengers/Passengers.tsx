@@ -182,7 +182,7 @@ export default function Passengers() {
 
   return (
     <div className="rd-page">
-      <div className="passengers-page rd-panel">
+      <div className="passengers-page rd-premium-panel">
         <div className="rd-panel-header">
           <h1>{t('passengers.title')}</h1>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
