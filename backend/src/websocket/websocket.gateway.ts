@@ -93,4 +93,8 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
   broadcastChatRead(payload: unknown) {
     this.server?.emit('chat.read', payload);
   }
+
+  broadcastOrderOffer(payload: unknown) {
+    this.server?.emit('order.offer', payload);
+  }
 }

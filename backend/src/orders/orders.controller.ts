@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { AuditService } from '../audit/audit.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -23,7 +36,7 @@ export class OrdersController {
     private usersService: UsersService,
     private passengersService: PassengersService,
     private planningService: PlanningService,
-  ) { }
+  ) {}
 
   @Get()
   async list(
@@ -33,17 +46,21 @@ export class OrdersController {
     @Query('driverId') driverId?: string,
   ) {
     const targetDriverId = req.user?.role === 'DRIVER' ? req.user.id : driverId;
-    const orders = (from && to)
-      ? await this.ordersService.findByDateRange(new Date(from), new Date(to), targetDriverId)
-      : await this.ordersService.findActiveAndScheduled(targetDriverId);
-    return orders.map(o => this.transformOrder(o));
+    const orders =
+      from && to
+        ? await this.ordersService.findByDateRange(new Date(from), new Date(to), targetDriverId)
+        : await this.ordersService.findActiveAndScheduled(targetDriverId);
+    return orders.map((o) => this.transformOrder(o));
   }
 
   private transformOrder(order: any) {
     if (!order) return order;
     return {
       ...order,
-      waypoints: order.waypoints && typeof order.waypoints === 'string' ? JSON.parse(order.waypoints) : order.waypoints || [],
+      waypoints:
+        order.waypoints && typeof order.waypoints === 'string'
+          ? JSON.parse(order.waypoints)
+          : order.waypoints || [],
     };
   }
 
@@ -52,17 +69,19 @@ export class OrdersController {
   @Roles('ADMIN', 'DISPATCHER')
   async getByPhone(@Param('phone') phone: string) {
     const orders = await this.ordersService.findLastByPhone(phone, 10);
-    const results = await Promise.all(orders.map(async (o) => {
-      const [pickup, dropoff] = await Promise.all([
-        this.geo.geocode(o.pickupAddress),
-        this.geo.geocode(o.dropoffAddress),
-      ]);
-      return {
-        ...this.transformOrder(o),
-        pickupCoords: pickup,
-        dropoffCoords: dropoff,
-      };
-    }));
+    const results = await Promise.all(
+      orders.map(async (o) => {
+        const [pickup, dropoff] = await Promise.all([
+          this.geo.geocode(o.pickupAddress),
+          this.geo.geocode(o.dropoffAddress),
+        ]);
+        return {
+          ...this.transformOrder(o),
+          pickupCoords: pickup,
+          dropoffCoords: dropoff,
+        };
+      }),
+    );
     return results;
   }
 
@@ -77,10 +96,20 @@ export class OrdersController {
       this.geo.geocode(order.dropoffAddress),
     ]);
     const drivers = await this.usersService.findAll();
-    let driverList = drivers.filter((u) => u.role === 'DRIVER' && u.available !== false && u.lat != null && u.lng != null && Number.isFinite(u.lat) && Number.isFinite(u.lng));
+    let driverList = drivers.filter(
+      (u) =>
+        u.role === 'DRIVER' &&
+        u.available !== false &&
+        u.lat != null &&
+        u.lng != null &&
+        Number.isFinite(u.lat) &&
+        Number.isFinite(u.lng),
+    );
     if (order.preferredCarType && order.preferredCarType.trim()) {
       const preferred = order.preferredCarType.trim().toUpperCase();
-      driverList = driverList.filter((d) => (d as { carType?: string | null }).carType === preferred);
+      driverList = driverList.filter(
+        (d) => (d as { carType?: string | null }).carType === preferred,
+      );
     }
     const results: Array<{
       id: string;
@@ -124,18 +153,39 @@ export class OrdersController {
     @Request() req?: { user: { id: string; role: string } },
   ) {
     const order = await this.ordersService.findById(orderId);
-    if (!order) return { pickupCoords: null, dropoffCoords: null, polyline: '', durationMinutes: 0, distanceKm: 0 };
+    if (!order)
+      return {
+        pickupCoords: null,
+        dropoffCoords: null,
+        polyline: '',
+        durationMinutes: 0,
+        distanceKm: 0,
+      };
     if (req?.user?.role === 'DRIVER' && order.driverId !== req.user.id) {
       throw new ForbiddenException('You can only view the route for orders assigned to you');
     }
     const pickupCoords = await this.geo.geocode(order.pickupAddress);
     const dropoffCoords = await this.geo.geocode(order.dropoffAddress);
     if (!pickupCoords || !dropoffCoords) {
-      return { pickupCoords: pickupCoords ?? null, dropoffCoords: dropoffCoords ?? null, polyline: '', durationMinutes: 0, distanceKm: 0 };
+      return {
+        pickupCoords: pickupCoords ?? null,
+        dropoffCoords: dropoffCoords ?? null,
+        polyline: '',
+        durationMinutes: 0,
+        distanceKm: 0,
+      };
     }
-    const waypointsRaw = order.waypoints && typeof order.waypoints === 'string' ? JSON.parse(order.waypoints) : [];
-    const stopAddresses = Array.isArray(waypointsRaw) ? waypointsRaw.map((w) => w?.address).filter(Boolean) as string[] : [];
-    let pickupToDropoff: { polyline: string; durationMinutes: number; distanceKm: number; steps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }> };
+    const waypointsRaw =
+      order.waypoints && typeof order.waypoints === 'string' ? JSON.parse(order.waypoints) : [];
+    const stopAddresses = Array.isArray(waypointsRaw)
+      ? (waypointsRaw.map((w) => w?.address).filter(Boolean) as string[])
+      : [];
+    let pickupToDropoff: {
+      polyline: string;
+      durationMinutes: number;
+      distanceKm: number;
+      steps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }>;
+    };
     if (stopAddresses.length > 0) {
       const stopCoords: Array<{ lat: number; lng: number }> = [];
       for (const addr of stopAddresses) {
@@ -147,8 +197,11 @@ export class OrdersController {
     } else {
       pickupToDropoff = await this.geo.getRoute(pickupCoords, dropoffCoords);
     }
-    const wantAlternatives = (alternatives === 'true' || alternatives === '1') && stopAddresses.length === 0;
-    const altRoutes = wantAlternatives ? await this.geo.getRouteAlternatives(pickupCoords, dropoffCoords, 3) : null;
+    const wantAlternatives =
+      (alternatives === 'true' || alternatives === '1') && stopAddresses.length === 0;
+    const altRoutes = wantAlternatives
+      ? await this.geo.getRouteAlternatives(pickupCoords, dropoffCoords, 3)
+      : null;
     const out: {
       pickupCoords: typeof pickupCoords;
       dropoffCoords: typeof dropoffCoords;
@@ -158,7 +211,12 @@ export class OrdersController {
       steps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }>;
       driverToPickupPolyline?: string;
       driverToPickupMinutes?: number;
-      driverToPickupSteps?: Array<{ type: number; instruction: string; distanceM: number; durationS: number }>;
+      driverToPickupSteps?: Array<{
+        type: number;
+        instruction: string;
+        distanceM: number;
+        durationS: number;
+      }>;
       alternativeRoutes?: Array<{ polyline: string; durationMinutes: number; distanceKm: number }>;
     } = {
       pickupCoords,
@@ -169,12 +227,19 @@ export class OrdersController {
       steps: pickupToDropoff.steps,
     };
     if (altRoutes && altRoutes.length > 1) {
-      out.alternativeRoutes = altRoutes.slice(0, 4).map((r) => ({ polyline: r.polyline, durationMinutes: r.durationMinutes, distanceKm: r.distanceKm }));
+      out.alternativeRoutes = altRoutes.slice(0, 4).map((r) => ({
+        polyline: r.polyline,
+        durationMinutes: r.durationMinutes,
+        distanceKm: r.distanceKm,
+      }));
     }
     const fromLatN = fromLat != null && fromLat !== '' ? parseFloat(fromLat) : NaN;
     const fromLngN = fromLng != null && fromLng !== '' ? parseFloat(fromLng) : NaN;
     if (Number.isFinite(fromLatN) && Number.isFinite(fromLngN) && pickupCoords) {
-      const driverToPickup = await this.geo.getRoute({ lat: fromLatN, lng: fromLngN }, pickupCoords);
+      const driverToPickup = await this.geo.getRoute(
+        { lat: fromLatN, lng: fromLngN },
+        pickupCoords,
+      );
       out.driverToPickupPolyline = driverToPickup.polyline;
       out.driverToPickupMinutes = driverToPickup.durationMinutes;
       out.driverToPickupSteps = driverToPickup.steps;
@@ -187,7 +252,8 @@ export class OrdersController {
   @Roles('ADMIN', 'DISPATCHER')
   async create(
     @Request() req: { user: { id: string } },
-    @Body() body: {
+    @Body()
+    body: {
       pickupAt?: string;
       pickupAddress: string;
       dropoffAddress: string;
@@ -203,6 +269,9 @@ export class OrdersController {
       bufferMinutes?: number;
       preferredCarType?: string | null;
       manualEntry?: boolean;
+      isAuto?: boolean;
+      amount?: number;
+      dropoffImageUrl?: string;
     },
   ) {
     let passengerId = body.passengerId;
@@ -225,10 +294,20 @@ export class OrdersController {
     // Save address history if passenger exists and not manual entry
     if (passengerId && !body.manualEntry) {
       if (body.pickupAddress?.trim()) {
-        await this.passengersService.saveAddressHistory(passengerId, body.pickupAddress, 'pickup', body.pickupType);
+        await this.passengersService.saveAddressHistory(
+          passengerId,
+          body.pickupAddress,
+          'pickup',
+          body.pickupType,
+        );
       }
       if (body.dropoffAddress?.trim()) {
-        await this.passengersService.saveAddressHistory(passengerId, body.dropoffAddress, 'dropoff', body.dropoffType);
+        await this.passengersService.saveAddressHistory(
+          passengerId,
+          body.dropoffAddress,
+          'dropoff',
+          body.dropoffType,
+        );
       }
       if (body.middleAddress?.trim()) {
         await this.passengersService.saveAddressHistory(passengerId, body.middleAddress, 'stop');
@@ -236,7 +315,13 @@ export class OrdersController {
     }
     const pickupAtDate = (() => {
       const raw = body.pickupAt;
-      if (raw === undefined || raw === null || String(raw).trim() === '' || String(raw) === 'Invalid Date') return new Date();
+      if (
+        raw === undefined ||
+        raw === null ||
+        String(raw).trim() === '' ||
+        String(raw) === 'Invalid Date'
+      )
+        return new Date();
       const d = new Date(raw);
       return Number.isNaN(d.getTime()) ? new Date() : d;
     })();
@@ -254,7 +339,15 @@ export class OrdersController {
       preferredCarType: body.preferredCarType ?? null,
       bufferMinutes: body.bufferMinutes,
       createdById: req.user.id,
+      dropoffImageUrl: body.dropoffImageUrl,
+      status: body.isAuto ? 'SEARCHING' : 'SCHEDULED',
     });
+
+    // If auto order, broadcast offer to drivers
+    if (body.isAuto) {
+      this.ws.broadcastOrderOffer(this.transformOrder(created));
+    }
+
     await this.audit.log(req.user.id, 'order.create', 'order', {
       orderId: created.id,
       pickupAt: body.pickupAt ?? created.pickupAt?.toISOString(),
@@ -262,9 +355,13 @@ export class OrdersController {
       dropoffAddress: body.dropoffAddress,
     });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.alerts.emitAlert('order.created', { orderId: created.id, pickupAddress: created.pickupAddress, pickupAt: created.pickupAt?.toISOString() });
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.alerts.emitAlert('order.created', {
+      orderId: created.id,
+      pickupAddress: created.pickupAddress,
+      pickupAt: created.pickupAt?.toISOString(),
+    });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(created);
   }
 
@@ -280,7 +377,13 @@ export class OrdersController {
     const driver = await this.usersService.findById(body.driverId);
     const driverLat = driver?.lat ?? null;
     const driverLng = driver?.lng ?? null;
-    if (updated.pickupAddress && driverLat != null && driverLng != null && Number.isFinite(driverLat) && Number.isFinite(driverLng)) {
+    if (
+      updated.pickupAddress &&
+      driverLat != null &&
+      driverLng != null &&
+      Number.isFinite(driverLat) &&
+      Number.isFinite(driverLng)
+    ) {
       try {
         const pickupCoords = await this.geo.geocode(updated.pickupAddress);
         if (pickupCoords) {
@@ -293,27 +396,71 @@ export class OrdersController {
         // keep pickupAt as-is if ETA fails
       }
     }
-    await this.audit.log(req.user.id, 'order.assign', 'order', { orderId, driverId: body.driverId });
+    await this.audit.log(req.user.id, 'order.assign', 'order', {
+      orderId,
+      driverId: body.driverId,
+    });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.alerts.emitAlert('order.assigned', { orderId, driverId: body.driverId, pickupAddress: updated.pickupAddress ?? undefined });
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.alerts.emitAlert('order.assigned', {
+      orderId,
+      driverId: body.driverId,
+      pickupAddress: updated.pickupAddress ?? undefined,
+    });
+    this.planningService.recalculateAndEmit().catch(() => {});
+    return this.transformOrder(updated);
+  }
+
+  @Patch(':id/accept')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  async acceptOrder(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
+    const updated = await this.ordersService.acceptOrder(orderId, req.user.id);
+    if (!updated) throw new NotFoundException('Order not found');
+
+    // Calculate initial ETA for pickupAt
+    const driver = await this.usersService.findById(req.user.id);
+    if (driver?.lat && driver?.lng && updated.pickupAddress) {
+      try {
+        const pickupCoords = await this.geo.geocode(updated.pickupAddress);
+        if (pickupCoords) {
+          const route = await this.geo.getRoute({ lat: driver.lat, lng: driver.lng }, pickupCoords);
+          const etaMinutes = Math.max(0, Math.round(route.durationMinutes ?? 0));
+          const driverArriveAt = new Date(Date.now() + etaMinutes * 60 * 1000);
+          await this.ordersService.updatePickupAt(orderId, driverArriveAt);
+          updated.pickupAt = driverArriveAt;
+        }
+      } catch (e) {
+        // Ignore ETA failures
+      }
+    }
+
+    await this.audit.log(req.user.id, 'order.accept', 'order', { orderId });
+    const list = await this.ordersService.findActiveAndScheduled();
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.alerts.emitAlert('order.assigned', {
+      orderId,
+      driverId: req.user.id,
+      pickupAddress: updated.pickupAddress ?? undefined,
+    });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(updated);
   }
 
   @Patch(':id/reject')
   @UseGuards(RolesGuard)
   @Roles('DRIVER')
-  async reject(
-    @Param('id') orderId: string,
-    @Request() req: { user: { id: string } },
-  ) {
+  async reject(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.driverReject(orderId, req.user.id);
     await this.audit.log(req.user.id, 'order.driver_reject', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.alerts.emitAlert('order.rejected', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.alerts.emitAlert('order.rejected', {
+      orderId,
+      driverId: req.user.id,
+      pickupAddress: updated.pickupAddress ?? undefined,
+    });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(updated);
   }
 
@@ -323,7 +470,7 @@ export class OrdersController {
   async arrivedAtPickup(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setArrivedAtPickup(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
     return this.transformOrder(updated);
   }
 
@@ -333,7 +480,7 @@ export class OrdersController {
   async arrivedAtMiddle(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setArrivedAtMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
     return this.transformOrder(updated);
   }
 
@@ -343,23 +490,31 @@ export class OrdersController {
   async leftMiddle(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setLeftMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
     return this.transformOrder(updated);
   }
 
   @Patch(':id/stop-underway')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async stopUnderway(
     @Param('id') orderId: string,
+    @Body() body: { lat?: number; lng?: number; address?: string },
     @Request() req: { user: { id: string } },
   ) {
-    const updated = await this.ordersService.stopUnderway(orderId, req.user.id);
+    const location =
+      body.lat && body.lng && body.address
+        ? { lat: body.lat, lng: body.lng, address: body.address }
+        : undefined;
+    const updated = await this.ordersService.stopUnderway(orderId, req.user.id, location);
     await this.audit.log(req.user.id, 'order.stop_underway', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.alerts.emitAlert('order.stopped_underway', { orderId, driverId: req.user.id, pickupAddress: updated.pickupAddress ?? undefined });
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.alerts.emitAlert('order.stopped_underway', {
+      orderId,
+      driverId: req.user.id,
+      pickupAddress: updated.pickupAddress ?? undefined,
+    });
+    this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(updated);
   }
 
@@ -368,7 +523,12 @@ export class OrdersController {
   @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async updateStatus(
     @Param('id') orderId: string,
-    @Body() body: { status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'; distanceKm?: number; earningsCents?: number },
+    @Body()
+    body: {
+      status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+      distanceKm?: number;
+      earningsCents?: number;
+    },
     @Request() req: { user: { id: string; role: string } },
   ) {
     const result = await this.ordersService.updateStatus(
@@ -377,9 +537,12 @@ export class OrdersController {
       req.user.role === 'DRIVER' ? req.user.id : undefined,
       { distanceKm: body.distanceKm, earningsCents: body.earningsCents },
     );
-    await this.audit.log(req.user.id, 'order.status_change', 'order', { orderId, status: body.status });
+    await this.audit.log(req.user.id, 'order.status_change', 'order', {
+      orderId,
+      status: body.status,
+    });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
     if (body.status === 'COMPLETED') {
       this.alerts.emitAlert('order.completed', { orderId });
     }
@@ -395,10 +558,13 @@ export class OrdersController {
     @Request() req: { user: { id: string } },
   ) {
     const updated = await this.ordersService.setManualAssignment(orderId, !!body.manualAssignment);
-    await this.audit.log(req.user.id, 'order.manual_flag', 'order', { orderId, manualAssignment: !!body.manualAssignment });
+    await this.audit.log(req.user.id, 'order.manual_flag', 'order', {
+      orderId,
+      manualAssignment: !!body.manualAssignment,
+    });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(updated);
   }
 
@@ -414,8 +580,8 @@ export class OrdersController {
     const updated = await this.ordersService.delayOrder(orderId, delayMinutes);
     await this.audit.log(req.user.id, 'order.delay', 'order', { orderId, delayMinutes });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(updated);
   }
 
@@ -426,8 +592,8 @@ export class OrdersController {
     await this.ordersService.delete(orderId);
     await this.audit.log(req.user.id, 'order.delete', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
-    this.planningService.recalculateAndEmit().catch(() => { });
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+    this.planningService.recalculateAndEmit().catch(() => {});
     return { deleted: true };
   }
 
@@ -439,9 +605,15 @@ export class OrdersController {
     @Body() body: { minutes: number | null; notes?: string; type?: 'pickup' | 'middle' },
     @Request() req: { user: { id: string } },
   ) {
-    const updated = await this.ordersService.setWaitInfo(orderId, req.user.id, body.minutes, body.notes, body.type);
+    const updated = await this.ordersService.setWaitInfo(
+      orderId,
+      req.user.id,
+      body.minutes,
+      body.notes,
+      body.type,
+    );
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
     return this.transformOrder(updated);
   }
 }

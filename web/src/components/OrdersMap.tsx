@@ -7,8 +7,14 @@ import { DriverForMap, DriverMapStatus, OrderRouteData } from '../types';
 const DEFAULT_CENTER: [number, number] = [41.1112, -74.0438]; // Spring Valley, NY
 const DEFAULT_ZOOM = 12;
 
-
-export type DriverReportMap = { id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string };
+export type DriverReportMap = {
+  id: string;
+  lat: number;
+  lng: number;
+  type: string;
+  description?: string | null;
+  createdAt?: string;
+};
 
 interface OrdersMapProps {
   drivers?: DriverForMap[];
@@ -32,7 +38,10 @@ interface OrdersMapProps {
   /** Future orders for overlay: semi-transparent pickup markers (exclude selected) */
   futureOrderPickups?: { orderId: string; lat: number; lng: number; pickupAt: string }[];
   /** Problem zones for heatmap: late pickups and cancelled (from GET /planning/problem-zones) */
-  problemZones?: { late: { lat: number; lng: number }[]; cancelled: { lat: number; lng: number }[] };
+  problemZones?: {
+    late: { lat: number; lng: number }[];
+    cancelled: { lat: number; lng: number }[];
+  };
   /** When set, Re-center / centerTrigger will move map to this point (e.g. search by geo or driver location) */
   focusCenter?: { lat: number; lng: number } | null;
   /** Optional "My location" button label and callback to center map on user's geo */
@@ -56,7 +65,12 @@ interface OrdersMapProps {
   /** When true (driver view): only show reports, route line and my location; no pickup/dropoff markers. */
   driverView?: boolean;
   /** Zones to display (polygons) */
-  zones?: Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>;
+  zones?: Array<{
+    id: string;
+    name: string;
+    color: string;
+    points: Array<{ lat: number; lng: number }>;
+  }>;
   /** Whether to show the zones on the map */
   showZones?: boolean;
 }
@@ -76,7 +90,7 @@ export function decodePolyline(encoded: string): [number, number][] {
       result |= (b & 31) << shift;
       shift += 5;
     } while (b >= 32);
-    const dlat = (result & 1) ? ~(result >> 1) : result >> 1;
+    const dlat = result & 1 ? ~(result >> 1) : result >> 1;
     shift = 0;
     result = 0;
     do {
@@ -84,7 +98,7 @@ export function decodePolyline(encoded: string): [number, number][] {
       result |= (b & 31) << shift;
       shift += 5;
     } while (b >= 32);
-    const dlng = (result & 1) ? ~(result >> 1) : result >> 1;
+    const dlng = result & 1 ? ~(result >> 1) : result >> 1;
     lat += dlat;
     lng += dlng;
     points.push([lat / 1e5, lng / 1e5]);
@@ -102,22 +116,23 @@ const defaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = defaultIcon;
 
-const DRIVER_COLORS: Record<DriverMapStatus, string> = {
-  available: '#22c55e',
-  busy: '#ef4444',
-  offline: '#6b7280',
-};
-
 /** SVG car icon (top-down) for consistent look across devices */
-const CAR_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
+const CAR_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>';
 
 /** SVG arrow (pointing up) for driver "You" marker */
-const ARROW_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
+const ARROW_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
 
 /** "You" marker: blue car icon, optional rotation (degrees) for heading. */
 function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
-  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;` : '';
-  const svg = CAR_ICON_SVG.replace('width="18" height="18"', 'width="32" height="32"').replace('fill="white"', 'fill="#2563eb"').replace('<svg', `<svg style="${transform}"`);
+  const transform =
+    rotationDegrees != null && Number.isFinite(rotationDegrees)
+      ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;`
+      : '';
+  const svg = CAR_ICON_SVG.replace('width="18" height="18"', 'width="32" height="32"')
+    .replace('fill="white"', 'fill="#2563eb"')
+    .replace('<svg', `<svg style="${transform}"`);
   return L.divIcon({
     className: 'orders-map-current-user-marker',
     html: `<span style="display:flex;align-items:center;justify-content:center;" title="You">${svg}</span>`,
@@ -128,35 +143,18 @@ function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
 
 /** "You" marker: blue arrow icon (pointing up), optional rotation for heading. */
 function currentUserArrowIcon(rotationDegrees?: number): L.DivIcon {
-  const transform = rotationDegrees != null && Number.isFinite(rotationDegrees) ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;` : '';
-  const svg = ARROW_ICON_SVG.replace('width="22" height="22"', 'width="32" height="32"').replace('fill="white"', 'fill="#2563eb"').replace('<svg', `<svg style="${transform}"`);
+  const transform =
+    rotationDegrees != null && Number.isFinite(rotationDegrees)
+      ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;`
+      : '';
+  const svg = ARROW_ICON_SVG.replace('width="22" height="22"', 'width="32" height="32"')
+    .replace('fill="white"', 'fill="#2563eb"')
+    .replace('<svg', `<svg style="${transform}"`);
   return L.divIcon({
     className: 'orders-map-current-user-marker',
     html: `<span style="display:flex;align-items:center;justify-content:center;" title="You">${svg}</span>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
-  });
-}
-
-/** Car-type emoji for driver marker: sedan, minivan, SUV. */
-function carTypeEmoji(carType?: string | null): string {
-  if (!carType) return '🚗';
-  const u = carType.toUpperCase();
-  if (u === 'MINIVAN') return '🚐';
-  if (u === 'SUV') return '🚙';
-  return '🚗'; // SEDAN or default
-}
-
-/** Driver marker: green = available, red = on trip, gray = offline. Uses car-type emoji (sedan/minivan/SUV). Rotates if heading provided. */
-function driverIcon(status: DriverMapStatus, carType?: string | null, rotation?: number): L.DivIcon {
-  const color = DRIVER_COLORS[status];
-  const emoji = carTypeEmoji(carType);
-  const transform = rotation != null && Number.isFinite(rotation) ? `transform:rotate(${rotation}deg);transform-origin:center center;` : '';
-  return L.divIcon({
-    className: 'orders-map-driver-marker orders-map-driver-car',
-    html: `<div style="${transform}transition:transform 0.3s linear;"><span style="background:${color};border:2px solid #fff;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.4);" title="Driver">${emoji}</span></div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
   });
 }
 
@@ -214,12 +212,48 @@ function orderPickupIcon(riskLevel: string | null | undefined): L.DivIcon {
 
 declare global {
   interface Window {
-    L: typeof L & { heatLayer?: (latlngs: [number, number, number][], options?: { radius?: number; blur?: number; gradient?: Record<number, string> }) => L.Layer };
+    L: typeof L & {
+      heatLayer?: (
+        latlngs: [number, number, number][],
+        options?: { radius?: number; blur?: number; gradient?: Record<number, string> },
+      ) => L.Layer;
+    };
   }
 }
 
 const SMOOTH_MOVE_MS = 1000;
-export default function OrdersMap({ drivers = [], showDriverMarkers = false, routeData, currentUserLocation, onMapClick, pickPoint, navMode = false, centerTrigger = 0, reports = [], selectedRouteIndex = 0, onRecenter, recenterLabel = 'Re-center', orderRiskLevel, selectedOrderTooltip, futureOrderPickups = [], problemZones, zones = [], showZones = true, focusCenter, initialCenter, initialZoom, onMapViewChange, driverMarkerStyle = 'car', currentUserSpeedMph, currentUserStandingStartedAt, currentUserHeadingTo, currentUserHeadingDegrees, driverView = false, myLocationLabel, onMyLocation }: OrdersMapProps) {
+export default function OrdersMap({
+  drivers = [],
+  showDriverMarkers = false,
+  routeData,
+  currentUserLocation,
+  onMapClick,
+  pickPoint,
+  navMode = false,
+  centerTrigger = 0,
+  reports = [],
+  selectedRouteIndex = 0,
+  onRecenter,
+  recenterLabel = 'Re-center',
+  orderRiskLevel,
+  selectedOrderTooltip,
+  futureOrderPickups = [],
+  problemZones,
+  zones = [],
+  showZones = true,
+  focusCenter,
+  initialCenter,
+  initialZoom,
+  onMapViewChange,
+  driverMarkerStyle = 'car',
+  currentUserSpeedMph,
+  currentUserStandingStartedAt,
+  currentUserHeadingTo,
+  currentUserHeadingDegrees,
+  driverView = false,
+  myLocationLabel,
+  onMyLocation,
+}: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -242,10 +276,15 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     if (!containerRef.current) return;
     if (mapRef.current) return;
     const el = containerRef.current;
-    const startCenter = (initialCenter && initialCenter.length === 2 && Number.isFinite(initialCenter[0]) && Number.isFinite(initialCenter[1]))
-      ? initialCenter as [number, number]
-      : DEFAULT_CENTER;
-    const startZoom = typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
+    const startCenter =
+      initialCenter &&
+      initialCenter.length === 2 &&
+      Number.isFinite(initialCenter[0]) &&
+      Number.isFinite(initialCenter[1])
+        ? (initialCenter as [number, number])
+        : DEFAULT_CENTER;
+    const startZoom =
+      typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
     const map = L.map(el).setView(startCenter, startZoom);
     const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -273,7 +312,13 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
     const timeouts: number[] = [];
-    [100, 400, 1000].forEach((ms) => timeouts.push(window.setTimeout(() => { map.invalidateSize(); }, ms)));
+    [100, 400, 1000].forEach((ms) =>
+      timeouts.push(
+        window.setTimeout(() => {
+          map.invalidateSize();
+        }, ms),
+      ),
+    );
     return () => {
       timeouts.forEach((id) => clearTimeout(id));
       if (handleMoveEnd) {
@@ -348,6 +393,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       return;
     }
     if (driverClusterRef.current) return;
+
     const clusterGroup = L.markerClusterGroup({
       maxClusterRadius: 60,
       spiderfyOnMaxZoom: true,
@@ -378,7 +424,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     const map = mapRef.current;
     const cluster = driverClusterRef.current;
     if (!map || !cluster || !showDriverMarkers) return;
-    const withCoords = drivers.filter((d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng));
+    const withCoords = drivers.filter(
+      (d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng),
+    );
     const ids = new Set(withCoords.map((d) => d.id));
 
     withCoords.forEach((driver) => {
@@ -387,20 +435,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       const lng = driver.lng!;
       let marker = driverMarkersByIdRef.current.get(driver.id);
 
-      // Calculate heading if moving
-      let rotation = 0;
-      if (marker) {
-        const prev = marker.getLatLng();
-        if (prev.lat !== lat || prev.lng !== lng) {
-          // Simple bearing calculation
-          const y = Math.sin(lng - prev.lng) * Math.cos(lat);
-          const x = Math.cos(prev.lat) * Math.sin(lat) - Math.sin(prev.lat) * Math.cos(lat) * Math.cos(lng - prev.lng);
-          const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-          rotation = brng;
-        }
-      }
-
-      const icon = driverIcon(status, driver.carType, rotation);
+      const icon = driverIcon(driver);
 
       if (marker) {
         const prev = marker.getLatLng();
@@ -413,15 +448,19 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           marker.setIcon(icon);
         }
 
-        if (distM > 500) { // Teleport if distance > 500m (approx 30s at 60mph)
+        if (distM > 500) {
+          // Teleport if distance > 500m (approx 30s at 60mph)
           marker.setLatLng([lat, lng]);
         } else if (distM > 2) {
           const startTime = performance.now();
-          const startLat = prev.lat, startLng = prev.lng;
+          const startLat = prev.lat,
+            startLng = prev.lng;
           const animate = () => {
             const t = Math.min((performance.now() - startTime) / SMOOTH_MOVE_MS, 1);
             const eased = t < 1 ? 1 - (1 - t) * (1 - t) : 1;
-            marker!.setLatLng(L.latLng(startLat + (lat - startLat) * eased, startLng + (lng - startLng) * eased));
+            marker!.setLatLng(
+              L.latLng(startLat + (lat - startLat) * eased, startLng + (lng - startLng) * eased),
+            );
             if (t < 1) requestAnimationFrame(animate);
           };
           requestAnimationFrame(animate);
@@ -474,8 +513,11 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
             </div>`;
         }
 
-        const statusLabel = driver.statusLabel ?? (status === 'busy' ? 'On trip' : status === 'available' ? 'Available' : 'Offline');
-        const statusColor = status === 'available' ? '#4ade80' : status === 'busy' ? '#f87171' : '#9ca3af';
+        const statusLabel =
+          driver.statusLabel ??
+          (status === 'busy' ? 'On trip' : status === 'available' ? 'Available' : 'Offline');
+        const statusColor =
+          status === 'available' ? '#4ade80' : status === 'busy' ? '#f87171' : '#9ca3af';
         contentHtml += `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
               <span style="color: #9ca3af;">Status:</span>
@@ -512,7 +554,11 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           </div>
         `;
 
-        marker.bindPopup(contentHtml, { closeOnClick: false, autoClose: false, className: 'orders-map-dark-popup' });
+        marker.bindPopup(contentHtml, {
+          closeOnClick: false,
+          autoClose: false,
+          className: 'orders-map-dark-popup',
+        });
         cluster.addLayer(marker);
         driverMarkersByIdRef.current.set(driver.id, marker);
       }
@@ -525,6 +571,53 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
     });
   }, [drivers, showDriverMarkers, t]);
+
+  // Helper function to create driver icons
+  const driverIcon = (d: DriverForMap) => {
+    const isBusy = d.status === 'busy';
+    const isOffline = d.status === 'offline';
+    const statusClass = isBusy ? 'filter-busy' : isOffline ? 'filter-offline' : 'filter-available';
+
+    // Construct the label content:
+    let infoLabel = '';
+    if (isBusy && (d.currentOrderDistance || d.assignedOrderDropoff || d.assignedOrderPickup)) {
+      const dest = d.assignedOrderDropoff
+        ? d.assignedOrderDropoff.split(',')[0]
+        : d.assignedOrderPickup
+          ? d.assignedOrderPickup.split(',')[0]
+          : '';
+      const dist = d.currentOrderDistance ? `(${d.currentOrderDistance})` : '';
+      if (dest || dist) {
+        infoLabel = `<div class="driver-marker-info" style="
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            z-index: 1000;
+          ">${dest} ${dist}</div>`;
+      }
+    }
+
+    return L.divIcon({
+      className: 'driver-marker-icon',
+      html: `
+      <div class="driver-marker-wrapper ${statusClass}" style="position: relative;">
+         <div class="driver-marker-car">
+            <img src="/marker-car.png" alt="Car" />
+         </div>
+         ${infoLabel}
+      </div>
+    `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+    });
+  };
 
   // Future order pickups overlay (semi-transparent); skip in driver view
   useEffect(() => {
@@ -569,8 +662,20 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     late.forEach((p) => points.push([p.lat, p.lng, 0.8]));
     cancelled.forEach((p) => points.push([p.lat, p.lng, 0.5]));
     if (points.length === 0) return;
-    const winL = typeof window !== 'undefined' ? (window as unknown as { L?: typeof L & { heatLayer?: (latlngs: [number, number, number][], o?: object) => L.Layer } }).L : null;
-    const HeatLayer = winL?.heatLayer ?? (L as unknown as { heatLayer?: (latlngs: [number, number, number][], o?: object) => L.Layer }).heatLayer;
+    const winL =
+      typeof window !== 'undefined'
+        ? (
+            window as unknown as {
+              L?: typeof L & {
+                heatLayer?: (latlngs: [number, number, number][], o?: object) => L.Layer;
+              };
+            }
+          ).L
+        : null;
+    const HeatLayer =
+      winL?.heatLayer ??
+      (L as unknown as { heatLayer?: (latlngs: [number, number, number][], o?: object) => L.Layer })
+        .heatLayer;
     if (HeatLayer) {
       const layer = HeatLayer(points, { radius: 32, blur: 22, minOpacity: 0.35 });
       layer.addTo(map);
@@ -578,10 +683,22 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     } else {
       const circleGroup = L.layerGroup();
       late.forEach((p) => {
-        L.circle([p.lat, p.lng], { radius: 400, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.35, weight: 2 }).addTo(circleGroup);
+        L.circle([p.lat, p.lng], {
+          radius: 400,
+          color: '#f59e0b',
+          fillColor: '#f59e0b',
+          fillOpacity: 0.35,
+          weight: 2,
+        }).addTo(circleGroup);
       });
       cancelled.forEach((p) => {
-        L.circle([p.lat, p.lng], { radius: 350, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.3, weight: 2 }).addTo(circleGroup);
+        L.circle([p.lat, p.lng], {
+          radius: 350,
+          color: '#ef4444',
+          fillColor: '#ef4444',
+          fillOpacity: 0.3,
+          weight: 2,
+        }).addTo(circleGroup);
       });
       circleGroup.addTo(map);
       heatLayerRef.current = circleGroup;
@@ -616,7 +733,12 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           fillOpacity: 0.2, // Transparent as requested
           interactive: true,
         }).addTo(group);
-        poly.bindTooltip(z.name, { permanent: true, direction: 'center', className: 'rd-zone-label', opacity: 0.7 });
+        poly.bindTooltip(z.name, {
+          permanent: true,
+          direction: 'center',
+          className: 'rd-zone-label',
+          opacity: 0.7,
+        });
         poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
       } catch (e) {
         console.error('Failed to render zone', z, e);
@@ -636,7 +758,11 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (!currentUserLocation || !Number.isFinite(currentUserLocation.lat) || !Number.isFinite(currentUserLocation.lng)) {
+    if (
+      !currentUserLocation ||
+      !Number.isFinite(currentUserLocation.lat) ||
+      !Number.isFinite(currentUserLocation.lng)
+    ) {
       if (currentUserMarkerRef.current) {
         map.removeLayer(currentUserMarkerRef.current);
         currentUserMarkerRef.current = null;
@@ -646,7 +772,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     }
     const target = { lat: currentUserLocation.lat, lng: currentUserLocation.lng };
     if (!currentUserMarkerRef.current) {
-      const icon = driverMarkerStyle === 'arrow' ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined) : currentUserCarIcon(currentUserHeadingDegrees ?? undefined);
+      const icon =
+        driverMarkerStyle === 'arrow'
+          ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined)
+          : currentUserCarIcon(currentUserHeadingDegrees ?? undefined);
       const m = L.marker([target.lat, target.lng], { icon }).addTo(map);
       const popupLines = ['You'];
       if (currentUserStandingStartedAt != null) {
@@ -667,15 +796,31 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         currentUserTargetRef.current = null;
       };
     }
-    currentUserMarkerRef.current.setIcon(driverMarkerStyle === 'arrow' ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined) : currentUserCarIcon(currentUserHeadingDegrees ?? undefined));
+    currentUserMarkerRef.current.setIcon(
+      driverMarkerStyle === 'arrow'
+        ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined)
+        : currentUserCarIcon(currentUserHeadingDegrees ?? undefined),
+    );
     currentUserTargetRef.current = target;
-  }, [driverMarkerStyle, currentUserLocation?.lat, currentUserLocation?.lng, currentUserHeadingDegrees]);
+  }, [
+    driverMarkerStyle,
+    currentUserLocation?.lat,
+    currentUserLocation?.lng,
+    currentUserHeadingDegrees,
+  ]);
 
   // Smooth animate marker to new position when location updates (instant if jump is large)
   useEffect(() => {
     const map = mapRef.current;
     const marker = currentUserMarkerRef.current;
-    if (!map || !marker || !currentUserLocation || !Number.isFinite(currentUserLocation.lat) || !Number.isFinite(currentUserLocation.lng)) return;
+    if (
+      !map ||
+      !marker ||
+      !currentUserLocation ||
+      !Number.isFinite(currentUserLocation.lat) ||
+      !Number.isFinite(currentUserLocation.lng)
+    )
+      return;
     const start = marker.getLatLng();
     const end = L.latLng(currentUserLocation.lat, currentUserLocation.lng);
     const distM = Math.sqrt((end.lat - start.lat) ** 2 + (end.lng - start.lng) ** 2) * 111320;
@@ -701,7 +846,11 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (!currentUserLocation || !Number.isFinite(currentUserLocation.lat) || !Number.isFinite(currentUserLocation.lng)) {
+    if (
+      !currentUserLocation ||
+      !Number.isFinite(currentUserLocation.lat) ||
+      !Number.isFinite(currentUserLocation.lng)
+    ) {
       if (driverPathLayerRef.current) {
         map.removeLayer(driverPathLayerRef.current);
         driverPathLayerRef.current = null;
@@ -715,7 +864,13 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     if (driverPathLayerRef.current) map.removeLayer(driverPathLayerRef.current);
     if (trail.length < 2) return;
     const latLngs = trail.map(([lat, lng]) => L.latLng(lat, lng));
-    const line = L.polyline(latLngs, { color: '#2563eb', weight: 5, opacity: 0.7, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+    const line = L.polyline(latLngs, {
+      color: '#2563eb',
+      weight: 5,
+      opacity: 0.7,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }).addTo(map);
     driverPathLayerRef.current = line;
     return () => {
       if (driverPathLayerRef.current) {
@@ -758,22 +913,34 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     if (!routeData) return;
     const { pickupCoords, dropoffCoords, polyline, driverToPickupPolyline } = routeData;
     const allLatLngs: L.LatLng[] = [];
-    if (currentUserLocation && Number.isFinite(currentUserLocation.lat) && Number.isFinite(currentUserLocation.lng)) {
+    if (
+      currentUserLocation &&
+      Number.isFinite(currentUserLocation.lat) &&
+      Number.isFinite(currentUserLocation.lng)
+    ) {
       allLatLngs.push(L.latLng(currentUserLocation.lat, currentUserLocation.lng));
     }
     if (showDriverMarkers) {
-      drivers.filter((d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng)).forEach((d) => {
-        allLatLngs.push(L.latLng(d.lat!, d.lng!));
-      });
+      drivers
+        .filter(
+          (d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng),
+        )
+        .forEach((d) => {
+          allLatLngs.push(L.latLng(d.lat!, d.lng!));
+        });
     }
     if (!driverView) {
       if (pickupCoords) {
-        const m = L.marker([pickupCoords.lat, pickupCoords.lng], { icon: orderPickupIcon(orderRiskLevel) }).addTo(map);
+        const m = L.marker([pickupCoords.lat, pickupCoords.lng], {
+          icon: orderPickupIcon(orderRiskLevel),
+        }).addTo(map);
         const popupRows: string[] = ['<strong>Pickup</strong>'];
         if (selectedOrderTooltip) {
-          if (selectedOrderTooltip.eta) popupRows.push(`ETA: ${escapeHtml(selectedOrderTooltip.eta)}`);
+          if (selectedOrderTooltip.eta)
+            popupRows.push(`ETA: ${escapeHtml(selectedOrderTooltip.eta)}`);
           popupRows.push(selectedOrderTooltip.onTime ? 'On time' : 'At risk / Late');
-          if (selectedOrderTooltip.driverName) popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
+          if (selectedOrderTooltip.driverName)
+            popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
         }
         m.bindPopup(popupRows.join('<br/>'), { closeOnClick: false });
         orderMarkersRef.current.push(m);
@@ -791,14 +958,29 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
     // Route style: more visible roads (thicker outline + brighter main line)
-    const routeOutline = { color: '#0f172a', weight: 20, lineCap: 'round' as const, lineJoin: 'round' as const };
-    const routeMain = { color: '#3b82f6', weight: 12, opacity: 1, lineCap: 'round' as const, lineJoin: 'round' as const };
+    const routeOutline = {
+      color: '#0f172a',
+      weight: 20,
+      lineCap: 'round' as const,
+      lineJoin: 'round' as const,
+    };
+    const routeMain = {
+      color: '#3b82f6',
+      weight: 12,
+      opacity: 1,
+      lineCap: 'round' as const,
+      lineJoin: 'round' as const,
+    };
 
     if (driverToPickupPolyline && driverToPickupPolyline.length > 0) {
       try {
-        const latLngs = decodePolyline(driverToPickupPolyline).map(([lat, lng]) => L.latLng(lat, lng));
+        const latLngs = decodePolyline(driverToPickupPolyline).map(([lat, lng]) =>
+          L.latLng(lat, lng),
+        );
         const outline = L.polyline(latLngs, { ...routeOutline, dashArray: '14,12' }).addTo(map);
-        const line = L.polyline(latLngs, { ...routeMain, weight: 8, dashArray: '12,10' }).addTo(map);
+        const line = L.polyline(latLngs, { ...routeMain, weight: 8, dashArray: '12,10' }).addTo(
+          map,
+        );
         routeLayersRef.current.push(outline, line);
         latLngs.forEach((ll) => allLatLngs.push(ll));
       } catch {
@@ -806,9 +988,10 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       }
     }
     const altRoutes = routeData.alternativeRoutes ?? [];
-    const effectivePolyline = altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
-      ? altRoutes[selectedRouteIndex - 1].polyline
-      : polyline;
+    const effectivePolyline =
+      altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
+        ? altRoutes[selectedRouteIndex - 1].polyline
+        : polyline;
     if (effectivePolyline && effectivePolyline.length > 0) {
       try {
         const latLngs = decodePolyline(effectivePolyline).map(([lat, lng]) => L.latLng(lat, lng));
@@ -824,7 +1007,12 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       if (alt.polyline && alt.polyline.length > 0 && i !== selectedRouteIndex - 1) {
         try {
           const latLngs = decodePolyline(alt.polyline).map(([lat, lng]) => L.latLng(lat, lng));
-          const gray = L.polyline(latLngs, { color: '#64748b', weight: 5, opacity: 0.7, dashArray: '8,8' }).addTo(map);
+          const gray = L.polyline(latLngs, {
+            color: '#64748b',
+            weight: 5,
+            opacity: 0.7,
+            dashArray: '8,8',
+          }).addTo(map);
           routeLayersRef.current.push(gray);
         } catch {
           // ignore
@@ -841,7 +1029,18 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       orderMarkersRef.current.forEach((m) => m.remove());
       orderMarkersRef.current = [];
     };
-  }, [routeData, currentUserLocation?.lat, currentUserLocation?.lng, showDriverMarkers, drivers, navMode, selectedRouteIndex, orderRiskLevel, selectedOrderTooltip, driverView]);
+  }, [
+    routeData,
+    currentUserLocation?.lat,
+    currentUserLocation?.lng,
+    showDriverMarkers,
+    drivers,
+    navMode,
+    selectedRouteIndex,
+    orderRiskLevel,
+    selectedOrderTooltip,
+    driverView,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -853,7 +1052,9 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       const m = L.marker([r.lat, r.lng], { icon: reportIcon(r.type) }).addTo(map);
       const typeLabel = t(REPORT_TYPE_KEYS[r.type] || 'dashboard.reportOther');
       const emoji = REPORT_EMOJI[r.type] || REPORT_EMOJI.OTHER;
-      const ageSec = r.createdAt ? Math.max(0, Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 1000)) : 0;
+      const ageSec = r.createdAt
+        ? Math.max(0, Math.floor((Date.now() - new Date(r.createdAt).getTime()) / 1000))
+        : 0;
       const ageStr = ageSec < 60 ? `${ageSec}s ago` : `${Math.floor(ageSec / 60)}m ago`;
       const desc = r.description?.trim() ? escapeHtml(r.description) : '';
       const content = `<div class="orders-map-report-popup" data-report-id="${escapeHtml(r.id)}"><span style="font-size:1.25em">${emoji}</span> <strong>${escapeHtml(typeLabel)}</strong><br><span class="rd-text-muted">${ageStr}</span>${desc ? `<br><span class="rd-text-muted">${desc}</span>` : ''}</div>`;
@@ -877,14 +1078,22 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       return;
     }
     const allLatLngs: L.LatLng[] = [];
-    if (currentUserLocation && Number.isFinite(currentUserLocation.lat) && Number.isFinite(currentUserLocation.lng)) {
+    if (
+      currentUserLocation &&
+      Number.isFinite(currentUserLocation.lat) &&
+      Number.isFinite(currentUserLocation.lng)
+    ) {
       allLatLngs.push(L.latLng(currentUserLocation.lat, currentUserLocation.lng));
     }
     if (showDriverMarkers) {
-      drivers.filter((d) => d.lat != null && d.lng != null).forEach((d) => allLatLngs.push(L.latLng(d.lat!, d.lng!)));
+      drivers
+        .filter((d) => d.lat != null && d.lng != null)
+        .forEach((d) => allLatLngs.push(L.latLng(d.lat!, d.lng!)));
     }
-    if (routeData?.pickupCoords) allLatLngs.push(L.latLng(routeData.pickupCoords.lat, routeData.pickupCoords.lng));
-    if (routeData?.dropoffCoords) allLatLngs.push(L.latLng(routeData.dropoffCoords.lat, routeData.dropoffCoords.lng));
+    if (routeData?.pickupCoords)
+      allLatLngs.push(L.latLng(routeData.pickupCoords.lat, routeData.pickupCoords.lng));
+    if (routeData?.dropoffCoords)
+      allLatLngs.push(L.latLng(routeData.dropoffCoords.lat, routeData.dropoffCoords.lng));
     if (allLatLngs.length > 0) {
       map.invalidateSize();
       map.fitBounds(L.latLngBounds(allLatLngs).pad(0.2), { maxZoom: 15 });
@@ -917,13 +1126,12 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
     onMapClick(latlng.lat, latlng.lng);
   };
 
-
-
   return (
-    <div className="orders-map-container" style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}>
+    <div
+      className="orders-map-container"
+      style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}
+    >
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480 }} />
-
-
 
       {onMapClick && !navMode && (
         <div
@@ -943,22 +1151,60 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
         />
       )}
       {((onRecenter && (navMode || showDriverMarkers || routeData)) || onMyLocation) && (
-        <div style={{ position: 'absolute', bottom: 12, left: 12, zIndex: 1000, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: 12,
+            zIndex: 1000,
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
           {onMyLocation && myLocationLabel && (
-            <button type="button" className="rd-btn orders-map-recenter" onClick={onMyLocation} aria-label={myLocationLabel}>
+            <button
+              type="button"
+              className="rd-btn orders-map-recenter"
+              onClick={onMyLocation}
+              aria-label={myLocationLabel}
+            >
               {myLocationLabel}
             </button>
           )}
           {onRecenter && (navMode || showDriverMarkers || routeData) && (
-            <button type="button" className="rd-btn orders-map-recenter" onClick={onRecenter} aria-label={recenterLabel}>
+            <button
+              type="button"
+              className="rd-btn orders-map-recenter"
+              onClick={onRecenter}
+              aria-label={recenterLabel}
+            >
               {recenterLabel}
             </button>
           )}
         </div>
       )}
       {!navMode && (
-        <div className="orders-map-overlay rd-text-muted" style={{ position: 'absolute', bottom: 8, left: 8, right: 8, padding: 8, background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.75rem', zIndex: 501, pointerEvents: onMapClick ? 'none' : undefined }}>
-          {onMapClick ? t('dashboard.mapHintClick') : showDriverMarkers ? t('dashboard.mapHintDriver') : t('dashboard.mapHintOrders')}
+        <div
+          className="orders-map-overlay rd-text-muted"
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            left: 8,
+            right: 8,
+            padding: 8,
+            background: 'var(--rd-bg-panel)',
+            borderRadius: 8,
+            fontSize: '0.75rem',
+            zIndex: 501,
+            pointerEvents: onMapClick ? 'none' : undefined,
+          }}
+        >
+          {onMapClick
+            ? t('dashboard.mapHintClick')
+            : showDriverMarkers
+              ? t('dashboard.mapHintDriver')
+              : t('dashboard.mapHintOrders')}
         </div>
       )}
     </div>

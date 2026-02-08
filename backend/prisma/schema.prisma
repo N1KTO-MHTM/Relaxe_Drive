@@ -61,6 +61,7 @@ model Order {
   dropoffAddress           String    @map("dropoff_address")
   pickupType               String?   @map("pickup_type")
   dropoffType              String?   @map("dropoff_type")
+  dropoffImageUrl          String?   @map("dropoff_image_url")
   passengerId              String?   @map("passenger_id")
   passenger                Passenger? @relation(fields: [passengerId], references: [id])
   preferredCarType         String?   @map("preferred_car_type")

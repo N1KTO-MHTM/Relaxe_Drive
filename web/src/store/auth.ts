@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Role = 'ADMIN' | 'DISPATCHER' | 'DRIVER';
+export type Role = 'ADMIN' | 'DISPATCHER' | 'DRIVER' | 'CLIENT';
 
 export interface User {
   id: string;
@@ -51,7 +51,8 @@ export const useAuthStore = create<AuthState>()(
       name: 'relaxdrive-auth',
       onRehydrateStorage: () => (state) => {
         if (state?.accessToken) localStorage.setItem('relaxdrive-access-token', state.accessToken);
-        if (state?.refreshToken) localStorage.setItem('relaxdrive-refresh-token', state.refreshToken);
+        if (state?.refreshToken)
+          localStorage.setItem('relaxdrive-refresh-token', state.refreshToken);
       },
     },
   ),

@@ -1,20 +1,28 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PassengersService } from '../passengers/passengers.service';
 
 /** Wait billing: first 5 min free. Then: 20 min = $5, 30 min = $10, 1 h = $20, 1h20 = $25, 1h30 = $30, 2 h = $40. */
 export function getWaitChargeCentsFromTotalMinutes(totalMinutes: number): number {
   if (totalMinutes < 20) return 0;
-  if (totalMinutes < 30) return 500;   // $5
-  if (totalMinutes < 60) return 1000;  // $10
-  if (totalMinutes < 80) return 2000;  // $20 (1 hour)
-  if (totalMinutes < 90) return 2500;  // $25 (1h 20m)
+  if (totalMinutes < 30) return 500; // $5
+  if (totalMinutes < 60) return 1000; // $10
+  if (totalMinutes < 80) return 2000; // $20 (1 hour)
+  if (totalMinutes < 90) return 2500; // $25 (1h 20m)
   if (totalMinutes < 120) return 3000; // $30 (1h 30m)
   return 4000; // $40 (2 hours)
 }
 
 /** From arrivedAt to leftAt: total minutes waited. Charge by total (20 min = $5, 30 = $10, 60 = $20). */
-export function computeWaitCharge(arrivedAt: Date, leftAt: Date): { totalMinutes: number; chargeCents: number } {
+export function computeWaitCharge(
+  arrivedAt: Date,
+  leftAt: Date,
+): { totalMinutes: number; chargeCents: number } {
   const totalMs = leftAt.getTime() - arrivedAt.getTime();
   const totalMinutes = Math.floor(totalMs / 60_000);
   const chargeCents = getWaitChargeCentsFromTotalMinutes(totalMinutes);
@@ -29,7 +37,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private passengersService: PassengersService,
-  ) { }
+  ) {}
 
   async create(data: {
     pickupAt: Date;
@@ -45,11 +53,11 @@ export class OrdersService {
     preferredCarType?: string | null;
     createdById: string;
     bufferMinutes?: number;
+    dropoffImageUrl?: string;
+    status?: string;
   }) {
     const waypointsJson =
-      data.waypoints && data.waypoints.length > 0
-        ? JSON.stringify(data.waypoints)
-        : undefined;
+      data.waypoints && data.waypoints.length > 0 ? JSON.stringify(data.waypoints) : undefined;
     return this.prisma.order.create({
       data: {
         pickupAt: data.pickupAt,
@@ -57,15 +65,16 @@ export class OrdersService {
         dropoffAddress: data.dropoffAddress,
         tripType: data.tripType ?? 'ONE_WAY',
         routeType: data.routeType ?? null,
-        middleAddress: data.tripType === 'ROUNDTRIP' ? data.middleAddress ?? null : null,
+        middleAddress: data.tripType === 'ROUNDTRIP' ? (data.middleAddress ?? null) : null,
         waypoints: waypointsJson,
         pickupType: data.pickupType ?? null,
         dropoffType: data.dropoffType ?? null,
         passengerId: data.passengerId ?? null,
         preferredCarType: data.preferredCarType ?? null,
         createdById: data.createdById,
-        status: 'SCHEDULED',
+        status: data.status ?? 'SCHEDULED',
         bufferMinutes: data.bufferMinutes ?? 15,
+        dropoffImageUrl: data.dropoffImageUrl ?? null,
       },
     });
   }
@@ -107,6 +116,27 @@ export class OrdersService {
     });
   }
 
+  async acceptOrder(orderId: string, driverId: string) {
+    // Atomic update to prevent race conditions
+    const result = await this.prisma.order.updateMany({
+      where: {
+        id: orderId,
+        driverId: null,
+        status: 'SEARCHING',
+      },
+      data: {
+        driverId,
+        status: 'ASSIGNED',
+      },
+    });
+
+    if (result.count === 0) {
+      throw new BadRequestException('Order not available or already taken');
+    }
+
+    return this.prisma.order.findUnique({ where: { id: orderId } });
+  }
+
   /** Set pickupAt (e.g. driver arrive time from ETA after assign). */
   async updatePickupAt(orderId: string, pickupAt: Date) {
     return this.prisma.order.update({
@@ -140,8 +170,10 @@ export class OrdersService {
   async driverReject(orderId: string, driverId: string) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
-    if (order.driverId !== driverId) throw new BadRequestException('This order is not assigned to you');
-    if (order.status !== 'ASSIGNED') throw new BadRequestException('Only assigned orders can be rejected');
+    if (order.driverId !== driverId)
+      throw new BadRequestException('This order is not assigned to you');
+    if (order.status !== 'ASSIGNED')
+      throw new BadRequestException('Only assigned orders can be rejected');
     return this.prisma.order.update({
       where: { id: orderId },
       data: { driverId: null, status: 'SCHEDULED' },
@@ -149,7 +181,11 @@ export class OrdersService {
   }
 
   /** Passenger requested an extra stop (not in original route). Add waypoint and keep trip IN_PROGRESS. */
-  async stopUnderway(orderId: string, userId: string) {
+  async stopUnderway(
+    orderId: string,
+    userId: string,
+    location?: { lat: number; lng: number; address: string },
+  ) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
 
@@ -162,10 +198,13 @@ export class OrdersService {
     const isAdminOrDispatcher = user.role === 'ADMIN' || user.role === 'DISPATCHER';
 
     if (!isAssignedDriver && !isAdminOrDispatcher) {
-      throw new ForbiddenException('Only the assigned driver, admins, or dispatchers can add passenger stops');
+      throw new ForbiddenException(
+        'Only the assigned driver, admins, or dispatchers can add passenger stops',
+      );
     }
 
-    if (order.status !== 'IN_PROGRESS') throw new BadRequestException('Only in-progress trips can add a passenger stop');
+    if (order.status !== 'IN_PROGRESS')
+      throw new BadRequestException('Only in-progress trips can add a passenger stop');
     let existing: { address: string }[] = [];
     if (order.waypoints) {
       try {
@@ -174,7 +213,7 @@ export class OrdersService {
         existing = [];
       }
     }
-    const next = [...existing, { address: 'Passenger stop (en route)' }];
+    const next = [...existing, { address: location?.address ?? 'Passenger stop (en route)' }];
     return this.prisma.order.update({
       where: { id: orderId },
       data: { waypoints: JSON.stringify(next) },
@@ -238,7 +277,9 @@ export class OrdersService {
         });
       }
       if (order.passengerId && order.pickupAddress?.trim()) {
-        const passenger = await this.prisma.passenger.findUnique({ where: { id: order.passengerId } });
+        const passenger = await this.prisma.passenger.findUnique({
+          where: { id: order.passengerId },
+        });
         if (passenger?.phone?.trim()) {
           const alreadyExists = await this.passengersService.existsByPhoneAndPickupAddr(
             passenger.phone,
@@ -265,7 +306,14 @@ export class OrdersService {
       });
     }
     const now = new Date();
-    const data: { status: string; startedAt?: Date; leftPickupAt?: Date; waitChargeAtPickupCents?: number; leftMiddleAt?: Date; waitChargeAtMiddleCents?: number } = {
+    const data: {
+      status: string;
+      startedAt?: Date;
+      leftPickupAt?: Date;
+      waitChargeAtPickupCents?: number;
+      leftMiddleAt?: Date;
+      waitChargeAtMiddleCents?: number;
+    } = {
       status,
       startedAt: status === 'IN_PROGRESS' ? now : undefined,
     };
@@ -305,7 +353,8 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');
-    if (order.status !== 'ASSIGNED') throw new BadRequestException('Only assigned orders can mark arrived at pickup');
+    if (order.status !== 'ASSIGNED')
+      throw new BadRequestException('Only assigned orders can mark arrived at pickup');
     return this.prisma.order.update({
       where: { id: orderId },
       data: { arrivedAtPickupAt: new Date() },
@@ -316,7 +365,8 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');
-    if (order.status !== 'IN_PROGRESS' || order.tripType !== 'ROUNDTRIP') throw new BadRequestException('Only in-progress roundtrip can mark arrived at second stop');
+    if (order.status !== 'IN_PROGRESS' || order.tripType !== 'ROUNDTRIP')
+      throw new BadRequestException('Only in-progress roundtrip can mark arrived at second stop');
     if (!order.leftPickupAt) throw new BadRequestException('Must have left first stop first');
     return this.prisma.order.update({
       where: { id: orderId },
@@ -329,7 +379,8 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');
-    if (order.tripType !== 'ROUNDTRIP' || !order.arrivedAtMiddleAt) throw new BadRequestException('Must be roundtrip and have arrived at second stop');
+    if (order.tripType !== 'ROUNDTRIP' || !order.arrivedAtMiddleAt)
+      throw new BadRequestException('Must be roundtrip and have arrived at second stop');
     const now = new Date();
     let chargeCents = 0;
     const manualMinutes = (order as any).manualWaitMiddleMinutes;
@@ -384,7 +435,13 @@ export class OrdersService {
     });
   }
 
-  async setWaitInfo(orderId: string, driverId: string, minutes: number | null, notes?: string, type: 'pickup' | 'middle' = 'pickup') {
+  async setWaitInfo(
+    orderId: string,
+    driverId: string,
+    minutes: number | null,
+    notes?: string,
+    type: 'pickup' | 'middle' = 'pickup',
+  ) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');

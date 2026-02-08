@@ -3,19 +3,46 @@ import type { Role } from '../store/auth';
 /** Paths that each role can access. Drivers and Clients tabs only for DISPATCHER and ADMIN; DRIVER cannot see them. */
 export const ROLE_PATHS: Record<Role, string[]> = {
   ADMIN: [
-    '/dashboard', '/wall', '/calendar',
-    '/clients', '/addresses', '/drivers', '/phone-base', '/pendings',
-    '/analytics', '/driver-reports', '/cost-control', '/sessions', '/audit',
-    '/roles', '/translation', '/white-label', '/health', '/about', '/chat',
+    '/dashboard',
+    '/wall',
+    '/calendar',
+    '/clients',
+    '/addresses',
+    '/drivers',
+    '/phone-base',
+    '/pendings',
+    '/analytics',
+    '/driver-reports',
+    '/cost-control',
+    '/sessions',
+    '/audit',
+    '/roles',
+    '/translation',
+    '/white-label',
+    '/health',
+    '/about',
+    '/chat',
   ],
   DISPATCHER: [
-    '/dashboard', '/wall', '/calendar',
-    '/clients', '/addresses', '/drivers', '/phone-base', '/pendings',
-    '/analytics', '/driver-reports', '/sessions', '/audit',
-    '/translation', '/about', '/chat',
+    '/dashboard',
+    '/wall',
+    '/calendar',
+    '/clients',
+    '/addresses',
+    '/drivers',
+    '/phone-base',
+    '/pendings',
+    '/analytics',
+    '/driver-reports',
+    '/sessions',
+    '/audit',
+    '/translation',
+    '/about',
+    '/chat',
   ],
   /** Driver: Dashboard, My Reports, Translation, About. */
   DRIVER: ['/dashboard', '/driver-reports', '/translation', '/about'],
+  CLIENT: [],
 };
 
 export function canAccessPath(role: Role | null, path: string): boolean {
@@ -55,7 +82,9 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
   { path: '/about', key: 'about', group: 'system' },
 ];
 
-export function getAllowedNavItems(role: Role | null): { path: string; key: string; group?: string }[] {
+export function getAllowedNavItems(
+  role: Role | null,
+): { path: string; key: string; group?: string }[] {
   if (!role) return [];
   const allowedPaths = ROLE_PATHS[role];
   if (!allowedPaths) return [];

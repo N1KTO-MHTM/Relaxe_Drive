@@ -4,7 +4,7 @@ export interface Order {
   id: string;
   status: string;
   tripType?: string;
-  routeType?: string | null;  // LOCAL | LONG
+  routeType?: string | null; // LOCAL | LONG
   pickupAt: string;
   pickupAddress: string;
   middleAddress?: string | null;
@@ -38,6 +38,7 @@ export interface Order {
   durationMinutes?: number | null;
   driverFeeCents?: number | null;
   totalAmountCents?: number | null;
+  dropoffImageUrl?: string;
 }
 
 export interface Driver {
@@ -73,7 +74,13 @@ export interface DriverEta {
   etaMinutesTotal: number;
 }
 
-export type OrderStatus = 'DRAFT' | 'SCHEDULED' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type OrderStatus =
+  | 'DRAFT'
+  | 'SCHEDULED'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED';
 
 /** Planning result from GET /planning and planning.update WebSocket */
 export interface RiskyOrderPlanning {
@@ -160,6 +167,7 @@ export interface DriverForMap {
   etaMinutesPickupToDropoff?: number;
   assignedOrderPickup?: string | null;
   assignedOrderDropoff?: string | null;
+  currentOrderDistance?: string | null; // For map display
   /** When busy: "Busy until HH:MM" */
   busyUntil?: string | null;
 }
