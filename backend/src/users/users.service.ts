@@ -1,4 +1,12 @@
-import { Injectable, OnModuleInit, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,8 +20,9 @@ export class UsersService {
     private prisma: PrismaService,
     private passengersService: PassengersService,
     private eventEmitter: EventEmitter2,
+    @Inject(forwardRef(() => RelaxDriveWsGateway))
     private ws: RelaxDriveWsGateway,
-  ) { }
+  ) {}
 
   async findByNickname(nickname: string) {
     return this.prisma.user.findUnique({ where: { nickname } });
@@ -76,7 +85,8 @@ export class UsersService {
       where: { id: userId, role: 'DRIVER', approvedAt: null },
       data: { approvedAt: new Date() },
     });
-    if (updated.count === 0) throw new NotFoundException('Pending driver not found or already approved');
+    if (updated.count === 0)
+      throw new NotFoundException('Pending driver not found or already approved');
     return this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, nickname: true, approvedAt: true },
@@ -255,22 +265,36 @@ export class UsersService {
       orderBy: { nickname: 'asc' },
       include: { sessions: { orderBy: { lastActiveAt: 'desc' }, take: 1 } },
     });
-    return users.map(({ sessions, id, nickname, email, phone, role, createdAt, driverId, carId, carType, carPlateNumber }) => ({
-      id,
-      nickname,
-      email,
-      phone,
-      role,
-      driverId,
-      carId,
-      carType,
-      carPlateNumber,
-      createdAt,
-      hasActiveSession: sessions.length > 0,
-      lastActiveAt: sessions[0]?.lastActiveAt ?? null,
-      device: sessions[0]?.device ?? null,
-      ip: sessions[0]?.ip ?? null,
-    }));
+    return users.map(
+      ({
+        sessions,
+        id,
+        nickname,
+        email,
+        phone,
+        role,
+        createdAt,
+        driverId,
+        carId,
+        carType,
+        carPlateNumber,
+      }) => ({
+        id,
+        nickname,
+        email,
+        phone,
+        role,
+        driverId,
+        carId,
+        carType,
+        carPlateNumber,
+        createdAt,
+        hasActiveSession: sessions.length > 0,
+        lastActiveAt: sessions[0]?.lastActiveAt ?? null,
+        device: sessions[0]?.device ?? null,
+        ip: sessions[0]?.ip ?? null,
+      }),
+    );
   }
 
   async findAll() {
@@ -391,11 +415,22 @@ export class UsersService {
     const update: { driverId?: string | null; carId?: string | null } = {};
     if (data.driverId !== undefined) update.driverId = data.driverId?.trim() || null;
     if (data.carId !== undefined) update.carId = data.carId?.trim() || null;
-    if (Object.keys(update).length === 0) return this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, nickname: true, driverId: true, carId: true } });
+    if (Object.keys(update).length === 0)
+      return this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, nickname: true, driverId: true, carId: true },
+      });
     return this.prisma.user.update({
       where: { id: userId },
       data: update,
-      select: { id: true, nickname: true, driverId: true, carId: true, carType: true, carPlateNumber: true },
+      select: {
+        id: true,
+        nickname: true,
+        driverId: true,
+        carId: true,
+        carType: true,
+        carPlateNumber: true,
+      },
     });
   }
 
@@ -473,7 +508,8 @@ export class UsersService {
     const rejectCount = await this.prisma.auditLog.count({
       where: { userId: driverId, action: 'order.driver_reject', resource: 'order' },
     });
-    const rejectRate = assignCount + rejectCount > 0 ? rejectCount / (assignCount + rejectCount) : null;
+    const rejectRate =
+      assignCount + rejectCount > 0 ? rejectCount / (assignCount + rejectCount) : null;
 
     const trips = await this.prisma.driverTripSummary.findMany({
       where: { driverId },
@@ -519,11 +555,23 @@ export class UsersService {
     if (target.role === 'ADMIN' && adminCount <= 1) {
       throw new ConflictException('Cannot delete the last administrator');
     }
-    await this.prisma.order.updateMany({ where: { createdById: targetUserId }, data: { createdById: requestingAdminId } });
-    await this.prisma.order.updateMany({ where: { driverId: targetUserId }, data: { driverId: null } });
+    await this.prisma.order.updateMany({
+      where: { createdById: targetUserId },
+      data: { createdById: requestingAdminId },
+    });
+    await this.prisma.order.updateMany({
+      where: { driverId: targetUserId },
+      data: { driverId: null },
+    });
     await this.prisma.auditLog.deleteMany({ where: { userId: targetUserId } });
-    await this.prisma.passenger.updateMany({ where: { userId: targetUserId }, data: { userId: null } });
-    await this.prisma.translationRecord.updateMany({ where: { userId: targetUserId }, data: { userId: null } });
+    await this.prisma.passenger.updateMany({
+      where: { userId: targetUserId },
+      data: { userId: null },
+    });
+    await this.prisma.translationRecord.updateMany({
+      where: { userId: targetUserId },
+      data: { userId: null },
+    });
     await this.prisma.driverReport.deleteMany({ where: { userId: targetUserId } });
     await this.prisma.driverTripSummary.deleteMany({ where: { driverId: targetUserId } });
     await this.prisma.driverStats.deleteMany({ where: { driverId: targetUserId } });

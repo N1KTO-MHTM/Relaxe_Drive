@@ -1,3 +1,4 @@
+import { Inject, forwardRef } from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -15,14 +16,17 @@ export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDiscon
   server!: Server;
 
   constructor(
+    @Inject(forwardRef(() => AuthService))
     private authService: AuthService,
+    @Inject(forwardRef(() => UsersService))
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) { }
+  ) {}
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
+      const token =
+        client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
       if (!token) {
         client.disconnect();
         return;

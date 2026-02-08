@@ -1,4 +1,10 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -17,11 +23,12 @@ export interface TokenPayload {
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(forwardRef(() => UsersService))
     private usersService: UsersService,
     private jwtService: JwtService,
     private config: ConfigService,
     private audit: AuditService,
-  ) { }
+  ) {}
 
   async register(
     nickname: string,
@@ -80,17 +87,27 @@ export class AuthService {
     return null;
   }
 
-  async login(nickname: string, password: string, device?: string, ip?: string, rememberDevice = false) {
+  async login(
+    nickname: string,
+    password: string,
+    device?: string,
+    ip?: string,
+    rememberDevice = false,
+  ) {
     const nick = (nickname || '').trim();
     const pass = (password || '').trim();
     const user = await this.validateUser(nick, pass);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (user.blocked) throw new UnauthorizedException('Account is blocked');
     if (user.role === 'DRIVER' && user.approvedAt == null) {
-      throw new UnauthorizedException(`Account pending approval. Please contact support. Status for user ${user.id} is still pending.`);
+      throw new UnauthorizedException(
+        `Account pending approval. Please contact support. Status for user ${user.id} is still pending.`,
+      );
     }
     if (user.bannedUntil && user.bannedUntil > new Date()) {
-      throw new UnauthorizedException(`Account temporarily banned. Reason: ${user.banReason || 'Not specified'}`);
+      throw new UnauthorizedException(
+        `Account temporarily banned. Reason: ${user.banReason || 'Not specified'}`,
+      );
     }
     let sessionId: string | undefined;
     try {
@@ -99,16 +116,21 @@ export class AuthService {
     } catch (e) {
       logger.warn('createSession failed', 'AuthService', { err: String(e) });
     }
-    const refreshTtl = rememberDevice ? this.config.get('JWT_REFRESH_TTL_REMEMBER', '30d') : this.config.get('JWT_REFRESH_TTL', '7d');
+    const refreshTtl = rememberDevice
+      ? this.config.get('JWT_REFRESH_TTL_REMEMBER', '30d')
+      : this.config.get('JWT_REFRESH_TTL', '7d');
     const accessToken = this.jwtService.sign(
       { sub: user.id, nickname: user.nickname, role: user.role, type: 'access' } as TokenPayload,
       { expiresIn: this.config.get('JWT_ACCESS_TTL', '15m') },
     );
-    const refreshToken = this.jwtService.sign(
-      { sub: user.id, type: 'refresh' } as TokenPayload,
-      { expiresIn: refreshTtl },
-    );
-    const loginPayload = { nickname: user.nickname, device: device ?? null, phone: user.phone ?? null };
+    const refreshToken = this.jwtService.sign({ sub: user.id, type: 'refresh' } as TokenPayload, {
+      expiresIn: refreshTtl,
+    });
+    const loginPayload = {
+      nickname: user.nickname,
+      device: device ?? null,
+      phone: user.phone ?? null,
+    };
     try {
       await this.audit.log(user.id, 'auth.login', 'session', loginPayload, ip);
       await this.audit.log(user.id, 'user.login', 'user', loginPayload, ip);
@@ -162,7 +184,10 @@ export class AuthService {
 
   async forgotPassword(nickname: string) {
     await this.audit.log(null, 'auth.forgot_password_request', 'user', { nickname });
-    return { ok: true, message: 'If this user exists, contact your administrator to reset the password.' };
+    return {
+      ok: true,
+      message: 'If this user exists, contact your administrator to reset the password.',
+    };
   }
 
   /** One-time password reset token (admin generates for user). Valid 24h. */
