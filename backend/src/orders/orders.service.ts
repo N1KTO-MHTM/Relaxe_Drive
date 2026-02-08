@@ -153,6 +153,13 @@ export class OrdersService {
     });
   }
 
+  async updateDestination(orderId: string, dropoffAddress: string) {
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: { dropoffAddress },
+    });
+  }
+
   /** Add delay minutes to pickupAt (SCHEDULED or ASSIGNED only). */
   async delayOrder(orderId: string, delayMinutes: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });

@@ -6,7 +6,7 @@ import { api } from '../../api/client';
 import './Login.css';
 
 export default function Login() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [nickname, setNickname] = useState('');
@@ -19,7 +19,10 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-      const device = typeof navigator !== 'undefined' ? `Web (${navigator.userAgent.slice(0, 80)}${navigator.userAgent.length > 80 ? '…' : ''})` : 'Web';
+      const device =
+        typeof navigator !== 'undefined'
+          ? `Web (${navigator.userAgent.slice(0, 80)}${navigator.userAgent.length > 80 ? '…' : ''})`
+          : 'Web';
       const data = await api.post<{
         accessToken: string;
         refreshToken: string;
@@ -33,20 +36,64 @@ export default function Login() {
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
-      const isNetwork = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed');
-      const isPending = msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval');
+      const isNetwork =
+        msg.includes('Failed to fetch') ||
+        msg.includes('NetworkError') ||
+        msg.includes('Load failed');
+      const isPending =
+        msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval');
       setError(
-        isNetwork ? t('auth.serverError') : isPending ? t('auth.pendingApproval') : (msg || t('auth.invalidCredentials')),
+        isNetwork
+          ? t('auth.serverError')
+          : isPending
+            ? t('auth.pendingApproval')
+            : msg || t('auth.invalidCredentials'),
       );
     }
   }
 
   return (
     <form onSubmit={handleSubmit}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '1.5rem',
+          gap: '0.75rem',
+        }}
+      >
+        <button
+          type="button"
+          className={`rd-btn rd-btn--small ${i18n.language === 'en' ? 'rd-btn-primary' : 'rd-btn-secondary'}`}
+          onClick={() => i18n.changeLanguage('en')}
+          style={{ minWidth: 60 }}
+        >
+          EN
+        </button>
+        <button
+          type="button"
+          className={`rd-btn rd-btn--small ${i18n.language === 'es' ? 'rd-btn-primary' : 'rd-btn-secondary'}`}
+          onClick={() => i18n.changeLanguage('es')}
+          style={{ minWidth: 60 }}
+        >
+          ES
+        </button>
+      </div>
       <h1>{t('auth.login')}</h1>
-      <p className="rd-text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>{t('auth.staffOnly')}</p>
+      <p className="rd-text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
+        {t('auth.staffOnly')}
+      </p>
       {error && (
-        <p className="rd-text-critical" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <p
+          className="rd-text-critical"
+          style={{
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
+        >
           {error}
           <button type="button" className="rd-btn rd-btn-link" onClick={() => setError('')}>
             {t('auth.retry')}
@@ -86,8 +133,21 @@ export default function Login() {
           </label>
         </div>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-        <input type="checkbox" checked={rememberDevice} onChange={(e) => setRememberDevice(e.target.checked)} />
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '1rem',
+          cursor: 'pointer',
+          fontSize: '0.875rem',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={rememberDevice}
+          onChange={(e) => setRememberDevice(e.target.checked)}
+        />
         <span>{t('auth.rememberDevice')}</span>
       </label>
       <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }}>
@@ -96,9 +156,22 @@ export default function Login() {
       <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
         <Link to="/forgot-password">{t('auth.forgotPassword')}</Link>
       </p>
-      <p style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--rd-border, #333)', fontSize: '0.9rem' }}>
-        <span className="rd-text-muted" style={{ marginRight: '0.5rem' }}>{t('auth.noAccount')}</span>
-        <Link to="/register" className="rd-btn rd-btn-secondary" style={{ display: 'inline-block', padding: '0.5rem 1rem', textDecoration: 'none' }}>
+      <p
+        style={{
+          marginTop: '0.75rem',
+          paddingTop: '0.75rem',
+          borderTop: '1px solid var(--rd-border, #333)',
+          fontSize: '0.9rem',
+        }}
+      >
+        <span className="rd-text-muted" style={{ marginRight: '0.5rem' }}>
+          {t('auth.noAccount')}
+        </span>
+        <Link
+          to="/register"
+          className="rd-btn rd-btn-secondary"
+          style={{ display: 'inline-block', padding: '0.5rem 1rem', textDecoration: 'none' }}
+        >
           {t('auth.register')}
         </Link>
       </p>

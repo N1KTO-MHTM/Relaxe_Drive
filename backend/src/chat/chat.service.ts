@@ -4,183 +4,189 @@ import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class ChatService {
-    constructor(
-        private readonly prisma: PrismaService,
-        private readonly wsGateway: RelaxDriveWsGateway,
-    ) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wsGateway: RelaxDriveWsGateway,
+  ) {}
 
-    /**
-     * Get all chats with optional status filter
-     */
-    async getChats(status?: string) {
-        const where: any = {};
-        if (status && ['OPEN', 'WAITING', 'CLOSED'].includes(status)) {
-            where.status = status;
-        }
-
-        return this.prisma.chat.findMany({
-            where,
-            orderBy: { lastMessageAt: 'desc' },
-            include: {
-                messages: {
-                    take: 1,
-                    orderBy: { createdAt: 'desc' },
-                },
-            },
-        });
+  /**
+   * Get all chats with optional status filter
+   */
+  async getChats(status?: string) {
+    const where: any = {};
+    if (status && ['OPEN', 'WAITING', 'CLOSED'].includes(status)) {
+      where.status = status;
     }
 
-    /**
-     * Get or create chat for a driver
-     */
-    async getOrCreateChat(driverId: string) {
-        let chat = await this.prisma.chat.findUnique({
-            where: { driverId },
-            include: {
-                messages: {
-                    orderBy: { createdAt: 'asc' },
-                    take: 50,
-                },
-            },
-        });
+    return this.prisma.chat.findMany({
+      where,
+      orderBy: { lastMessageAt: 'desc' },
+      include: {
+        messages: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+  }
 
-        if (!chat) {
-            chat = await this.prisma.chat.create({
-                data: { driverId },
-                include: {
-                    messages: true,
-                },
-            });
-        }
+  /**
+   * Get or create chat for a driver
+   */
+  async getOrCreateChat(driverId: string) {
+    let chat = await this.prisma.chat.findUnique({
+      where: { driverId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 50,
+        },
+      },
+    });
 
-        return chat;
+    if (!chat) {
+      chat = await this.prisma.chat.create({
+        data: { driverId },
+        include: {
+          messages: true,
+        },
+      });
     }
 
-    /**
-     * Get chat messages with pagination
-     */
-    async getMessages(driverId: string, limit = 50, before?: string) {
-        const where: any = {
-            chat: { driverId },
-        };
+    return chat;
+  }
 
-        if (before) {
-            where.createdAt = { lt: new Date(before) };
-        }
+  /**
+   * Get chat messages with pagination
+   */
+  async getMessages(driverId: string, limit = 50, before?: string) {
+    const where: any = {
+      chat: { driverId },
+    };
 
-        return this.prisma.chatMessage.findMany({
-            where,
-            orderBy: { createdAt: 'desc' },
-            take: limit,
-        });
+    if (before) {
+      where.createdAt = { lt: new Date(before) };
     }
 
-    /**
-     * Send a message
-     */
-    async sendMessage(data: {
-        driverId: string;
-        senderId: string;
-        senderRole: string;
-        message: string;
-    }) {
-        // Get or create chat
-        const chat = await this.getOrCreateChat(data.driverId);
+    return this.prisma.chatMessage.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
 
-        // Create message
-        const chatMessage = await this.prisma.chatMessage.create({
-            data: {
-                chatId: chat.id,
-                senderId: data.senderId,
-                senderRole: data.senderRole,
-                message: data.message,
-            },
-        });
+  /**
+   * Send a message
+   */
+  async sendMessage(data: {
+    driverId: string;
+    senderId: string;
+    senderRole: string;
+    message: string;
+    fileUrl?: string; // Optional file
+    fileType?: string; // Optional type
+  }) {
+    // Get or create chat
+    const chat = await this.getOrCreateChat(data.driverId);
 
-        // Update chat
-        const newStatus = data.senderRole === 'DRIVER' ? 'WAITING' : 'OPEN';
-        const newUnreadCount = data.senderRole === 'DRIVER' ? chat.unreadCount + 1 : 0;
+    // Create message
+    const chatMessage = await this.prisma.chatMessage.create({
+      data: {
+        chatId: chat.id,
+        senderId: data.senderId,
+        senderRole: data.senderRole,
+        message: data.message,
+        fileUrl: data.fileUrl,
+        fileType: data.fileType,
+      },
+    });
 
-        await this.prisma.chat.update({
-            where: { id: chat.id },
-            data: {
-                lastMessageAt: new Date(),
-                lastMessage: data.message,
-                status: newStatus,
-                unreadCount: newUnreadCount,
-            },
-        });
+    // Update chat
+    const newStatus = data.senderRole === 'DRIVER' ? 'WAITING' : 'OPEN';
+    const newUnreadCount = data.senderRole === 'DRIVER' ? chat.unreadCount + 1 : 0;
 
-        // Broadcast via WebSocket
-        this.wsGateway.broadcastChatMessage({
-            driverId: data.driverId,
-            chatId: chat.id,
-            message: {
-                id: chatMessage.id,
-                senderId: chatMessage.senderId,
-                senderRole: chatMessage.senderRole,
-                message: chatMessage.message,
-                read: chatMessage.read,
-                createdAt: chatMessage.createdAt.toISOString(),
-            },
-        });
+    await this.prisma.chat.update({
+      where: { id: chat.id },
+      data: {
+        lastMessageAt: new Date(),
+        lastMessage: data.fileUrl ? '[File]' : data.message,
+        status: newStatus,
+        unreadCount: newUnreadCount,
+      },
+    });
 
-        return chatMessage;
-    }
+    // Broadcast via WebSocket
+    this.wsGateway.broadcastChatMessage({
+      driverId: data.driverId,
+      chatId: chat.id,
+      message: {
+        id: chatMessage.id,
+        senderId: chatMessage.senderId,
+        senderRole: chatMessage.senderRole,
+        message: chatMessage.message,
+        fileUrl: chatMessage.fileUrl,
+        fileType: chatMessage.fileType,
+        read: chatMessage.read,
+        createdAt: chatMessage.createdAt.toISOString(),
+      },
+    });
 
-    /**
-     * Mark messages as read
-     */
-    async markAsRead(driverId: string, userId: string) {
-        const chat = await this.prisma.chat.findUnique({
-            where: { driverId },
-        });
+    return chatMessage;
+  }
 
-        if (!chat) return;
+  /**
+   * Mark messages as read
+   */
+  async markAsRead(driverId: string, userId: string) {
+    const chat = await this.prisma.chat.findUnique({
+      where: { driverId },
+    });
 
-        // Mark all unread messages as read
-        await this.prisma.chatMessage.updateMany({
-            where: {
-                chatId: chat.id,
-                read: false,
-                senderId: { not: userId },
-            },
-            data: { read: true },
-        });
+    if (!chat) return;
 
-        // Reset unread count
-        await this.prisma.chat.update({
-            where: { id: chat.id },
-            data: { unreadCount: 0 },
-        });
+    // Mark all unread messages as read
+    await this.prisma.chatMessage.updateMany({
+      where: {
+        chatId: chat.id,
+        read: false,
+        senderId: { not: userId },
+      },
+      data: { read: true },
+    });
 
-        // Broadcast read status
-        this.wsGateway.broadcastChatRead({
-            driverId,
-            chatId: chat.id,
-            userId,
-        });
-    }
+    // Reset unread count
+    await this.prisma.chat.update({
+      where: { id: chat.id },
+      data: { unreadCount: 0 },
+    });
 
-    /**
-     * Close a chat
-     */
-    async closeChat(driverId: string) {
-        return this.prisma.chat.update({
-            where: { driverId },
-            data: { status: 'CLOSED' },
-        });
-    }
+    // Broadcast read status
+    this.wsGateway.broadcastChatRead({
+      driverId,
+      chatId: chat.id,
+      userId,
+    });
+  }
 
-    /**
-     * Get unread count for a driver
-     */
-    async getUnreadCount(driverId: string) {
-        const chat = await this.prisma.chat.findUnique({
-            where: { driverId },
-            select: { unreadCount: true },
-        });
+  /**
+   * Close a chat
+   */
+  async closeChat(driverId: string) {
+    return this.prisma.chat.update({
+      where: { driverId },
+      data: { status: 'CLOSED' },
+    });
+  }
 
-        return chat?.unreadCount ?? 0;
-    }
+  /**
+   * Get unread count for a driver
+   */
+  async getUnreadCount(driverId: string) {
+    const chat = await this.prisma.chat.findUnique({
+      where: { driverId },
+      select: { unreadCount: true },
+    });
+
+    return chat?.unreadCount ?? 0;
+  }
 }

@@ -10,7 +10,7 @@ export interface Order {
   middleAddress?: string | null;
   /** Multiple stops between pickup and dropoff. When present, use this instead of middleAddress for display. */
   waypoints?: { address: string }[] | null;
-  dropoffAddress: string;
+  dropoffAddress: string | null;
   driverId?: string | null;
   passengerId?: string | null;
   passenger?: { id: string; phone: string; name: string | null } | null;

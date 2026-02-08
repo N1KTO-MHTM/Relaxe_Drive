@@ -229,6 +229,8 @@ export default function Dashboard() {
   } | null>(null);
   const [driverTripsModalId, setDriverTripsModalId] = useState<string | null>(null);
   const [showRouteSelection, setShowRouteSelection] = useState(false);
+  const [driverSetDestinationAddress, setDriverSetDestinationAddress] = useState('');
+  const [driverSetDestinationLoading, setDriverSetDestinationLoading] = useState(false);
   const autoStopSentForOrderIdRef = useRef<string | null>(null);
   const [driverMapFullScreen, setDriverMapFullScreen] = useState(false);
   const DRIVER_MAP_ICON_KEY = 'relaxe_driver_map_icon';
@@ -1783,6 +1785,75 @@ export default function Dashboard() {
     );
   }
 
+  async function handleSetDriverDestination(orderId: string) {
+    if (!driverSetDestinationAddress.trim()) return;
+    setDriverSetDestinationLoading(true);
+    try {
+      await api.patch(`/orders/${orderId}/destination`, {
+        destination: driverSetDestinationAddress.trim(),
+      });
+      toast.success('Destination set');
+      const data = await api.get<Order[]>('/orders');
+      setOrders(Array.isArray(data) ? data : []);
+      setDriverSetDestinationAddress('');
+      // Force route refresh
+      setRouteRefreshKey((k) => k + 1);
+    } catch {
+      toast.error('Failed to set destination');
+    } finally {
+      setDriverSetDestinationLoading(false);
+    }
+  }
+
+  async function handleCompleteOrder(orderId: string) {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    // If dropoff address is missing, we MUST set it from current location before completing
+    if (!order.dropoffAddress) {
+      if (!driverLocation) {
+        toast.error(t('dashboard.waitingForGps') || 'Waiting for GPS...');
+        return;
+      }
+
+      setStatusUpdatingId(orderId); // Show loading on the button immediately
+      try {
+        // Reverse geocode
+        let address = `${driverLocation.lat.toFixed(6)}, ${driverLocation.lng.toFixed(6)}`;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${driverLocation.lat}&lon=${driverLocation.lng}`,
+          );
+          const data = await response.json();
+          if (data.display_name) {
+            address = data.display_name;
+          }
+        } catch {
+          // Fallback to coords string if reverse geo fails
+        }
+
+        // Update destination first
+        await api.patch(`/orders/${orderId}/destination`, {
+          destination: address,
+        });
+
+        // Then complete
+        await handleStatusChange(orderId, 'COMPLETED');
+      } catch (err) {
+        toast.error(t('toast.statusUpdateFailed'));
+        setStatusUpdatingId(null);
+      }
+      return;
+    }
+
+    // Normal completion
+    if (isDriver && order.driverId === user?.id) {
+      setConfirmEndTripOrderId(order.id);
+    } else {
+      handleStatusChange(order.id, 'COMPLETED');
+    }
+  }
+
   /** Open full route (pickup → stops → dropoff) in Google Maps with traffic, ETA, tolls. Uses addresses. */
   function openFullRouteInGoogleMaps(order: Order) {
     const origin = order.pickupAddress.trim();
@@ -1980,8 +2051,8 @@ export default function Dashboard() {
     e.preventDefault();
     setSubmitError('');
     const isRoundtrip = tripTypeForm === 'ROUNDTRIP';
-    if (!pickupAddress.trim() || !dropoffAddress.trim()) {
-      setSubmitError('Fill pickup and dropoff addresses');
+    if (!pickupAddress.trim()) {
+      setSubmitError('Fill pickup address');
       return;
     }
     const stopsList = waypointAddresses.map((a) => a.trim()).filter(Boolean);
@@ -2008,7 +2079,7 @@ export default function Dashboard() {
         middleAddress:
           isRoundtrip && !waypointsPayload ? middleAddress.trim() || undefined : undefined,
         waypoints: waypointsPayload,
-        dropoffAddress: dropoffAddress.trim(),
+        dropoffAddress: dropoffAddress.trim() || undefined,
         pickupType: pickupType || undefined,
         dropoffType: dropoffType || undefined,
         phone: orderPhone.trim() || undefined,
@@ -2106,7 +2177,9 @@ export default function Dashboard() {
             <h3>{t('dashboard.assignedPopupTitle')}</h3>
             <p className="rd-text-muted">
               {new Date(assignedOrder.pickupAt).toLocaleString()} — {assignedOrder.pickupAddress} →{' '}
-              {assignedOrder.dropoffAddress}
+              {assignedOrder.dropoffAddress || (
+                <span style={{ color: '#ef4444' }}>Flexible Dropoff</span>
+              )}
             </p>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
@@ -2274,14 +2347,6 @@ export default function Dashboard() {
               >
                 <button
                   type="button"
-                  className="rd-btn"
-                  disabled={sharingLocation}
-                  onClick={handleShareLocation}
-                >
-                  {sharingLocation ? '…' : t('dashboard.shareLocation')}
-                </button>
-                <button
-                  type="button"
                   className={
                     user?.available !== false
                       ? 'rd-btn dashboard-status-btn dashboard-status-btn--offline'
@@ -2297,9 +2362,6 @@ export default function Dashboard() {
                   className="dashboard-map-icon-choice"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                 >
-                  <span className="rd-text-muted" style={{ fontSize: '0.8rem' }}>
-                    {t('dashboard.myMarkerOnMap')}:
-                  </span>
                   <button
                     type="button"
                     className={`rd-btn rd-btn--small ${driverMapIcon === 'car' ? 'rd-btn-primary' : ''}`}
@@ -2574,6 +2636,44 @@ export default function Dashboard() {
                 </button>
                 {(() => {
                   const sel = orders.find((o) => o.id === selectedOrderId);
+
+                  // Flexible Dropoff: Driver can set destination if missing
+                  if (
+                    isDriver &&
+                    sel &&
+                    !sel.dropoffAddress &&
+                    (sel.status === 'ASSIGNED' || sel.status === 'IN_PROGRESS')
+                  ) {
+                    return (
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '0.5rem',
+                          width: '100%',
+                          marginTop: '0.5rem',
+                        }}
+                      >
+                        <input
+                          className="rd-input"
+                          placeholder={t('dashboard.enterDropoff') || 'Enter dropoff address'}
+                          value={driverSetDestinationAddress}
+                          onChange={(e) => setDriverSetDestinationAddress(e.target.value)}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="rd-btn rd-btn-primary"
+                          disabled={
+                            driverSetDestinationLoading || !driverSetDestinationAddress.trim()
+                          }
+                          onClick={() => handleSetDriverDestination(sel.id)}
+                        >
+                          Set
+                        </button>
+                      </div>
+                    );
+                  }
+
                   if (sel && (getOrderStops(sel).length > 0 || sel.pickupAddress)) {
                     return (
                       <>
@@ -2593,6 +2693,15 @@ export default function Dashboard() {
                         >
                           {t('dashboard.openInWaze')}
                         </button>
+                        {isDriver && sel.status === 'IN_PROGRESS' && (
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn-primary"
+                            onClick={() => handleCompleteOrder(sel.id)}
+                          >
+                            {t('dashboard.complete')}
+                          </button>
+                        )}
                       </>
                     );
                   }
@@ -2605,6 +2714,15 @@ export default function Dashboard() {
                         <button type="button" className="rd-btn" onClick={openInWaze}>
                           {t('dashboard.openInWaze')}
                         </button>
+                        {isDriver && sel && sel.status === 'IN_PROGRESS' && (
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn-primary"
+                            onClick={() => handleCompleteOrder(sel.id)}
+                          >
+                            {t('dashboard.complete')}
+                          </button>
+                        )}
                       </>
                     );
                   }
@@ -2970,8 +3088,7 @@ export default function Dashboard() {
                             list="dropoff-address-list"
                             value={dropoffAddress}
                             onChange={(e) => setDropoffAddress(e.target.value)}
-                            placeholder={t('dashboard.addressPlaceholder')}
-                            required
+                            placeholder={t('dashboard.addressPlaceholder') + ' (Optional)'}
                             aria-describedby={
                               dropoffAddress.trim() &&
                               existingAddresses.some(
@@ -4264,11 +4381,7 @@ export default function Dashboard() {
                           type="button"
                           className="rd-btn rd-btn-primary"
                           disabled={!!statusUpdatingId}
-                          onClick={() =>
-                            isDriver && o.driverId === user?.id
-                              ? setConfirmEndTripOrderId(o.id)
-                              : handleStatusChange(o.id, 'COMPLETED')
-                          }
+                          onClick={() => handleCompleteOrder(o.id)}
                         >
                           {statusUpdatingId === o.id ? '…' : t('dashboard.complete')}
                         </button>

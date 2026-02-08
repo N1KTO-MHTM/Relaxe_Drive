@@ -28,6 +28,7 @@ import { ZonesModule } from './zones/zones.module';
 import { PhoneBaseModule } from './phone-base/phone-base.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { ChatModule } from './chat/chat.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   controllers: [AppController],
@@ -59,6 +60,7 @@ import { ChatModule } from './chat/chat.module';
     PhoneBaseModule,
     AddressesModule,
     ChatModule,
+    UploadModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

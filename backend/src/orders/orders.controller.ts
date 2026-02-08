@@ -256,7 +256,7 @@ export class OrdersController {
     body: {
       pickupAt?: string;
       pickupAddress: string;
-      dropoffAddress: string;
+      dropoffAddress?: string;
       tripType?: 'ONE_WAY' | 'ROUNDTRIP';
       routeType?: 'LOCAL' | 'LONG';
       middleAddress?: string;
@@ -328,7 +328,7 @@ export class OrdersController {
     const created = await this.ordersService.create({
       pickupAt: pickupAtDate,
       pickupAddress: body.pickupAddress,
-      dropoffAddress: body.dropoffAddress,
+      dropoffAddress: body.dropoffAddress ?? '', // Handle optional dropoff by passing empty string or null if service allows. Service expects string based on previous view? No, I updated schema. But service type might still expect string? I'll check service.
       tripType: body.tripType ?? 'ONE_WAY',
       routeType: body.routeType ?? null,
       middleAddress: body.tripType === 'ROUNDTRIP' ? (body.middleAddress ?? null) : null,
@@ -363,6 +363,39 @@ export class OrdersController {
     });
     this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(created);
+  }
+
+  @Patch(':id/destination')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
+  async updateDestination(
+    @Param('id') orderId: string,
+    @Body() body: { dropoffAddress: string },
+    @Request() req: { user: { id: string; role: string } },
+  ) {
+    // If driver, check if assigned
+    if (req.user.role === 'DRIVER') {
+      const order = await this.ordersService.findById(orderId);
+      if (!order || order.driverId !== req.user.id) {
+        throw new ForbiddenException('You can only update destination for your assigned orders');
+      }
+    }
+
+    const updated = await this.ordersService.updateDestination(orderId, body.dropoffAddress);
+
+    await this.audit.log(req.user.id, 'order.update_destination', 'order', {
+      orderId,
+      dropoffAddress: body.dropoffAddress,
+    });
+
+    const list = await this.ordersService.findActiveAndScheduled();
+    this.ws.broadcastOrders(list.map((o) => this.transformOrder(o)));
+
+    // Recalculate route/ETA if possible?
+    // Maybe trigger planning service
+    this.planningService.recalculateAndEmit().catch(() => {});
+
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/assign')

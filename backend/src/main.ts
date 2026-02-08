@@ -2,12 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 // Version 1.0.7 - Build Fix: Removed DB-level unique constraint to unblock 'db push'; implemented logical de-duplication in ZonesService
 import { logger } from './common/logger';
 import { AllExceptionsFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+    prefix: '/uploads/',
+  });
+
   const config = new DocumentBuilder()
     .setTitle('RelaxDrive API')
     .setDescription('Dispatch control center API — orders, users, drivers, reports, audit, health.')
@@ -24,10 +31,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean) ?? [
-    'http://localhost:5173',
-    'http://localhost:3000',
-  ];
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) ?? ['http://localhost:5173', 'http://localhost:3000'];
   app.enableCors({
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
