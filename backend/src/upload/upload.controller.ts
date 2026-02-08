@@ -24,7 +24,7 @@ export class UploadController {
         ],
       }),
     )
-    file: Express.Multer.File,
+    file: any,
     @Request() req: any,
   ) {
     // Return the path or URL where the file can be accessed
