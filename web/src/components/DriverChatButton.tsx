@@ -86,10 +86,10 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
       if (file) {
         const formData = new FormData();
         formData.append('file', file);
-        const uploadRes = await (api as any).upload<{ url: string; mimetype: string }>(
-          '/upload',
-          formData,
-        );
+        const uploadRes = (await (api as any).upload('/upload', formData)) as {
+          url: string;
+          mimetype: string;
+        };
         if (uploadRes) {
           fileUrl = uploadRes.url;
           fileType = uploadRes.mimetype;
