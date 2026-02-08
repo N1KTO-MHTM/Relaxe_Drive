@@ -153,8 +153,7 @@ export default function Dashboard() {
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [reports, setReports] = useState<DriverReportMap[]>([]);
-  const [pickupAddressSuggestions] = useState<string[]>([]);
-  const [dropoffAddressSuggestions] = useState<string[]>([]);
+
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
   const [showZones, setShowZones] = useState(true);
