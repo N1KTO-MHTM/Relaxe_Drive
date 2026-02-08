@@ -13,6 +13,7 @@ model User {
   id               String    @id @default(cuid())
   nickname         String    @unique
   email            String?   @unique
+  online           Boolean   @default(false)
   phone            String?
   passwordHash     String    @map("password_hash")
   role             String
@@ -78,6 +79,8 @@ model Order {
   waitChargeAtMiddleCents Int?       @map("wait_charge_at_middle_cents")
   manualWaitMinutes       Int?       @map("manual_wait_minutes")
   waitNotes               String?    @map("wait_notes")
+  manualWaitMiddleMinutes Int?       @map("manual_wait_middle_minutes")
+  waitMiddleNotes         String?    @map("wait_middle_notes")
   completedAt             DateTime? @map("completed_at")
   riskLevel               String?   @map("risk_level")
   suggestedDriverId       String?   @map("suggested_driver_id")

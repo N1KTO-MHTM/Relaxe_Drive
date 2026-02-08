@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { PassengersService } from '../passengers/passengers.service';
+import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
 import type { Role } from '../common/types/role';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class UsersService {
     private prisma: PrismaService,
     private passengersService: PassengersService,
     private eventEmitter: EventEmitter2,
+    private ws: RelaxDriveWsGateway,
   ) { }
 
   async findByNickname(nickname: string) {
@@ -299,8 +301,20 @@ export class UsersService {
       carModelAndYear: u.carModelAndYear,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
-      online: u.sessions.length > 0,
+      // @ts-ignore
+      online: u.online,
     }));
+  }
+
+  async updateOnline(userId: string, online: boolean) {
+    const result = await this.prisma.user.update({
+      where: { id: userId },
+      // @ts-ignore
+      data: { online },
+      select: { id: true, nickname: true }, // Removed online from select to avoid error if not in generated type
+    });
+    this.ws.broadcastDrivers(await this.findAll());
+    return result;
   }
 
   async updateAvailable(userId: string, available: boolean) {
@@ -310,15 +324,18 @@ export class UsersService {
       select: { id: true, available: true },
     });
     this.eventEmitter.emit('planning.recalculate');
+    this.ws.broadcastDrivers(await this.findAll());
     return result;
   }
 
   async updateLocation(userId: string, lat: number, lng: number) {
-    return this.prisma.user.update({
+    const result = await this.prisma.user.update({
       where: { id: userId },
       data: { lat, lng },
       select: { id: true, nickname: true, lat: true, lng: true },
     });
+    this.ws.broadcastDrivers(await this.findAll());
+    return result;
   }
 
   async updateRole(userId: string, role: Role) {

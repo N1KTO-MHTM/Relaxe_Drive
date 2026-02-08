@@ -30,11 +30,12 @@ export class OrdersController {
     @Request() req: { user: { id: string; role: string } },
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('driverId') driverId?: string,
   ) {
-    const driverOnly = req.user?.role === 'DRIVER' ? req.user.id : undefined;
+    const targetDriverId = req.user?.role === 'DRIVER' ? req.user.id : driverId;
     const orders = (from && to)
-      ? await this.ordersService.findByDateRange(new Date(from), new Date(to), driverOnly)
-      : await this.ordersService.findActiveAndScheduled(driverOnly);
+      ? await this.ordersService.findByDateRange(new Date(from), new Date(to), targetDriverId)
+      : await this.ordersService.findActiveAndScheduled(targetDriverId);
     return orders.map(o => this.transformOrder(o));
   }
 
@@ -322,8 +323,8 @@ export class OrdersController {
   async arrivedAtPickup(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setArrivedAtPickup(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
-    return updated;
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/arrived-at-middle')
@@ -332,8 +333,8 @@ export class OrdersController {
   async arrivedAtMiddle(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setArrivedAtMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
-    return updated;
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/left-middle')
@@ -342,8 +343,8 @@ export class OrdersController {
   async leftMiddle(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
     const updated = await this.ordersService.setLeftMiddle(orderId, req.user.id);
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
-    return updated;
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/stop-underway')
@@ -435,10 +436,10 @@ export class OrdersController {
   @Roles('DRIVER')
   async setWaitInfo(
     @Param('id') orderId: string,
-    @Body() body: { minutes: number | null; notes?: string },
+    @Body() body: { minutes: number | null; notes?: string; type?: 'pickup' | 'middle' },
     @Request() req: { user: { id: string } },
   ) {
-    const updated = await this.ordersService.setWaitInfo(orderId, req.user.id, body.minutes, body.notes);
+    const updated = await this.ordersService.setWaitInfo(orderId, req.user.id, body.minutes, body.notes, body.type);
     const list = await this.ordersService.findActiveAndScheduled();
     this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     return this.transformOrder(updated);

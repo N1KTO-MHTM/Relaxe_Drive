@@ -25,6 +25,8 @@ export interface Order {
   waitChargeAtMiddleCents?: number | null;
   manualWaitMinutes?: number | null;
   waitNotes?: string | null;
+  manualWaitMiddleMinutes?: number | null;
+  waitMiddleNotes?: string | null;
   completedAt?: string | null;
   /** Planning: LOW | MEDIUM | HIGH — auto-detected risk */
   riskLevel?: string | null;
@@ -47,6 +49,7 @@ export interface Driver {
   lng?: number | null;
   blocked?: boolean;
   bannedUntil?: string | null;
+  online?: boolean; // New field
 }
 
 export interface PassengerRow {
@@ -144,6 +147,7 @@ export interface DriverForMap {
   lng?: number | null;
   /** For map: green=available, red=on trip (busy), gray=offline */
   status?: DriverMapStatus;
+  online?: boolean; // New field
   carType?: string | null;
   carPlateNumber?: string | null;
   carId?: string | null;

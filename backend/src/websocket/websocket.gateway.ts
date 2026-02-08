@@ -4,18 +4,53 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
+import { AuthService } from '../auth/auth.service';
+import { UsersService } from '../users/users.service';
+import { JwtService } from '@nestjs/jwt';
 
 @WebSocketGateway({ cors: { origin: '*' }, namespace: '/' })
 export class RelaxDriveWsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
-  handleConnection() {
-    // Auth via token in handshake; join channels: orders, drivers, alerts, eta
+  constructor(
+    private authService: AuthService,
+    private usersService: UsersService,
+    private jwtService: JwtService,
+  ) { }
+
+  async handleConnection(client: Socket) {
+    try {
+      const token = client.handshake.auth.token || client.handshake.headers.authorization?.split(' ')[1];
+      if (!token) {
+        client.disconnect();
+        return;
+      }
+      const payload = this.jwtService.verify(token);
+      client.data.user = payload;
+      await this.usersService.updateOnline(payload.sub, true);
+      this.emitUserUpdated(payload.sub);
+
+      // Join rooms
+      if (payload.role === 'DRIVER') {
+        client.join('drivers');
+      }
+      if (payload.role === 'ADMIN' || payload.role === 'DISPATCHER') {
+        client.join('dispatchers');
+      }
+    } catch (e) {
+      client.disconnect();
+    }
   }
 
-  handleDisconnect() { }
+  async handleDisconnect(client: Socket) {
+    if (client.data?.user?.sub) {
+      const userId = client.data.user.sub;
+      await this.usersService.updateOnline(userId, false);
+      this.emitUserUpdated(userId);
+    }
+  }
 
   broadcastOrders(payload: unknown) {
     this.server?.emit('orders', payload);

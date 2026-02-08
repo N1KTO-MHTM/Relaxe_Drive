@@ -363,17 +363,23 @@ export class OrdersService {
     });
   }
 
-  async setWaitInfo(orderId: string, driverId: string, minutes: number | null, notes?: string) {
+  async setWaitInfo(orderId: string, driverId: string, minutes: number | null, notes?: string, type: 'pickup' | 'middle' = 'pickup') {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');
 
+    const data: any = {};
+    if (type === 'pickup') {
+      data.manualWaitMinutes = minutes;
+      data.waitNotes = notes;
+    } else {
+      data.manualWaitMiddleMinutes = minutes;
+      data.waitMiddleNotes = notes;
+    }
+
     return this.prisma.order.update({
       where: { id: orderId },
-      data: {
-        manualWaitMinutes: minutes,
-        waitNotes: notes
-      } as any,
+      data,
     });
   }
 }
