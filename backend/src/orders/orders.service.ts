@@ -183,9 +183,9 @@ export class OrdersService {
 
   async updateStatus(
     orderId: string,
-    status: 'IN_PROGRESS' | 'COMPLETED',
+    status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED',
     driverId?: string,
-    opts?: { distanceKm?: number; earningsCents?: number },
+    body?: { distanceKm?: number; earningsCents?: number },
   ) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
@@ -195,6 +195,7 @@ export class OrdersService {
     const allowed: Record<string, string[]> = {
       IN_PROGRESS: ['ASSIGNED'],
       COMPLETED: ['IN_PROGRESS'],
+      CANCELLED: ['SCHEDULED', 'ASSIGNED', 'IN_PROGRESS'],
     };
     if (!allowed[status]?.includes(order.status)) {
       throw new BadRequestException(`Cannot set status ${status} from ${order.status}`);
@@ -202,8 +203,8 @@ export class OrdersService {
     if (status === 'COMPLETED') {
       const now = new Date();
       if (order.driverId) {
-        const distanceKm = opts?.distanceKm ?? 0;
-        const earningsCents = opts?.earningsCents ?? 0;
+        const distanceKm = body?.distanceKm ?? 0;
+        const earningsCents = body?.earningsCents ?? 0;
         await this.prisma.driverTripSummary.create({
           data: {
             driverId: order.driverId,
@@ -257,6 +258,12 @@ export class OrdersService {
       });
       return this.prisma.order.findUnique({ where: { id: orderId } });
     }
+    if (status === 'CANCELLED') {
+      return this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: 'CANCELLED', driverId: null }, // Clear driver assignment on cancellation
+      });
+    }
     const now = new Date();
     const data: { status: string; startedAt?: Date; leftPickupAt?: Date; waitChargeAtPickupCents?: number; leftMiddleAt?: Date; waitChargeAtMiddleCents?: number } = {
       status,
@@ -276,7 +283,14 @@ export class OrdersService {
         data.waitChargeAtPickupCents = chargeCents;
       }
       if (order.tripType === 'ROUNDTRIP' && order.arrivedAtMiddleAt && !order.leftMiddleAt) {
-        const { chargeCents } = computeWaitCharge(order.arrivedAtMiddleAt, now);
+        let chargeCents = 0;
+        const manualMinutes = (order as any).manualWaitMiddleMinutes;
+        if (manualMinutes != null && typeof manualMinutes === 'number') {
+          chargeCents = getWaitChargeCentsFromTotalMinutes(manualMinutes);
+        } else {
+          const { chargeCents: autoCharge } = computeWaitCharge(order.arrivedAtMiddleAt, now);
+          chargeCents = autoCharge;
+        }
         data.leftMiddleAt = now;
         data.waitChargeAtMiddleCents = chargeCents;
       }
@@ -317,7 +331,14 @@ export class OrdersService {
     if (order.driverId !== driverId) throw new BadRequestException('Not your order');
     if (order.tripType !== 'ROUNDTRIP' || !order.arrivedAtMiddleAt) throw new BadRequestException('Must be roundtrip and have arrived at second stop');
     const now = new Date();
-    const { chargeCents } = computeWaitCharge(order.arrivedAtMiddleAt!, now);
+    let chargeCents = 0;
+    const manualMinutes = (order as any).manualWaitMiddleMinutes;
+    if (manualMinutes != null && typeof manualMinutes === 'number') {
+      chargeCents = getWaitChargeCentsFromTotalMinutes(manualMinutes);
+    } else {
+      const { chargeCents: autoCharge } = computeWaitCharge(order.arrivedAtMiddleAt!, now);
+      chargeCents = autoCharge;
+    }
     return this.prisma.order.update({
       where: { id: orderId },
       data: { leftMiddleAt: now, waitChargeAtMiddleCents: chargeCents },

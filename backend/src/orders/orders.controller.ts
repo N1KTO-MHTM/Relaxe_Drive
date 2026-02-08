@@ -368,7 +368,7 @@ export class OrdersController {
   @Roles('ADMIN', 'DISPATCHER', 'DRIVER')
   async updateStatus(
     @Param('id') orderId: string,
-    @Body() body: { status: 'IN_PROGRESS' | 'COMPLETED'; distanceKm?: number; earningsCents?: number },
+    @Body() body: { status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'; distanceKm?: number; earningsCents?: number },
     @Request() req: { user: { id: string; role: string } },
   ) {
     const result = await this.ordersService.updateStatus(
@@ -397,9 +397,9 @@ export class OrdersController {
     const updated = await this.ordersService.setManualAssignment(orderId, !!body.manualAssignment);
     await this.audit.log(req.user.id, 'order.manual_flag', 'order', { orderId, manualAssignment: !!body.manualAssignment });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.planningService.recalculateAndEmit().catch(() => { });
-    return updated;
+    return this.transformOrder(updated);
   }
 
   @Patch(':id/delay')
@@ -414,9 +414,9 @@ export class OrdersController {
     const updated = await this.ordersService.delayOrder(orderId, delayMinutes);
     await this.audit.log(req.user.id, 'order.delay', 'order', { orderId, delayMinutes });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.planningService.recalculateAndEmit().catch(() => { });
-    return updated;
+    return this.transformOrder(updated);
   }
 
   @Delete(':id')
@@ -426,7 +426,7 @@ export class OrdersController {
     await this.ordersService.delete(orderId);
     await this.audit.log(req.user.id, 'order.delete', 'order', { orderId });
     const list = await this.ordersService.findActiveAndScheduled();
-    this.ws.broadcastOrders(list);
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
     this.planningService.recalculateAndEmit().catch(() => { });
     return { deleted: true };
   }

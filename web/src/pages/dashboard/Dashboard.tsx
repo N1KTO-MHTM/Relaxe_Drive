@@ -154,9 +154,11 @@ export default function Dashboard() {
   const [passengerAddressHistory, setPassengerAddressHistory] = useState<Array<{ id: string; address: string; type?: string }>>([]);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(null);
-  const [alerts, setAlerts] = useState<Array<{ id: string; type: string; orderId?: string; driverId?: string; pickupAddress?: string; at: string; count?: number }>>([]);
   const [reports, setReports] = useState<DriverReportMap[]>([]);
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
+  const [zones, setZones] = useState<any[]>([]);
+  const [showZones, setShowZones] = useState(true);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const [planningResult, setPlanningResult] = useState<PlanningResult | null>(null);
   const [showPlanPanel, setShowPlanPanel] = useState(false);
@@ -378,9 +380,12 @@ export default function Dashboard() {
       list = list.filter((d) => {
         const hasLocation = d.lat != null && d.lng != null;
         const busy = orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
-        if (driverStatusFilter === 'active') return hasLocation && !busy;
+        const isOnline = (d as User).online === true;
+        const notAvailable = d.available === false || !isOnline;
+
+        if (driverStatusFilter === 'active') return hasLocation && !busy && !notAvailable;
         if (driverStatusFilter === 'busy') return busy;
-        if (driverStatusFilter === 'offline') return !hasLocation;
+        if (driverStatusFilter === 'offline') return !hasLocation || notAvailable;
         return true;
       });
     }
@@ -589,8 +594,20 @@ export default function Dashboard() {
   refreshAllRef.current = refreshAll;
 
   /** Load all data everywhere when dashboard opens (and when user changes). */
+  const refreshZones = async () => {
+    try {
+      const res = await api.get('/zones');
+      setZones(res.data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch zones:', err);
+    }
+  };
+
   useEffect(() => {
-    if (user) refreshAllRef.current();
+    if (user) {
+      refreshAll();
+      refreshZones();
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -729,11 +746,13 @@ export default function Dashboard() {
       setDriversRefreshTrigger((n) => n + 1);
     };
     socket.on('user.updated', onUserUpdated);
+    socket.on('connect', refreshAll);
 
     return () => {
       socket.off('orders', onOrders);
       socket.off('drivers', onDrivers);
       socket.off('user.updated', onUserUpdated);
+      socket.off('connect', refreshAll);
     };
   }, [socket, user?.id, user?.role]);
 
@@ -1139,7 +1158,6 @@ export default function Dashboard() {
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         sendLocationOnceRef.current?.();
-        api.patch('/users/me/available', { available: true }).catch(() => { });
       }
       // When tab is hidden we do nothing — watchPosition keeps running so location can still update
     };
@@ -1241,9 +1259,16 @@ export default function Dashboard() {
         ? (selectedRouteIndex === 0
           ? (routeData.distanceKm ?? 0)
           : (routeData.alternativeRoutes?.[selectedRouteIndex - 1]?.distanceKm ?? 0))
-        : 0;
+        : (order?.distanceKm ?? 0);
+
+      // Basic billing: $10 base + $1.5 per km + wait charges
+      const baseCents = 1000;
+      const distanceCents = Math.round(distanceKm * 150);
+      const waitAtPickup = order?.waitChargeAtPickupCents ?? 0;
+      const waitAtMiddle = order?.waitChargeAtMiddleCents ?? 0;
+
       body.distanceKm = distanceKm;
-      body.earningsCents = 0;
+      body.earningsCents = baseCents + distanceCents + waitAtPickup + waitAtMiddle;
     }
     try {
       await api.patch(`/orders/${orderId}/status`, body);
@@ -2741,7 +2766,8 @@ export default function Dashboard() {
               selectedOrderTooltip={selectedOrderTooltip}
               futureOrderPickups={canAssign ? futureOrderCoords.filter((f) => f.orderId !== selectedOrderId).map((f) => ({ orderId: f.orderId, lat: f.pickupLat, lng: f.pickupLng, pickupAt: f.pickupAt })) : []}
               problemZones={canAssign && showProblemZones && problemZones ? problemZones : undefined}
-              zones={undefined}
+              zones={showZones ? zones : undefined}
+              showZones={showZones}
               focusCenter={!isDriver ? myLocationCenter : undefined}
               initialCenter={savedMapView?.center}
               initialZoom={savedMapView?.zoom}
@@ -2830,6 +2856,10 @@ export default function Dashboard() {
             {canAssign && (
               <>
                 <div className="dashboard-drivers-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <label className="rd-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'var(--rd-surface)', padding: '0.5rem', borderRadius: 'var(--rd-radius)', border: '1px solid var(--rd-border)' }}>
+                    <input type="checkbox" checked={showZones} onChange={(e) => setShowZones(e.target.checked)} />
+                    <span style={{ fontSize: '0.875rem' }}>{t('dashboard.showMapZones')}</span>
+                  </label>
                   <input
                     type="search"
                     className="rd-input dashboard-drivers-search"
@@ -2938,261 +2968,277 @@ export default function Dashboard() {
           </aside>
         )}
       </div>
-      {showRouteSelection && (
-        <RouteSelectionModal
-          pickupAddress={pickupAddress}
-          dropoffAddress={dropoffAddress}
-          onSelect={(idx, route) => {
-            setShowRouteSelection(false);
-            // We could store the route here to save with order, but for now just showing it is enough as per Plan 1
-            toast.success(`Selected Route ${idx + 1}: ${route.distanceKm.toFixed(1)}km, ${Math.round(route.durationMinutes)}min`);
-          }}
-          onCancel={() => setShowRouteSelection(false)}
-        />
-      )}
-      {driverTripsModalId && (
-        <DriverTripsModal
-          driverId={driverTripsModalId}
-          driverName={drivers.find(d => d.id === driverTripsModalId)?.nickname}
-          onClose={() => setDriverTripsModalId(null)}
-        />
-      )}
-      {selectedDriverDetail && (
-        <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.driverInfoTitle')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setSelectedDriverDetail(null)} onKeyDown={(e) => e.key === 'Escape' && setSelectedDriverDetail(null)}>
-          <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.driverInfoTitle')}</h3>
-            <div className="dashboard-stats-card" style={{ marginBottom: '0.75rem' }}>
-              <div className="stat-row"><span>{t('auth.nickname')}</span><span>{selectedDriverDetail.driver.nickname ?? '—'}</span></div>
-              <div className="stat-row"><span>{t('auth.phone')}</span><span>{selectedDriverDetail.driver.phone ?? '—'}</span></div>
-              <div className="stat-row"><span>{t('drivers.driverId')}</span><span>{(selectedDriverDetail.driver as User).driverId ?? '—'}</span></div>
-              <div className="stat-row"><span>{t('drivers.carId')}</span><span>{(selectedDriverDetail.driver as User).carId ?? '—'}</span></div>
-              <div className="stat-row"><span>{t('auth.carType')}</span><span>{(selectedDriverDetail.driver as User).carType ? t('auth.carType_' + (selectedDriverDetail.driver as User).carType) : '—'}</span></div>
-              <div className="stat-row"><span>{t('auth.carPlateNumber')}</span><span>{(selectedDriverDetail.driver as User).carPlateNumber ?? '—'}</span></div>
-              <div className="stat-row"><span>{t('dashboard.userId')}</span><span className="rd-id-compact" title={selectedDriverDetail.driver.id}>{shortId(selectedDriverDetail.driver.id)}</span></div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              {selectedDriverDetail.driver.phone && (
-                <a href={`tel:${selectedDriverDetail.driver.phone}`} className="rd-btn" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }}>
-                  📞 Call
-                </a>
-              )}
-              {selectedDriverDetail.driver.phone && (
-                <button type="button" className="rd-btn" style={{ flex: 1 }} onClick={() => {
-                  navigator.clipboard.writeText(selectedDriverDetail.driver.phone!);
-                  toast.success(t('dashboard.phoneCopied') || 'Copied');
-                }}>
-                  📋 Copy
-                </button>
-              )}
-              <button type="button" className="rd-btn" style={{ flex: 1, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }} onClick={() => setDriverTripsModalId(selectedDriverDetail.driver.id)}>
-                📜 History
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" className="rd-btn rd-btn-primary" onClick={() => { handleAssign(selectedDriverDetail.orderId, selectedDriverDetail.driver.id); setSelectedDriverDetail(null); }} disabled={!!assigningId}>
-                {assigningId === selectedDriverDetail.orderId ? '…' : t('dashboard.assignDriver')}
-              </button>
-              <button type="button" className="rd-btn" onClick={() => setSelectedDriverDetail(null)}>{t('common.close')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {postTripSummary && (
-        <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.tripSummaryTitle')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setPostTripSummary(null)} onKeyDown={(e) => e.key === 'Escape' && setPostTripSummary(null)}>
-          <div className="rd-panel dashboard-trip-summary-modal" style={{ maxWidth: 440, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.tripSummaryTitle')}</h3>
-            <p className="rd-text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-              {postTripSummary.pickupAddress} → {postTripSummary.dropoffAddress}
-            </p>
-            <div className="dashboard-stats-card" style={{ marginBottom: '0.75rem' }}>
-              {postTripSummary.durationMinutes > 0 && (
-                <div className="stat-row"><span>{t('dashboard.tripDuration')}</span><span><strong>{Math.round(postTripSummary.durationMinutes)} min</strong></span></div>
-              )}
-              {postTripSummary.arrivedAtPickupAt && (
-                <div className="stat-row"><span>{t('dashboard.timeArrived')}</span><span>{new Date(postTripSummary.arrivedAtPickupAt).toLocaleString()}</span></div>
-              )}
-              {postTripSummary.leftPickupAt && (
-                <div className="stat-row"><span>{t('dashboard.timePickedUp')}</span><span>{new Date(postTripSummary.leftPickupAt).toLocaleString()}</span></div>
-              )}
-              <div className="stat-row"><span>{t('dashboard.timeDroppedOff')}</span><span>{new Date(postTripSummary.completedAt).toLocaleString()}</span></div>
-              {(postTripSummary.waitChargeAtPickupCents ?? 0) > 0 && (
-                <div className="stat-row"><span>{t('dashboard.waitChargePickup')}</span><span>${(postTripSummary.waitChargeAtPickupCents! / 100).toFixed(0)}</span></div>
-              )}
-              {(postTripSummary.waitChargeAtMiddleCents ?? 0) > 0 && (
-                <div className="stat-row"><span>{t('dashboard.waitChargeSecond')}</span><span>${(postTripSummary.waitChargeAtMiddleCents! / 100).toFixed(0)}</span></div>
-              )}
-              <div className="stat-row"><span>{t('dashboard.distance')}</span><span>{(postTripSummary.distanceKm / 1.60934).toFixed(1)} mi</span></div>
-              <div className="stat-row"><span>{t('dashboard.earnings')}</span><span>${(postTripSummary.earningsCents / 100).toFixed(2)}</span></div>
-            </div>
-            <button type="button" className="rd-btn rd-btn-primary" onClick={() => setPostTripSummary(null)}>{t('dashboard.done')}</button>
-          </div>
-        </div>
-      )}
-      {showReportModal && (
-        <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.report')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowReportModal(false)} onKeyDown={(e) => e.key === 'Escape' && setShowReportModal(false)}>
-          <div className="rd-panel" style={{ maxWidth: 400, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.report')}</h3>
-            <p className="rd-muted" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>{t('dashboard.reportAtLocation')}</p>
-            <form onSubmit={handleReportSubmit}>
-              <label>{t('dashboard.reportType')}</label>
-              <select className="rd-input" value={reportType} onChange={(e) => setReportType(e.target.value)}>
-                <option value="POLICE">{t('dashboard.reportPolice')}</option>
-                <option value="TRAFFIC">{t('dashboard.reportTraffic')}</option>
-                <option value="WORK_ZONE">{t('dashboard.reportWorkZone')}</option>
-                <option value="CAR_CRASH">{t('dashboard.reportCrash')}</option>
-                <option value="OTHER">{t('dashboard.reportOther')}</option>
-              </select>
-              <label>{t('dashboard.reportDescription')}</label>
-              <input type="text" className="rd-input" value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} placeholder={t('dashboard.reportDescriptionOptional')} />
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="submit" className="rd-btn rd-btn-primary" disabled={reportSubmitting}>{reportSubmitting ? '…' : t('dashboard.submit')}</button>
-                <button type="button" className="rd-btn" onClick={() => setShowReportModal(false)}>{t('dashboard.cancel')}</button>
+      {
+        showRouteSelection && (
+          <RouteSelectionModal
+            pickupAddress={pickupAddress}
+            dropoffAddress={dropoffAddress}
+            onSelect={(idx, route) => {
+              setShowRouteSelection(false);
+              // We could store the route here to save with order, but for now just showing it is enough as per Plan 1
+              toast.success(`Selected Route ${idx + 1}: ${route.distanceKm.toFixed(1)}km, ${Math.round(route.durationMinutes)}min`);
+            }}
+            onCancel={() => setShowRouteSelection(false)}
+          />
+        )
+      }
+      {
+        driverTripsModalId && (
+          <DriverTripsModal
+            driverId={driverTripsModalId}
+            driverName={drivers.find(d => d.id === driverTripsModalId)?.nickname}
+            onClose={() => setDriverTripsModalId(null)}
+          />
+        )
+      }
+      {
+        selectedDriverDetail && (
+          <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.driverInfoTitle')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setSelectedDriverDetail(null)} onKeyDown={(e) => e.key === 'Escape' && setSelectedDriverDetail(null)}>
+            <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.driverInfoTitle')}</h3>
+              <div className="dashboard-stats-card" style={{ marginBottom: '0.75rem' }}>
+                <div className="stat-row"><span>{t('auth.nickname')}</span><span>{selectedDriverDetail.driver.nickname ?? '—'}</span></div>
+                <div className="stat-row"><span>{t('auth.phone')}</span><span>{selectedDriverDetail.driver.phone ?? '—'}</span></div>
+                <div className="stat-row"><span>{t('drivers.driverId')}</span><span>{(selectedDriverDetail.driver as User).driverId ?? '—'}</span></div>
+                <div className="stat-row"><span>{t('drivers.carId')}</span><span>{(selectedDriverDetail.driver as User).carId ?? '—'}</span></div>
+                <div className="stat-row"><span>{t('auth.carType')}</span><span>{(selectedDriverDetail.driver as User).carType ? t('auth.carType_' + (selectedDriverDetail.driver as User).carType) : '—'}</span></div>
+                <div className="stat-row"><span>{t('auth.carPlateNumber')}</span><span>{(selectedDriverDetail.driver as User).carPlateNumber ?? '—'}</span></div>
+                <div className="stat-row"><span>{t('dashboard.userId')}</span><span className="rd-id-compact" title={selectedDriverDetail.driver.id}>{shortId(selectedDriverDetail.driver.id)}</span></div>
               </div>
-            </form>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                {selectedDriverDetail.driver.phone && (
+                  <a href={`tel:${selectedDriverDetail.driver.phone}`} className="rd-btn" style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }}>
+                    📞 Call
+                  </a>
+                )}
+                {selectedDriverDetail.driver.phone && (
+                  <button type="button" className="rd-btn" style={{ flex: 1 }} onClick={() => {
+                    navigator.clipboard.writeText(selectedDriverDetail.driver.phone!);
+                    toast.success(t('dashboard.phoneCopied') || 'Copied');
+                  }}>
+                    📋 Copy
+                  </button>
+                )}
+                <button type="button" className="rd-btn" style={{ flex: 1, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }} onClick={() => setDriverTripsModalId(selectedDriverDetail.driver.id)}>
+                  📜 History
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="rd-btn rd-btn-primary" onClick={() => { handleAssign(selectedDriverDetail.orderId, selectedDriverDetail.driver.id); setSelectedDriverDetail(null); }} disabled={!!assigningId}>
+                  {assigningId === selectedDriverDetail.orderId ? '…' : t('dashboard.assignDriver')}
+                </button>
+                <button type="button" className="rd-btn" onClick={() => setSelectedDriverDetail(null)}>{t('common.close')}</button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
+      {
+        postTripSummary && (
+          <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.tripSummaryTitle')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setPostTripSummary(null)} onKeyDown={(e) => e.key === 'Escape' && setPostTripSummary(null)}>
+            <div className="rd-panel dashboard-trip-summary-modal" style={{ maxWidth: 440, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.tripSummaryTitle')}</h3>
+              <p className="rd-text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                {postTripSummary.pickupAddress} → {postTripSummary.dropoffAddress}
+              </p>
+              <div className="dashboard-stats-card" style={{ marginBottom: '0.75rem' }}>
+                {postTripSummary.durationMinutes > 0 && (
+                  <div className="stat-row"><span>{t('dashboard.tripDuration')}</span><span><strong>{Math.round(postTripSummary.durationMinutes)} min</strong></span></div>
+                )}
+                {postTripSummary.arrivedAtPickupAt && (
+                  <div className="stat-row"><span>{t('dashboard.timeArrived')}</span><span>{new Date(postTripSummary.arrivedAtPickupAt).toLocaleString()}</span></div>
+                )}
+                {postTripSummary.leftPickupAt && (
+                  <div className="stat-row"><span>{t('dashboard.timePickedUp')}</span><span>{new Date(postTripSummary.leftPickupAt).toLocaleString()}</span></div>
+                )}
+                <div className="stat-row"><span>{t('dashboard.timeDroppedOff')}</span><span>{new Date(postTripSummary.completedAt).toLocaleString()}</span></div>
+                {(postTripSummary.waitChargeAtPickupCents ?? 0) > 0 && (
+                  <div className="stat-row"><span>{t('dashboard.waitChargePickup')}</span><span>${(postTripSummary.waitChargeAtPickupCents! / 100).toFixed(0)}</span></div>
+                )}
+                {(postTripSummary.waitChargeAtMiddleCents ?? 0) > 0 && (
+                  <div className="stat-row"><span>{t('dashboard.waitChargeSecond')}</span><span>${(postTripSummary.waitChargeAtMiddleCents! / 100).toFixed(0)}</span></div>
+                )}
+                <div className="stat-row"><span>{t('dashboard.distance')}</span><span>{(postTripSummary.distanceKm / 1.60934).toFixed(1)} mi</span></div>
+                <div className="stat-row"><span>{t('dashboard.earnings')}</span><span>${(postTripSummary.earningsCents / 100).toFixed(2)}</span></div>
+              </div>
+              <button type="button" className="rd-btn rd-btn-primary" onClick={() => setPostTripSummary(null)}>{t('dashboard.done')}</button>
+            </div>
+          </div>
+        )
+      }
+      {
+        showReportModal && (
+          <div className="rd-modal-overlay" role="dialog" aria-modal="true" aria-label={t('dashboard.report')} tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowReportModal(false)} onKeyDown={(e) => e.key === 'Escape' && setShowReportModal(false)}>
+            <div className="rd-panel" style={{ maxWidth: 400, width: '90%', margin: 16 }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ marginBottom: '0.75rem' }}>{t('dashboard.report')}</h3>
+              <p className="rd-muted" style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>{t('dashboard.reportAtLocation')}</p>
+              <form onSubmit={handleReportSubmit}>
+                <label>{t('dashboard.reportType')}</label>
+                <select className="rd-input" value={reportType} onChange={(e) => setReportType(e.target.value)}>
+                  <option value="POLICE">{t('dashboard.reportPolice')}</option>
+                  <option value="TRAFFIC">{t('dashboard.reportTraffic')}</option>
+                  <option value="WORK_ZONE">{t('dashboard.reportWorkZone')}</option>
+                  <option value="CAR_CRASH">{t('dashboard.reportCrash')}</option>
+                  <option value="OTHER">{t('dashboard.reportOther')}</option>
+                </select>
+                <label>{t('dashboard.reportDescription')}</label>
+                <input type="text" className="rd-input" value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} placeholder={t('dashboard.reportDescriptionOptional')} />
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button type="submit" className="rd-btn rd-btn-primary" disabled={reportSubmitting}>{reportSubmitting ? '…' : t('dashboard.submit')}</button>
+                  <button type="button" className="rd-btn" onClick={() => setShowReportModal(false)}>{t('dashboard.cancel')}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
       {isDriver && user?.id && <DriverChatButton userId={user.id} />}
-      {reportSuccessParams && (
-        <div style={{
-          position: 'fixed',
-          bottom: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'white',
-          color: 'black',
-          padding: '16px 24px',
-          borderRadius: '50px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          zIndex: 9999,
-          maxWidth: '90vw',
-          width: 'auto',
-          animation: 'fadeInUp 0.3s ease-out'
-        }}>
+      {
+        reportSuccessParams && (
           <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#22c55e',
-            color: 'white',
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'white',
+            color: 'black',
+            padding: '16px 24px',
+            borderRadius: '50px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px',
-            flexShrink: 0
+            gap: '12px',
+            zIndex: 9999,
+            maxWidth: '90vw',
+            width: 'auto',
+            animation: 'fadeInUp 0.3s ease-out'
           }}>
-            {REPORT_EMOJI[reportSuccessParams.type] || '⚠️'}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: 600, fontSize: '16px', lineHeight: '1.2' }}>
-              {t(REPORT_TYPE_KEYS[reportSuccessParams.type] || 'dashboard.reportOther').replace('Report ', '')} reported
-            </span>
-            <span style={{ fontSize: '14px', color: '#6b7280' }}>
-              Thanks for helping others
-            </span>
-          </div>
-        </div>
-      )}
-      {showTimerNoteModal && (
-        <div className="rd-modal-overlay" role="dialog" aria-modal="true" tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }}>
-            <h3 style={{ marginBottom: '1rem' }}>Stop Timer & Add Note</h3>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Wait Notes (Optional)</label>
-            <input
-              type="text"
-              className="rd-input"
-              value={timerNoteVal}
-              onChange={(e) => setTimerNoteVal(e.target.value)}
-              placeholder="e.g. Passenger was late"
-              style={{ width: '100%', marginBottom: '1rem' }}
-            />
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" className="rd-btn rd-btn-primary" onClick={submitWaitInfo}>
-                Save & Stop
-              </button>
-              <button type="button" className="rd-btn" onClick={() => setShowTimerNoteModal(null)}>
-                Cancel
-              </button>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#22c55e',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              flexShrink: 0
+            }}>
+              {REPORT_EMOJI[reportSuccessParams.type] || '⚠️'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontWeight: 600, fontSize: '16px', lineHeight: '1.2' }}>
+                {t(REPORT_TYPE_KEYS[reportSuccessParams.type] || 'dashboard.reportOther').replace('Report ', '')} reported
+              </span>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                Thanks for helping others
+              </span>
             </div>
           </div>
-        </div>
-      )}
-      {isDriver && currentDriverOrder && (
-        <div className="driver-active-panel">
-          <div className="driver-active-panel__header">
-            <div>
-              <h3 className="driver-active-panel__title">
-                {currentDriverOrder.status === 'ASSIGNED' ? t('dashboard.navToPickup') : t('dashboard.navToDropoff')}
-              </h3>
-              {(currentDriverOrder.passenger?.name || currentDriverOrder.passenger?.phone) && (
-                <div style={{ fontSize: '0.875rem', color: 'var(--rd-text-muted)' }}>
-                  {[currentDriverOrder.passenger?.name, currentDriverOrder.passenger?.phone].filter(Boolean).join(' · ')}
+        )
+      }
+      {
+        showTimerNoteModal && (
+          <div className="rd-modal-overlay" role="dialog" aria-modal="true" tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }}>
+              <h3 style={{ marginBottom: '1rem' }}>Stop Timer & Add Note</h3>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Wait Notes (Optional)</label>
+              <input
+                type="text"
+                className="rd-input"
+                value={timerNoteVal}
+                onChange={(e) => setTimerNoteVal(e.target.value)}
+                placeholder="e.g. Passenger was late"
+                style={{ width: '100%', marginBottom: '1rem' }}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="rd-btn rd-btn-primary" onClick={submitWaitInfo}>
+                  Save & Stop
+                </button>
+                <button type="button" className="rd-btn" onClick={() => setShowTimerNoteModal(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      {
+        isDriver && currentDriverOrder && (
+          <div className="driver-active-panel">
+            <div className="driver-active-panel__header">
+              <div>
+                <h3 className="driver-active-panel__title">
+                  {currentDriverOrder.status === 'ASSIGNED' ? t('dashboard.navToPickup') : t('dashboard.navToDropoff')}
+                </h3>
+                {(currentDriverOrder.passenger?.name || currentDriverOrder.passenger?.phone) && (
+                  <div style={{ fontSize: '0.875rem', color: 'var(--rd-text-muted)' }}>
+                    {[currentDriverOrder.passenger?.name, currentDriverOrder.passenger?.phone].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
+              {routeData && (routeData.driverToPickupMinutes != null || routeData.durationMinutes != null) && (
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--rd-accent)' }}>
+                  ~{Math.round(currentDriverOrder.status === 'ASSIGNED' ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0))} min
                 </div>
               )}
             </div>
-            {routeData && (routeData.driverToPickupMinutes != null || routeData.durationMinutes != null) && (
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--rd-accent)' }}>
-                ~{Math.round(currentDriverOrder.status === 'ASSIGNED' ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0))} min
+
+            {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
+              <div className="driver-active-panel__timer" style={{ background: 'var(--rd-surface)', padding: '0.5rem', borderRadius: 'var(--rd-radius)', marginBottom: '0.5rem', border: '1px solid var(--rd-border)' }}>
+                {currentDriverOrder.manualWaitMinutes != null ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 500 }}>Waited: {currentDriverOrder.manualWaitMinutes} min</span>
+                    <button type="button" className="rd-btn rd-btn--small" onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
+                  </div>
+                ) : manualTimerStart[currentDriverOrder.id] ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1, fontWeight: 'bold', color: 'var(--rd-critical)', fontSize: '1.1rem' }}>
+                      ⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s
+                    </div>
+                    <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => setShowTimerNoteModal(currentDriverOrder.id)}>Stop</button>
+                  </div>
+                ) : (
+                  <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%' }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
+                )}
               </div>
             )}
-          </div>
 
-          {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
-            <div className="driver-active-panel__timer" style={{ background: 'var(--rd-surface)', padding: '0.5rem', borderRadius: 'var(--rd-radius)', marginBottom: '0.5rem', border: '1px solid var(--rd-border)' }}>
-              {currentDriverOrder.manualWaitMinutes != null ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 500 }}>Waited: {currentDriverOrder.manualWaitMinutes} min</span>
-                  <button type="button" className="rd-btn rd-btn--small" onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
-                </div>
-              ) : manualTimerStart[currentDriverOrder.id] ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ flex: 1, fontWeight: 'bold', color: 'var(--rd-critical)', fontSize: '1.1rem' }}>
-                    ⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s
+            <div className="driver-active-panel__actions">
+              <button type="button" className="rd-btn rd-btn-primary" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
+                {t('dashboard.navigate')}
+              </button>
+              <button type="button" className="rd-btn" style={{ background: '#000', color: '#fff', border: '1px solid #333' }} onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
+                Waze
+              </button>
+              <div className="driver-active-panel__full-width">
+                {currentDriverOrder.status === 'ASSIGNED' && (
+                  currentDriverOrder.arrivedAtPickupAt ? (
+                    <button type="button" className="rd-btn rd-btn-primary" style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!statusUpdatingId} onClick={() => handleStatusChange(currentDriverOrder.id, 'IN_PROGRESS')}>
+                      {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.startRide')}
+                    </button>
+                  ) : (
+                    <button type="button" className="rd-btn rd-btn-success" style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!arrivingId} onClick={() => handleArrivedAtPickup(currentDriverOrder.id)}>
+                      {arrivingId === currentDriverOrder.id ? '…' : t('dashboard.arrivedAtPickup')}
+                    </button>
+                  )
+                )}
+                {currentDriverOrder.status === 'IN_PROGRESS' && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="rd-btn rd-btn-primary" style={{ flex: 2, fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!statusUpdatingId} onClick={() => setConfirmEndTripOrderId(currentDriverOrder.id)}>
+                      {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.complete')}
+                    </button>
+                    <button type="button" className="rd-btn rd-btn-danger" style={{ flex: 1 }} disabled={!!stopUnderwayId || !!statusUpdatingId} onClick={() => handleStopUnderway(currentDriverOrder.id)} title={t('dashboard.stopUnderwayHint')}>
+                      {stopUnderwayId === currentDriverOrder.id ? '…' : t('dashboard.stopUnderway')}
+                    </button>
                   </div>
-                  <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => setShowTimerNoteModal(currentDriverOrder.id)}>Stop</button>
-                </div>
-              ) : (
-                <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%' }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
-              )}
-            </div>
-          )}
-
-          <div className="driver-active-panel__actions">
-            <button type="button" className="rd-btn rd-btn-primary" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
-              {t('dashboard.navigate')}
-            </button>
-            <button type="button" className="rd-btn" style={{ background: '#000', color: '#fff', border: '1px solid #333' }} onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
-              Waze
-            </button>
-            <div className="driver-active-panel__full-width">
-              {currentDriverOrder.status === 'ASSIGNED' && (
-                currentDriverOrder.arrivedAtPickupAt ? (
-                  <button type="button" className="rd-btn rd-btn-primary" style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!statusUpdatingId} onClick={() => handleStatusChange(currentDriverOrder.id, 'IN_PROGRESS')}>
-                    {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.startRide')}
-                  </button>
-                ) : (
-                  <button type="button" className="rd-btn rd-btn-success" style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!arrivingId} onClick={() => handleArrivedAtPickup(currentDriverOrder.id)}>
-                    {arrivingId === currentDriverOrder.id ? '…' : t('dashboard.arrivedAtPickup')}
-                  </button>
-                )
-              )}
-              {currentDriverOrder.status === 'IN_PROGRESS' && (
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="rd-btn rd-btn-primary" style={{ flex: 2, fontSize: '1.1rem', padding: '0.75rem' }} disabled={!!statusUpdatingId} onClick={() => setConfirmEndTripOrderId(currentDriverOrder.id)}>
-                    {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.complete')}
-                  </button>
-                  <button type="button" className="rd-btn rd-btn-danger" style={{ flex: 1 }} disabled={!!stopUnderwayId || !!statusUpdatingId} onClick={() => handleStopUnderway(currentDriverOrder.id)} title={t('dashboard.stopUnderwayHint')}>
-                    {stopUnderwayId === currentDriverOrder.id ? '…' : t('dashboard.stopUnderway')}
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

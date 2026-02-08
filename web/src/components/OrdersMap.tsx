@@ -616,7 +616,7 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
           fillOpacity: 0.2, // Transparent as requested
           interactive: true,
         }).addTo(group);
-        // poly.bindTooltip(z.name, { permanent: true, direction: "center", className: "zone-label" }); // Optional: Label
+        poly.bindTooltip(z.name, { permanent: true, direction: 'center', className: 'rd-zone-label', opacity: 0.7 });
         poly.bindPopup(`<strong>${escapeHtml(z.name)}</strong>`, { closeOnClick: false });
       } catch (e) {
         console.error('Failed to render zone', z, e);

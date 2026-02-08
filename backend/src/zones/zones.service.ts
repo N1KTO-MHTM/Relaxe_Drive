@@ -19,12 +19,15 @@ export class ZonesService implements OnModuleInit {
     }
 
     private async seedZones() {
+        // Clear all zones first to ensure we don't have duplicates or old data with different names
+        await (this.prisma.zone as any).deleteMany({});
+
         const zones = [
-            // --- ROCKLAND COUNTY ---
+            // --- ROCKLAND COUNTY: RAMAPO ---
             {
-                name: 'Monsey',
+                name: 'Monsey (10952)',
                 description: 'Monsey',
-                color: '#2dd4bf',
+                color: '#2dd4bf', // Teal
                 points: [
                     { lat: 41.130, lng: -74.080 },
                     { lat: 41.130, lng: -74.050 },
@@ -33,7 +36,7 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Spring Valley',
+                name: 'Spring Valley (10977)',
                 description: 'Spring Valley',
                 color: '#2dd4bf',
                 points: [
@@ -44,40 +47,7 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Nanuet',
-                description: 'Nanuet',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.110, lng: -74.020 },
-                    { lat: 41.110, lng: -73.990 },
-                    { lat: 41.080, lng: -73.990 },
-                    { lat: 41.080, lng: -74.020 },
-                ],
-            },
-            {
-                name: 'New City',
-                description: 'New City',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.170, lng: -74.000 },
-                    { lat: 41.170, lng: -73.970 },
-                    { lat: 41.130, lng: -73.970 },
-                    { lat: 41.130, lng: -74.000 },
-                ],
-            },
-            {
-                name: 'New Square',
-                description: 'New Square',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.145, lng: -74.035 },
-                    { lat: 41.145, lng: -74.015 },
-                    { lat: 41.130, lng: -74.015 },
-                    { lat: 41.130, lng: -74.035 },
-                ],
-            },
-            {
-                name: 'Suffern',
+                name: 'Suffern (10901)',
                 description: 'Suffern',
                 color: '#2dd4bf',
                 points: [
@@ -88,29 +58,7 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Hillburn',
-                description: 'Hillburn',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.130, lng: -74.180 },
-                    { lat: 41.130, lng: -74.160 },
-                    { lat: 41.110, lng: -74.160 },
-                    { lat: 41.110, lng: -74.180 },
-                ],
-            },
-            {
-                name: 'Sloatsburg',
-                description: 'Sloatsburg',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.160, lng: -74.200 },
-                    { lat: 41.160, lng: -74.180 },
-                    { lat: 41.140, lng: -74.180 },
-                    { lat: 41.140, lng: -74.200 },
-                ],
-            },
-            {
-                name: 'Montebello',
+                name: 'Montebello (10974)',
                 description: 'Montebello',
                 color: '#2dd4bf',
                 points: [
@@ -121,29 +69,7 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Wesley Hills',
-                description: 'Wesley Hills',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.160, lng: -74.100 },
-                    { lat: 41.160, lng: -74.060 },
-                    { lat: 41.140, lng: -74.060 },
-                    { lat: 41.140, lng: -74.100 },
-                ],
-            },
-            {
-                name: 'Viola',
-                description: 'Viola',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.140, lng: -74.100 },
-                    { lat: 41.140, lng: -74.080 },
-                    { lat: 41.130, lng: -74.080 },
-                    { lat: 41.130, lng: -74.100 },
-                ],
-            },
-            {
-                name: 'Airmont',
+                name: 'Airmont (10901)',
                 description: 'Airmont',
                 color: '#2dd4bf',
                 points: [
@@ -154,7 +80,62 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Chestnut Ridge',
+                name: 'Sloatsburg (10974)',
+                description: 'Sloatsburg',
+                color: '#2dd4bf',
+                points: [
+                    { lat: 41.160, lng: -74.200 },
+                    { lat: 41.160, lng: -74.180 },
+                    { lat: 41.140, lng: -74.180 },
+                    { lat: 41.140, lng: -74.200 },
+                ],
+            },
+            {
+                name: 'Hillburn (10931)',
+                description: 'Hillburn',
+                color: '#2dd4bf',
+                points: [
+                    { lat: 41.130, lng: -74.180 },
+                    { lat: 41.130, lng: -74.160 },
+                    { lat: 41.110, lng: -74.160 },
+                    { lat: 41.110, lng: -74.180 },
+                ],
+            },
+            {
+                name: 'New Square (10977)',
+                description: 'New Square',
+                color: '#2dd4bf',
+                points: [
+                    { lat: 41.145, lng: -74.035 },
+                    { lat: 41.145, lng: -74.015 },
+                    { lat: 41.130, lng: -74.015 },
+                    { lat: 41.130, lng: -74.035 },
+                ],
+            },
+            {
+                name: 'Wesley Hills (10901)',
+                description: 'Wesley Hills',
+                color: '#2dd4bf',
+                points: [
+                    { lat: 41.160, lng: -74.100 },
+                    { lat: 41.160, lng: -74.060 },
+                    { lat: 41.140, lng: -74.060 },
+                    { lat: 41.140, lng: -74.100 },
+                ],
+            },
+            {
+                name: 'Viola (10952)',
+                description: 'Viola',
+                color: '#2dd4bf',
+                points: [
+                    { lat: 41.140, lng: -74.100 },
+                    { lat: 41.140, lng: -74.080 },
+                    { lat: 41.130, lng: -74.080 },
+                    { lat: 41.130, lng: -74.100 },
+                ],
+            },
+            {
+                name: 'Chestnut Ridge (10977)',
                 description: 'Chestnut Ridge',
                 color: '#2dd4bf',
                 points: [
@@ -165,172 +146,7 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Pearl River',
-                description: 'Pearl River',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.070, lng: -74.020 },
-                    { lat: 41.070, lng: -73.990 },
-                    { lat: 41.040, lng: -73.990 },
-                    { lat: 41.040, lng: -74.020 },
-                ],
-            },
-            {
-                name: 'Orangeburg',
-                description: 'Orangeburg',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.060, lng: -73.990 },
-                    { lat: 41.060, lng: -73.950 },
-                    { lat: 41.030, lng: -73.950 },
-                    { lat: 41.030, lng: -73.990 },
-                ],
-            },
-            {
-                name: 'Tappan',
-                description: 'Tappan',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.030, lng: -73.970 },
-                    { lat: 41.030, lng: -73.930 },
-                    { lat: 41.010, lng: -73.930 },
-                    { lat: 41.010, lng: -73.970 },
-                ],
-            },
-            {
-                name: 'Blauvelt',
-                description: 'Blauvelt',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.080, lng: -73.980 },
-                    { lat: 41.080, lng: -73.950 },
-                    { lat: 41.060, lng: -73.950 },
-                    { lat: 41.060, lng: -73.980 },
-                ],
-            },
-            {
-                name: 'Palisades',
-                description: 'Palisades',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.030, lng: -73.930 },
-                    { lat: 41.030, lng: -73.900 },
-                    { lat: 41.000, lng: -73.900 },
-                    { lat: 41.000, lng: -73.930 },
-                ],
-            },
-            {
-                name: 'Sparkill',
-                description: 'Sparkill',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.040, lng: -73.930 },
-                    { lat: 41.040, lng: -73.910 },
-                    { lat: 41.030, lng: -73.910 },
-                    { lat: 41.030, lng: -73.930 },
-                ],
-            },
-            {
-                name: 'Piermont',
-                description: 'Piermont',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.050, lng: -73.920 },
-                    { lat: 41.050, lng: -73.900 },
-                    { lat: 41.030, lng: -73.900 },
-                    { lat: 41.030, lng: -73.920 },
-                ],
-            },
-            {
-                name: 'Grand View',
-                description: 'Grand View-on-Hudson',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.070, lng: -73.920 },
-                    { lat: 41.070, lng: -73.910 },
-                    { lat: 41.050, lng: -73.910 },
-                    { lat: 41.050, lng: -73.920 },
-                ],
-            },
-            {
-                name: 'South Nyack',
-                description: 'South Nyack',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.090, lng: -73.930 },
-                    { lat: 41.090, lng: -73.910 },
-                    { lat: 41.070, lng: -73.910 },
-                    { lat: 41.070, lng: -73.930 },
-                ],
-            },
-            {
-                name: 'Nyack',
-                description: 'Nyack',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.100, lng: -73.930 },
-                    { lat: 41.100, lng: -73.910 },
-                    { lat: 41.090, lng: -73.910 },
-                    { lat: 41.090, lng: -73.930 },
-                ],
-            },
-            {
-                name: 'Upper Nyack',
-                description: 'Upper Nyack',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.120, lng: -73.930 },
-                    { lat: 41.120, lng: -73.910 },
-                    { lat: 41.100, lng: -73.910 },
-                    { lat: 41.100, lng: -73.930 },
-                ],
-            },
-            {
-                name: 'West Nyack',
-                description: 'West Nyack',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.110, lng: -73.980 },
-                    { lat: 41.110, lng: -73.940 },
-                    { lat: 41.090, lng: -73.940 },
-                    { lat: 41.090, lng: -73.980 },
-                ],
-            },
-            {
-                name: 'Valley Cottage',
-                description: 'Valley Cottage',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.140, lng: -73.960 },
-                    { lat: 41.140, lng: -73.930 },
-                    { lat: 41.110, lng: -73.930 },
-                    { lat: 41.110, lng: -73.960 },
-                ],
-            },
-            {
-                name: 'Congers',
-                description: 'Congers',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.160, lng: -73.960 },
-                    { lat: 41.160, lng: -73.930 },
-                    { lat: 41.140, lng: -73.930 },
-                    { lat: 41.140, lng: -73.960 },
-                ],
-            },
-            {
-                name: 'Bardonia',
-                description: 'Bardonia',
-                color: '#2dd4bf',
-                points: [
-                    { lat: 41.130, lng: -73.990 },
-                    { lat: 41.130, lng: -73.970 },
-                    { lat: 41.110, lng: -73.970 },
-                    { lat: 41.110, lng: -73.990 },
-                ],
-            },
-            {
-                name: 'New Hempstead',
+                name: 'New Hempstead (10977)',
                 description: 'New Hempstead',
                 color: '#2dd4bf',
                 points: [
@@ -341,7 +157,7 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Pomona',
+                name: 'Pomona (10970)',
                 description: 'Pomona',
                 color: '#2dd4bf',
                 points: [
@@ -351,32 +167,170 @@ export class ZonesService implements OnModuleInit {
                     { lat: 41.160, lng: -74.080 },
                 ],
             },
+
+            // --- ROCKLAND COUNTY: ORANGETOWN ---
             {
-                name: 'Mount Ivy',
-                description: 'Mount Ivy',
-                color: '#2dd4bf',
+                name: 'Nyack (10960)',
+                description: 'Nyack',
+                color: '#3b82f6', // Blue
                 points: [
-                    { lat: 41.190, lng: -74.030 },
-                    { lat: 41.190, lng: -74.000 },
+                    { lat: 41.100, lng: -73.930 },
+                    { lat: 41.100, lng: -73.910 },
+                    { lat: 41.090, lng: -73.910 },
+                    { lat: 41.090, lng: -73.930 },
+                ],
+            },
+            {
+                name: 'Pearl River (10965)',
+                description: 'Pearl River',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.070, lng: -74.020 },
+                    { lat: 41.070, lng: -73.990 },
+                    { lat: 41.040, lng: -73.990 },
+                    { lat: 41.040, lng: -74.020 },
+                ],
+            },
+            {
+                name: 'Blauvelt (10913)',
+                description: 'Blauvelt',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.080, lng: -73.980 },
+                    { lat: 41.080, lng: -73.950 },
+                    { lat: 41.060, lng: -73.950 },
+                    { lat: 41.060, lng: -73.980 },
+                ],
+            },
+            {
+                name: 'Orangeburg (10962)',
+                description: 'Orangeburg',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.060, lng: -73.990 },
+                    { lat: 41.060, lng: -73.950 },
+                    { lat: 41.030, lng: -73.950 },
+                    { lat: 41.030, lng: -73.990 },
+                ],
+            },
+            {
+                name: 'Tappan (10983)',
+                description: 'Tappan',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.030, lng: -73.970 },
+                    { lat: 41.030, lng: -73.930 },
+                    { lat: 41.010, lng: -73.930 },
+                    { lat: 41.010, lng: -73.970 },
+                ],
+            },
+            {
+                name: 'Sparkill (10976)',
+                description: 'Sparkill',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.040, lng: -73.930 },
+                    { lat: 41.040, lng: -73.910 },
+                    { lat: 41.030, lng: -73.910 },
+                    { lat: 41.030, lng: -73.930 },
+                ],
+            },
+            {
+                name: 'Palisades (10964)',
+                description: 'Palisades',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.030, lng: -73.930 },
+                    { lat: 41.030, lng: -73.900 },
+                    { lat: 41.000, lng: -73.900 },
+                    { lat: 41.000, lng: -73.930 },
+                ],
+            },
+            {
+                name: 'Upper Nyack (10960)',
+                description: 'Upper Nyack',
+                color: '#3b82f6',
+                points: [
+                    { lat: 41.120, lng: -73.930 },
+                    { lat: 41.120, lng: -73.910 },
+                    { lat: 41.100, lng: -73.910 },
+                    { lat: 41.100, lng: -73.930 },
+                ],
+            },
+
+            // --- ROCKLAND COUNTY: CLARKSTOWN ---
+            {
+                name: 'New City (10956)',
+                description: 'New City',
+                color: '#a855f7', // Purple
+                points: [
                     { lat: 41.170, lng: -74.000 },
-                    { lat: 41.170, lng: -74.030 },
+                    { lat: 41.170, lng: -73.970 },
+                    { lat: 41.130, lng: -73.970 },
+                    { lat: 41.130, lng: -74.000 },
                 ],
             },
             {
-                name: 'Thiells',
-                description: 'Thiells',
-                color: '#2dd4bf',
+                name: 'Nanuet (10954)',
+                description: 'Nanuet',
+                color: '#a855f7',
                 points: [
-                    { lat: 41.220, lng: -74.010 },
-                    { lat: 41.220, lng: -73.980 },
-                    { lat: 41.190, lng: -73.980 },
-                    { lat: 41.190, lng: -74.010 },
+                    { lat: 41.110, lng: -74.020 },
+                    { lat: 41.110, lng: -73.990 },
+                    { lat: 41.080, lng: -73.990 },
+                    { lat: 41.080, lng: -74.020 },
                 ],
             },
             {
-                name: 'Haverstraw',
+                name: 'West Nyack (10994)',
+                description: 'West Nyack',
+                color: '#a855f7',
+                points: [
+                    { lat: 41.110, lng: -73.980 },
+                    { lat: 41.110, lng: -73.940 },
+                    { lat: 41.090, lng: -73.940 },
+                    { lat: 41.090, lng: -73.980 },
+                ],
+            },
+            {
+                name: 'Valley Cottage (10989)',
+                description: 'Valley Cottage',
+                color: '#a855f7',
+                points: [
+                    { lat: 41.140, lng: -73.960 },
+                    { lat: 41.140, lng: -73.930 },
+                    { lat: 41.110, lng: -73.930 },
+                    { lat: 41.110, lng: -73.960 },
+                ],
+            },
+            {
+                name: 'Congers (10920)',
+                description: 'Congers',
+                color: '#a855f7',
+                points: [
+                    { lat: 41.160, lng: -73.960 },
+                    { lat: 41.160, lng: -73.930 },
+                    { lat: 41.140, lng: -73.930 },
+                    { lat: 41.140, lng: -73.960 },
+                ],
+            },
+            {
+                name: 'Bardonia (10954)',
+                description: 'Bardonia',
+                color: '#a855f7',
+                points: [
+                    { lat: 41.130, lng: -73.990 },
+                    { lat: 41.130, lng: -73.970 },
+                    { lat: 41.110, lng: -73.970 },
+                    { lat: 41.110, lng: -73.990 },
+                ],
+            },
+
+            // --- ROCKLAND COUNTY: HAVERSTRAW ---
+            {
+                name: 'Haverstraw (10927)',
                 description: 'Haverstraw',
-                color: '#2dd4bf',
+                color: '#22c55e', // Green
                 points: [
                     { lat: 41.200, lng: -73.980 },
                     { lat: 41.200, lng: -73.950 },
@@ -385,9 +339,9 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'W. Haverstraw',
+                name: 'W. Haverstraw (10993)',
                 description: 'West Haverstraw',
-                color: '#2dd4bf',
+                color: '#22c55e',
                 points: [
                     { lat: 41.220, lng: -73.990 },
                     { lat: 41.220, lng: -73.970 },
@@ -396,9 +350,33 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Stony Point',
+                name: 'Garnerville (10923)',
+                description: 'Garnerville',
+                color: '#22c55e',
+                points: [
+                    { lat: 41.210, lng: -73.990 },
+                    { lat: 41.210, lng: -73.970 },
+                    { lat: 41.190, lng: -73.970 },
+                    { lat: 41.190, lng: -73.990 },
+                ],
+            },
+            {
+                name: 'Thiells (10984)',
+                description: 'Thiells',
+                color: '#22c55e',
+                points: [
+                    { lat: 41.220, lng: -74.010 },
+                    { lat: 41.220, lng: -73.980 },
+                    { lat: 41.190, lng: -73.980 },
+                    { lat: 41.190, lng: -74.010 },
+                ],
+            },
+
+            // --- ROCKLAND COUNTY: STONY POINT ---
+            {
+                name: 'Stony Point (10980)',
                 description: 'Stony Point',
-                color: '#2dd4bf',
+                color: '#f59e0b', // Amber
                 points: [
                     { lat: 41.260, lng: -74.010 },
                     { lat: 41.260, lng: -73.970 },
@@ -407,9 +385,9 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'Tomkins Cove',
+                name: 'Tomkins Cove (10986)',
                 description: 'Tomkins Cove',
-                color: '#2dd4bf',
+                color: '#f59e0b',
                 points: [
                     { lat: 41.290, lng: -74.010 },
                     { lat: 41.290, lng: -73.970 },
@@ -420,9 +398,9 @@ export class ZonesService implements OnModuleInit {
 
             // --- ORANGE COUNTY ---
             {
-                name: 'Mountain Lodge',
+                name: 'Mountain Lodge (10950)',
                 description: 'Mountain Lodge Park',
-                color: '#2dd4bf',
+                color: '#6b7280', // Gray
                 points: [
                     { lat: 41.400, lng: -74.150 },
                     { lat: 41.400, lng: -74.110 },
@@ -431,9 +409,9 @@ export class ZonesService implements OnModuleInit {
                 ],
             },
             {
-                name: 'S. Bloom Grove',
+                name: 'S. Bloom Grove (10950)',
                 description: 'South Blooming Grove',
-                color: '#2dd4bf',
+                color: '#6b7280',
                 points: [
                     { lat: 41.390, lng: -74.190 },
                     { lat: 41.390, lng: -74.150 },
