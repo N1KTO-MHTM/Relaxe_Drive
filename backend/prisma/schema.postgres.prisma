@@ -77,6 +77,8 @@ model Order {
   arrivedAtMiddleAt       DateTime? @map("arrived_at_middle_at")
   leftMiddleAt            DateTime? @map("left_middle_at")
   waitChargeAtMiddleCents Int?       @map("wait_charge_at_middle_cents")
+  manualWaitMinutes       Int?       @map("manual_wait_minutes")
+  waitNotes               String?    @map("wait_notes")
   completedAt             DateTime? @map("completed_at")
   riskLevel               String?   @map("risk_level")
   suggestedDriverId       String?   @map("suggested_driver_id")

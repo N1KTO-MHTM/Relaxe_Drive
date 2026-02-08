@@ -46,6 +46,25 @@ export class OrdersController {
     };
   }
 
+  @Get('by-phone/:phone')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async getByPhone(@Param('phone') phone: string) {
+    const orders = await this.ordersService.findLastByPhone(phone, 10);
+    const results = await Promise.all(orders.map(async (o) => {
+      const [pickup, dropoff] = await Promise.all([
+        this.geo.geocode(o.pickupAddress),
+        this.geo.geocode(o.dropoffAddress),
+      ]);
+      return {
+        ...this.transformOrder(o),
+        pickupCoords: pickup,
+        dropoffCoords: dropoff,
+      };
+    }));
+    return results;
+  }
+
   @Get(':id/driver-etas')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'DISPATCHER')
@@ -409,5 +428,19 @@ export class OrdersController {
     this.ws.broadcastOrders(list);
     this.planningService.recalculateAndEmit().catch(() => { });
     return { deleted: true };
+  }
+
+  @Patch(':id/wait-info')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  async setWaitInfo(
+    @Param('id') orderId: string,
+    @Body() body: { minutes: number | null; notes?: string },
+    @Request() req: { user: { id: string } },
+  ) {
+    const updated = await this.ordersService.setWaitInfo(orderId, req.user.id, body.minutes, body.notes);
+    const list = await this.ordersService.findActiveAndScheduled();
+    this.ws.broadcastOrders(list.map(o => this.transformOrder(o)));
+    return this.transformOrder(updated);
   }
 }

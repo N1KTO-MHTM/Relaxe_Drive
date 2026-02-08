@@ -32,18 +32,48 @@ export default function DashboardLayout() {
   const nav = getAllowedNavItems(user?.role ?? null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setThemeState] = useState(themeStore.getTheme());
+
+  // Group logic
+  const groups = { operations: [] as typeof nav, dispatch: [] as typeof nav, bi: [] as typeof nav, system: [] as typeof nav };
+  nav.forEach(item => {
+    if (item.group && groups[item.group as keyof typeof groups]) groups[item.group as keyof typeof groups].push(item);
+    else groups.operations.push(item);
+  });
+
+  // Determine potentially active groups (groups that have items)
+  const availableGroups = Object.entries(groups).filter(([_, items]) => items.length > 0);
+
+  // Find current active group based on URL
+  const findCurrentGroup = () => {
+    for (const [key, items] of availableGroups) {
+      if (items.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))) {
+        return key;
+      }
+    }
+    return availableGroups[0]?.[0] || 'operations';
+  };
+
+  const [activeGroup, setActiveGroup] = useState<string>(findCurrentGroup);
+
+  // Sync active group when location changes (in case user navigates via other means)
+  useEffect(() => {
+    const current = findCurrentGroup();
+    if (current && current !== activeGroup) {
+      setActiveGroup(current);
+    }
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
   useEffect(() => {
     const unsub = themeStore.subscribe(setThemeState);
     return () => { unsub(); };
   }, []);
 
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
-
   if (!canAccessPath(user?.role ?? null, location.pathname)) {
     return <Navigate to="/dashboard" replace />;
   }
+
+  const activeSubItems = groups[activeGroup as keyof typeof groups] || [];
 
   return (
     <div className="dashboard-layout">
@@ -62,34 +92,44 @@ export default function DashboardLayout() {
             <span className="brand-tagline">{t('app.tagline')} <span className="app-version">v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0'}</span></span>
           </div>
         </div>
-        <nav className={`dashboard-layout__nav ${mobileNavOpen ? 'dashboard-layout__nav--open' : ''}`}>
-          {(() => {
-            const groups: Record<string, typeof nav> = { operations: [], dispatch: [], bi: [], system: [] };
-            nav.forEach(item => {
-              if (item.group && groups[item.group]) groups[item.group].push(item);
-              else groups.operations.push(item); // Fallback
-            });
 
-            return Object.entries(groups).map(([groupKey, items]) => {
-              if (items.length === 0) return null;
-              return (
-                <div key={groupKey} className="nav-group">
-                  <div className="nav-group-title">{t(`nav.group.${groupKey}`) || groupKey.toUpperCase()}</div>
-                  {items.map(item => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
-                      onClick={() => setMobileNavOpen(false)}
-                    >
-                      {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
-                    </Link>
-                  ))}
-                </div>
-              );
-            });
-          })()}
+        {/* Desktop Two-Tier Nav */}
+        <nav className={`dashboard-layout__nav ${mobileNavOpen ? 'dashboard-layout__nav--open' : ''}`}>
+          {/* Top Tier: Groups */}
+          <div className="dashboard-layout__tabs">
+            {availableGroups.map(([key, _]) => (
+              <button
+                key={key}
+                type="button"
+                className={`dashboard-layout__tab ${activeGroup === key ? 'dashboard-layout__tab--active' : ''}`}
+                onClick={() => setActiveGroup(key)}
+              >
+                {t(`nav.group.${key}`) || key.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Bottom Tier: Items (Displayed below via absolute positioning or flex break?) 
+               Actually, putting it inside the nav container might work if we style it right.
+               But to match the "red top, black bottom" accurately, we might want a container or just CSS logic.
+               Let's output the sub-nav container here.
+           */}
+          <div className="dashboard-layout__sub-nav-container">
+            <div className="dashboard-layout__sub-nav">
+              {activeSubItems.map(item => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`dashboard-layout__sub-link ${location.pathname === item.path ? 'dashboard-layout__sub-link--active' : ''}`}
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {item.path === '/dashboard' && user?.role === 'DRIVER' ? t('nav.myTrips') : t('nav.' + item.key)}
+                </Link>
+              ))}
+            </div>
+          </div>
         </nav>
+
         <div className="dashboard-layout__right">
           {(user?.role === 'ADMIN' || user?.role === 'DISPATCHER') && (
             <Link to="/dashboard" state={{ openForm: true }} className="rd-btn rd-btn-primary dashboard-layout__new-order">

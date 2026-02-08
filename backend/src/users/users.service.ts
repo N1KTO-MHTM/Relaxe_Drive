@@ -272,31 +272,35 @@ export class UsersService {
   }
 
   async findAll() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        nickname: true,
-        email: true,
-        phone: true,
-        role: true,
-        locale: true,
-        lat: true,
-        lng: true,
-        available: true,
-        blocked: true,
-        bannedUntil: true,
-        banReason: true,
-        driverId: true,
-        carId: true,
-        carType: true,
-        carPlateNumber: true,
-        carCapacity: true,
-        carModelAndYear: true,
-        createdAt: true,
-        updatedAt: true,
+    const users = await this.prisma.user.findMany({
+      include: {
+        sessions: { select: { id: true }, take: 1 },
       },
       orderBy: { nickname: 'asc' },
     });
+    return users.map((u) => ({
+      id: u.id,
+      nickname: u.nickname,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      locale: u.locale,
+      lat: u.lat,
+      lng: u.lng,
+      available: u.available,
+      blocked: u.blocked,
+      bannedUntil: u.bannedUntil,
+      banReason: u.banReason,
+      driverId: u.driverId,
+      carId: u.carId,
+      carType: u.carType,
+      carPlateNumber: u.carPlateNumber,
+      carCapacity: u.carCapacity,
+      carModelAndYear: u.carModelAndYear,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+      online: u.sessions.length > 0,
+    }));
   }
 
   async updateAvailable(userId: string, available: boolean) {

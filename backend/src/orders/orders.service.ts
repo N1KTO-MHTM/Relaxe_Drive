@@ -264,7 +264,14 @@ export class OrdersService {
     };
     if (status === 'IN_PROGRESS') {
       if (order.arrivedAtPickupAt && !order.leftPickupAt) {
-        const { chargeCents } = computeWaitCharge(order.arrivedAtPickupAt, now);
+        let chargeCents = 0;
+        const manualMinutes = (order as any).manualWaitMinutes;
+        if (manualMinutes != null && typeof manualMinutes === 'number') {
+          chargeCents = getWaitChargeCentsFromTotalMinutes(manualMinutes);
+        } else {
+          const { chargeCents: autoCharge } = computeWaitCharge(order.arrivedAtPickupAt, now);
+          chargeCents = autoCharge;
+        }
         data.leftPickupAt = now;
         data.waitChargeAtPickupCents = chargeCents;
       }
@@ -333,6 +340,40 @@ export class OrdersService {
       },
       orderBy: { pickupAt: 'asc' },
       include: { passenger: true },
+    });
+  }
+
+  async findLastByPhone(phone: string, limit = 10) {
+    const cleaned = phone.replace(/\D/g, '');
+    const conditions: any[] = [{ phone: { contains: phone } }];
+    // If we have a cleaned version different from original, search for that too
+    if (cleaned.length >= 7 && cleaned !== phone) {
+      conditions.push({ phone: { contains: cleaned } });
+    }
+
+    return this.prisma.order.findMany({
+      where: {
+        passenger: {
+          OR: conditions,
+        },
+      },
+      orderBy: { pickupAt: 'desc' },
+      take: limit,
+      include: { passenger: true },
+    });
+  }
+
+  async setWaitInfo(orderId: string, driverId: string, minutes: number | null, notes?: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.driverId !== driverId) throw new BadRequestException('Not your order');
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        manualWaitMinutes: minutes,
+        waitNotes: notes
+      } as any,
     });
   }
 }

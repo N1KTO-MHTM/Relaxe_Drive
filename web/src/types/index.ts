@@ -23,6 +23,8 @@ export interface Order {
   arrivedAtMiddleAt?: string | null;
   leftMiddleAt?: string | null;
   waitChargeAtMiddleCents?: number | null;
+  manualWaitMinutes?: number | null;
+  waitNotes?: string | null;
   completedAt?: string | null;
   /** Planning: LOW | MEDIUM | HIGH — auto-detected risk */
   riskLevel?: string | null;

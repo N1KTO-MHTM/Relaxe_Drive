@@ -68,7 +68,24 @@ interface User {
   carPlateNumber?: string | null;
   carId?: string | null;
   driverId?: string | null;
+  online?: boolean;
 }
+
+const REPORT_EMOJI: Record<string, string> = {
+  POLICE: '👮',
+  TRAFFIC: '🛑',
+  WORK_ZONE: '🚧',
+  CAR_CRASH: '💥',
+  OTHER: '⚠️',
+};
+
+const REPORT_TYPE_KEYS: Record<string, string> = {
+  POLICE: 'dashboard.reportPolice',
+  TRAFFIC: 'dashboard.reportTraffic',
+  WORK_ZONE: 'dashboard.reportWorkZone',
+  CAR_CRASH: 'dashboard.reportCrash',
+  OTHER: 'dashboard.reportOther',
+};
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -154,7 +171,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<Array<{ id: string; type: string; orderId?: string; driverId?: string; pickupAddress?: string; at: string; count?: number }>>([]);
   const [reports, setReports] = useState<DriverReportMap[]>([]);
   const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
-  const [zones, setZones] = useState<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>([]);
+
   const [planningResult, setPlanningResult] = useState<PlanningResult | null>(null);
   const [showPlanPanel, setShowPlanPanel] = useState(false);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
@@ -177,6 +194,14 @@ export default function Dashboard() {
   const [reportType, setReportType] = useState('TRAFFIC');
   const [reportDescription, setReportDescription] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSuccessParams, setReportSuccessParams] = useState<{ type: string } | null>(null);
+
+  useEffect(() => {
+    if (reportSuccessParams) {
+      const t = setTimeout(() => setReportSuccessParams(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [reportSuccessParams]);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
   const [reportsRefreshTrigger, setReportsRefreshTrigger] = useState(0);
   const [reportTicks, setReportTicks] = useState(0);
@@ -189,6 +214,65 @@ export default function Dashboard() {
   const [driverMapFullScreen, setDriverMapFullScreen] = useState(false);
   const DRIVER_MAP_ICON_KEY = 'relaxe_driver_map_icon';
   const [driverMapIcon, setDriverMapIcon] = useState<'car' | 'arrow'>(() => (localStorage.getItem(DRIVER_MAP_ICON_KEY) as 'car' | 'arrow') || 'car');
+
+  // Manual Timer Logic
+  const [manualTimerStart, setManualTimerStart] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('relaxdrive_manual_timer_start') || '{}');
+    } catch { return {}; }
+  });
+  const [showTimerNoteModal, setShowTimerNoteModal] = useState<string | null>(null);
+  const [timerNoteVal, setTimerNoteVal] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('relaxdrive_manual_timer_start', JSON.stringify(manualTimerStart));
+  }, [manualTimerStart]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleStartTimer = (orderId: string) => {
+    setManualTimerStart((prev) => ({ ...prev, [orderId]: Date.now() }));
+  };
+
+  const handleStopTimer = (orderId: string) => {
+    setShowTimerNoteModal(orderId);
+    setTimerNoteVal('');
+  };
+
+  const submitWaitInfo = async () => {
+    if (!showTimerNoteModal) return;
+    const orderId = showTimerNoteModal;
+    const start = manualTimerStart[orderId];
+    if (!start) return; // Should not happen if flow is correct
+    // Calculate minutes (rounded up)
+    const minutes = Math.max(1, Math.ceil((Date.now() - start) / 60000));
+    try {
+      await api.patch(`/orders/${orderId}/wait-info`, { minutes, notes: timerNoteVal });
+      setManualTimerStart((prev) => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
+      setShowTimerNoteModal(null);
+      toast.success(t('dashboard.waitTimerSaved') || 'Wait info saved');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save wait info');
+    }
+  };
+
+  const submitWaitInfoReset = async (orderId: string) => {
+    try {
+      await api.patch(`/orders/${orderId}/wait-info`, { minutes: null, notes: '' });
+      toast.success(t('dashboard.waitInfoReset') || 'Wait info reset');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to reset wait info');
+    }
+  };
 
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const canAssign = canCreateOrder;
@@ -904,7 +988,7 @@ export default function Dashboard() {
       const pad = 2;
       return { minLat: 41.1112 - pad, maxLat: 41.1112 + pad, minLng: -74.0438 - pad, maxLng: -74.0438 + pad };
     })();
-    api.get<DriverReportMap[]>(`/reports?minLat=${bbox.minLat}&maxLat=${bbox.maxLat}&minLng=${bbox.minLng}&maxLng=${bbox.maxLng}&sinceMinutes=120`)
+    api.get<DriverReportMap[]>(`/reports?minLat=${bbox.minLat}&maxLat=${bbox.maxLat}&minLng=${bbox.minLng}&maxLng=${bbox.maxLng}&sinceMinutes=1`)
       .then((data) => setReports(Array.isArray(data) ? data : []))
       .catch(() => setReports([]));
   }, [routeData?.pickupCoords, routeData?.dropoffCoords, driverLocation?.lat, driverLocation?.lng, reportsRefreshTrigger]);
@@ -1191,7 +1275,7 @@ export default function Dashboard() {
     setReportSubmitting(true);
     try {
       await api.post('/reports', { lat: driverLocation.lat, lng: driverLocation.lng, type: reportType, description: reportDescription || undefined });
-      toast.success(t('dashboard.reportSubmitted'));
+      setReportSuccessParams({ type: reportType });
       // Auto-close modal and reset form
       setShowReportModal(false);
       setReportType('POLICE');
@@ -2285,39 +2369,37 @@ export default function Dashboard() {
                       </button>
                     )}
                     {isDriver && o.arrivedAtPickupAt && (() => {
-                      const totalMin = getTotalWaitMinutes(o.arrivedAtPickupAt!, o.leftPickupAt ?? null);
+
                       void now;
-                      const ended = !!o.leftPickupAt;
-                      const charge = (o.waitChargeAtPickupCents ?? 0) / 100;
+
+
                       return (
                         <div className="dashboard-wait-timer-card">
                           <div className="dashboard-wait-timer-card__title">{t('dashboard.waitTimerTitlePickup')}</div>
-                          <div className="dashboard-wait-timer-card__row">
-                            <span className="rd-text-muted">{t('dashboard.waitTimerStarted')}:</span>
-                            <span>{new Date(o.arrivedAtPickupAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                          {ended ? (
+                          {o.manualWaitMinutes != null ? (
                             <div className="dashboard-wait-timer-card__row dashboard-wait-timer-card__row--result">
-                              <span>{t('dashboard.waitTimerEnded')}</span>
-                              <span>{t('dashboard.waitTimerWaited', { min: totalMin })}</span>
-                              <span>{charge > 0 ? `$${charge.toFixed(0)}` : t('dashboard.waitTimerNoCharge')}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
+                                <span>{t('dashboard.waitTimerWaited', { min: o.manualWaitMinutes })} (Manual)</span>
+                                {o.waitNotes && <span className="rd-text-muted" style={{ fontSize: '0.9rem' }}>Note: {o.waitNotes}</span>}
+                                <button type="button" className="rd-btn rd-btn--small" style={{ alignSelf: 'flex-start', marginTop: '0.25rem' }} onClick={() => submitWaitInfoReset(o.id)}>
+                                  Reset / Start Again
+                                </button>
+                              </div>
                             </div>
-                          ) : (
+                          ) : manualTimerStart[o.id] ? (
                             <>
                               <div className="dashboard-wait-timer-card__row dashboard-wait-timer-card__row--live">
-                                <span>{t('dashboard.waitTimerWaiting')}:</span>
-                                <strong>{totalMin} min</strong>
+                                <span>Timer Running:</span>
+                                <strong>{Math.floor((now - manualTimerStart[o.id]) / 60000)}m {Math.floor(((now - manualTimerStart[o.id]) % 60000) / 1000)}s</strong>
                               </div>
-                              {totalMin < 5 && (
-                                <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerStartsIn', { min: 5 - totalMin })}</div>
-                              )}
-                              {totalMin >= 5 && totalMin < 20 && (
-                                <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerFirst5Free')}</div>
-                              )}
-                              {totalMin >= 20 && (
-                                <div className="dashboard-wait-timer-card__note">{t('dashboard.waitTimerChargeFrom20')}: <strong>${getWaitChargeDollars(totalMin)}</strong></div>
-                              )}
+                              <button type="button" className="rd-btn rd-btn-danger" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleStopTimer(o.id)}>
+                                Stop & Add Note
+                              </button>
                             </>
+                          ) : (
+                            <button type="button" className="rd-btn rd-btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => handleStartTimer(o.id)}>
+                              Start Wait Timer
+                            </button>
                           )}
                         </div>
                       );
@@ -2610,7 +2692,7 @@ export default function Dashboard() {
               selectedOrderTooltip={selectedOrderTooltip}
               futureOrderPickups={canAssign ? futureOrderCoords.filter((f) => f.orderId !== selectedOrderId).map((f) => ({ orderId: f.orderId, lat: f.pickupLat, lng: f.pickupLng, pickupAt: f.pickupAt })) : []}
               problemZones={canAssign && showProblemZones && problemZones ? problemZones : undefined}
-              zones={canAssign ? zones : undefined}
+              zones={undefined}
               focusCenter={!isDriver ? myLocationCenter : undefined}
               initialCenter={savedMapView?.center}
               initialZoom={savedMapView?.zoom}
@@ -2650,7 +2732,7 @@ export default function Dashboard() {
                   <button type="button" className="rd-btn rd-btn-primary driver-trip-card__navigate" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
                     {t('dashboard.navigate')}
                   </button>
-                  <button type="button" className="rd-btn" onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
+                  <button type="button" className="rd-btn" style={{ background: '#000', color: '#fff', border: '1px solid #333' }} onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
                     Waze
                   </button>
                   {currentDriverOrder.status === 'ASSIGNED' && (
@@ -2771,8 +2853,10 @@ export default function Dashboard() {
                   {filteredDrivers.map((d) => {
                     const hasLocation = d.lat != null && d.lng != null;
                     const busy = orders.some((o) => o.driverId === d.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'));
-                    const notAvailable = d.role === 'DRIVER' && d.available === false;
-                    const statusKey = notAvailable ? 'unavailable' : (busy ? 'busy' : (hasLocation ? 'locationOn' : 'offline'));
+                    const isOnline = (d as User).online === true;
+                    // If available but not online (socket disconnected), appear offline
+                    const notAvailable = d.role === 'DRIVER' && (d.available === false || !isOnline);
+                    const statusKey = notAvailable ? (d.available === false ? 'unavailable' : 'offline') : (busy ? 'busy' : (hasLocation ? 'locationOn' : 'offline'));
                     const statusClass = notAvailable ? '' : (busy ? 'rd-badge-warning' : (hasLocation ? 'rd-badge-ok' : ''));
                     const cardMod = notAvailable ? 'dashboard-driver-card--offline' : (busy ? 'dashboard-driver-card--warning' : (hasLocation ? 'dashboard-driver-card--ok' : 'dashboard-driver-card--offline'));
                     const carLabel = d.carType ? t('auth.carType_' + d.carType) : null;
@@ -2803,10 +2887,10 @@ export default function Dashboard() {
             )}
             <div className="dashboard-alerts-card">
               <h3 className="dashboard-alerts-card__title">{t('dashboard.alerts')}</h3>
-              {alerts.length === 0 ? (
+              {alerts.filter(a => !a.type.startsWith('report.')).length === 0 ? (
                 <div className="alert-item rd-text-muted">{t('dashboard.noAlerts')}</div>
               ) : (
-                alerts.map((a) => (
+                alerts.filter(a => !a.type.startsWith('report.')).map((a) => (
                   <div key={a.id} className="alert-item">
                     {a.type === 'order.assigned' && (
                       <span className="rd-text-muted">
@@ -3040,6 +3124,73 @@ export default function Dashboard() {
         </div>
       )}
       {isDriver && user?.id && <DriverChatButton userId={user.id} />}
+      {reportSuccessParams && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'white',
+          color: 'black',
+          padding: '16px 24px',
+          borderRadius: '50px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 9999,
+          maxWidth: '90vw',
+          width: 'auto',
+          animation: 'fadeInUp 0.3s ease-out'
+        }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: '#22c55e',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            flexShrink: 0
+          }}>
+            {REPORT_EMOJI[reportSuccessParams.type] || '⚠️'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 600, fontSize: '16px', lineHeight: '1.2' }}>
+              {t(REPORT_TYPE_KEYS[reportSuccessParams.type] || 'dashboard.reportOther').replace('Report ', '')} reported
+            </span>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+              Thanks for helping others
+            </span>
+          </div>
+        </div>
+      )}
+      {showTimerNoteModal && (
+        <div className="rd-modal-overlay" role="dialog" aria-modal="true" tabIndex={0} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }}>
+            <h3 style={{ marginBottom: '1rem' }}>Stop Timer & Add Note</h3>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Wait Notes (Optional)</label>
+            <input
+              type="text"
+              className="rd-input"
+              value={timerNoteVal}
+              onChange={(e) => setTimerNoteVal(e.target.value)}
+              placeholder="e.g. Passenger was late"
+              style={{ width: '100%', marginBottom: '1rem' }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="rd-btn rd-btn-primary" onClick={submitWaitInfo}>
+                Save & Stop
+              </button>
+              <button type="button" className="rd-btn" onClick={() => setShowTimerNoteModal(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

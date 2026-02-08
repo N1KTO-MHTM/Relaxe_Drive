@@ -42,7 +42,7 @@ export default function LiveWall() {
   const [centerTrigger, setCenterTrigger] = useState(0);
   const [reportsTrigger, setReportsTrigger] = useState(0);
   const [reportTicks, setReportTicks] = useState(0);
-  const [zones, setZones] = useState<Array<{ id: string; name: string; color: string; points: Array<{ lat: number; lng: number }> }>>([]);
+
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
       return sessionStorage.getItem('livewall-search') ?? '';
@@ -112,7 +112,7 @@ export default function LiveWall() {
     const maxLat = 41.3;
     const minLng = -74.2;
     const maxLng = -73.8;
-    api.get<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string }>>(`/reports?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}&sinceMinutes=2`)
+    api.get<Array<{ id: string; lat: number; lng: number; type: string; description?: string | null; createdAt?: string }>>(`/reports?minLat=${minLat}&maxLat=${maxLat}&minLng=${minLng}&maxLng=${maxLng}&sinceMinutes=1`)
       .then((data) => setReports(Array.isArray(data) ? data : []))
       .catch(() => setReports([]));
   }, [reportsTrigger]);
@@ -246,7 +246,7 @@ export default function LiveWall() {
           reports={reportsOnMap}
           futureOrderPickups={futurePickups}
           focusCenter={focusCenter}
-          zones={canAssign ? zones : undefined}
+          zones={undefined}
         />
       </div>
     </div>

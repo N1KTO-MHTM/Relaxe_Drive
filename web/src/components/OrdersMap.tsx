@@ -429,36 +429,90 @@ export default function OrdersMap({ drivers = [], showDriverMarkers = false, rou
       } else {
         marker = L.marker([lat, lng], { icon }); // Use initial icon with rotation 0
         const name = driver.nickname || 'Driver';
-        const rows: string[] = [`<strong>${escapeHtml(name)}</strong>`];
-        if (driver.phone) rows.push(`Phone: <a href="tel:${escapeHtml(driver.phone)}">${escapeHtml(driver.phone)}</a>`);
-        if (driver.driverId) rows.push(`${escapeHtml(t('drivers.driverId'))}: ${escapeHtml(driver.driverId)}`);
-        if (driver.carId) rows.push(`${escapeHtml(t('drivers.carId'))}: ${escapeHtml(driver.carId)}`);
-        if (driver.carType) rows.push(`Car type: ${escapeHtml(driver.carType)}`);
-        if (driver.carPlateNumber) rows.push(`Plate: ${escapeHtml(driver.carPlateNumber)}`);
+
+        let contentHtml = `
+          <div style="font-family: inherit; color: #f3f4f6; min-width: 200px;">
+            <div style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem; color: #fff; border-bottom: 1px solid #374151; padding-bottom: 0.5rem;">
+              ${escapeHtml(name)}
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.875rem;">
+        `;
+
+        if (driver.phone) {
+          contentHtml += `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #9ca3af;">Phone:</span>
+              <a href="tel:${escapeHtml(driver.phone)}" style="color: #60a5fa; text-decoration: none;">${escapeHtml(driver.phone)}</a>
+            </div>`;
+        }
+        if (driver.driverId) {
+          contentHtml += `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #9ca3af;">${escapeHtml(t('drivers.driverId'))}:</span>
+              <span>${escapeHtml(driver.driverId)}</span>
+            </div>`;
+        }
+        if (driver.carId) {
+          contentHtml += `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #9ca3af;">${escapeHtml(t('drivers.carId'))}:</span>
+              <span>${escapeHtml(driver.carId)}</span>
+            </div>`;
+        }
+        if (driver.carType) {
+          contentHtml += `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #9ca3af;">Car:</span>
+              <span>${escapeHtml(driver.carType)}</span>
+            </div>`;
+        }
+        if (driver.carPlateNumber) {
+          contentHtml += `
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #9ca3af;">Plate:</span>
+              <span>${escapeHtml(driver.carPlateNumber)}</span>
+            </div>`;
+        }
+
         const statusLabel = driver.statusLabel ?? (status === 'busy' ? 'On trip' : status === 'available' ? 'Available' : 'Offline');
-        rows.push(`Status: ${escapeHtml(statusLabel)}`);
+        const statusColor = status === 'available' ? '#4ade80' : status === 'busy' ? '#f87171' : '#9ca3af';
+        contentHtml += `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem;">
+              <span style="color: #9ca3af;">Status:</span>
+              <span style="color: ${statusColor}; font-weight: 500;">${escapeHtml(statusLabel)}</span>
+            </div>`;
+
         if (driver.assignedOrderPickup != null || driver.assignedOrderDropoff != null) {
           const pickup = (driver.assignedOrderPickup ?? '').trim() || '—';
           const dropoff = (driver.assignedOrderDropoff ?? '').trim() || '—';
-          rows.push(`${escapeHtml(t('dashboard.currentTrip'))}: ${escapeHtml(pickup)} → ${escapeHtml(dropoff)}`);
+          contentHtml += `
+            <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #374151;">
+              <div style="color: #9ca3af; font-size: 0.75rem; margin-bottom: 0.1rem;">${escapeHtml(t('dashboard.currentTrip'))}</div>
+              <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;" title="${escapeHtml(pickup)} → ${escapeHtml(dropoff)}">
+                ${escapeHtml(pickup)}<br/>↓<br/>${escapeHtml(dropoff)}
+              </div>
+            </div>`;
         }
+
         if (driver.etaMinutesToPickup != null && Number.isFinite(driver.etaMinutesToPickup)) {
-          rows.push(`${escapeHtml(t('dashboard.etaToPickup'))}: ${driver.etaMinutesToPickup} min`);
+          contentHtml += `<div style="color: #fbbf24; font-size: 0.8125rem; margin-top: 0.25rem;">${escapeHtml(t('dashboard.etaToPickup'))}: ${driver.etaMinutesToPickup} min</div>`;
         }
-        if (driver.etaMinutesTotal != null && Number.isFinite(driver.etaMinutesTotal)) {
-          rows.push(`${escapeHtml(t('dashboard.etaTotal'))}: ${driver.etaMinutesTotal} min`);
-        }
-        if (driver.busyUntil) {
-          try {
-            const busyUntilDate = new Date(driver.busyUntil);
-            rows.push(`${escapeHtml(t('dashboard.busyUntil'))}: ${busyUntilDate.toLocaleTimeString()}`);
-          } catch {
-            // ignore
-          }
-        }
+
+        contentHtml += `</div>`; // Close details div
+
         const exitLabel = escapeHtml(t('common.close'));
-        const popupContent = rows.join('<br/>') + `<br/><button type="button" class="orders-map-popup-close rd-btn rd-btn-primary" style="margin-top:0.5rem;cursor:pointer">${exitLabel}</button>`;
-        marker.bindPopup(popupContent, { closeOnClick: false, autoClose: false });
+        contentHtml += `
+          <button type="button" class="orders-map-popup-close" style="
+            margin-top: 1rem; width: 100%; padding: 0.5rem; 
+            background-color: #2563eb; color: white; border: none; border-radius: 0.375rem; 
+            font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s;
+          " onmouseover="this.style.backgroundColor='#1d4ed8'" onmouseout="this.style.backgroundColor='#2563eb'">
+            ${exitLabel}
+          </button>
+          </div>
+        `;
+
+        marker.bindPopup(contentHtml, { closeOnClick: false, autoClose: false, className: 'orders-map-dark-popup' });
         cluster.addLayer(marker);
         driverMarkersByIdRef.current.set(driver.id, marker);
       }

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type Role = 'ADMIN' | 'DISPATCHER' | 'DRIVER';
 
-interface User {
+export interface User {
   id: string;
   nickname: string;
   role: Role;
@@ -17,6 +17,7 @@ interface User {
   carPlateNumber?: string;
   carCapacity?: number;
   carModelAndYear?: string;
+  online?: boolean;
 }
 
 interface AuthState {

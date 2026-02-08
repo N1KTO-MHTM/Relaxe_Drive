@@ -13,7 +13,7 @@ export class UsersController {
     private usersService: UsersService,
     private audit: AuditService,
     private ws: RelaxDriveWsGateway,
-  ) {}
+  ) { }
 
   @Get('me')
   async me(@Request() req: { user: { id: string } }) {
@@ -132,8 +132,10 @@ export class UsersController {
   @Patch('me/available')
   @UseGuards(RolesGuard)
   @Roles('DRIVER')
-  updateMyAvailable(@Request() req: { user: { id: string } }, @Body() body: { available: boolean }) {
-    return this.usersService.updateAvailable(req.user.id, body.available);
+  async updateMyAvailable(@Request() req: { user: { id: string } }, @Body() body: { available: boolean }) {
+    const result = await this.usersService.updateAvailable(req.user.id, body.available);
+    this.ws.emitUserUpdated(req.user.id);
+    return result;
   }
 
   @Patch(':id/role')
