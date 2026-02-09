@@ -22,6 +22,8 @@
     "register": "Register",
     "noAccount": "Don't have an account?",
     "nickname": "Nickname",
+    "name": "Name",
+    "surname": "Surname",
     "phone": "Phone",
     "email": "Email",
     "password": "Password",
@@ -38,9 +40,9 @@
     "forgotPasswordSubmit": "Request reset",
     "registerFailed": "Registration failed",
     "fillRequiredDriverFields": "Phone and car type are required to submit for approval.",
-    "fillAllRequiredFields": "Please fill all required fields: nickname, phone, password, and car type.",
+    "fillAllRequiredFields": "Please fill in all fields. Every field is required.",
     "phonePlaceholder": "+1 555 123-4567",
-    "registerDriverOnly": "New accounts are registered as drivers. Sign in with nickname and password.",
+    "registerDriverOnly": "New accounts are registered as drivers. Sign in with name and password.",
     "carPlateNumber": "Car plate number",
     "carType": "Car type",
     "carType_SEDAN": "Sedan",
@@ -184,6 +186,7 @@
     "group": {
       "operations": "Dispatcher",
       "dispatch": "Information",
+      "information": "Information",
       "bi": "BI",
       "system": "System"
     }
@@ -591,7 +594,9 @@
     "allTypes": "All types",
     "other": "Other",
     "active": "active",
-    "selectDriverFirst": "Select a driver first to re-center"
+    "selectDriverFirst": "Select a driver first to re-center",
+    "showRoute": "Show route",
+    "hideRoute": "Hide route"
   },
   "chat": {
     "title": "Support",
@@ -646,6 +651,16 @@
     "clientsOnMap": "Clients on map",
     "geocodingOrNoCoords": "Loading map… or addresses could not be located.",
     "noAddressesOnMap": "No pickup or dropoff addresses to show"
+  },
+  "phoneBase": {
+    "title": "Phone Base",
+    "subtitle": "Number mappings (original → target). Dispatchers and admins only.",
+    "originalPhone": "Original number",
+    "targetPhone": "Target number",
+    "description": "Description",
+    "addNew": "Add mapping",
+    "duplicateError": "This number already exists in the phone base.",
+    "noEntries": "No entries yet"
   },
   "addresses": {
     "title": "Saved Addresses",
@@ -819,6 +834,7 @@
   "toast": {
     "orderCreated": "Order created",
     "orderCreateFailed": "Failed to create order",
+    "duplicateOrder": "An order with the same pickup and dropoff already exists.",
     "driverAssigned": "Driver assigned",
     "assignFailed": "Failed to assign driver",
     "orderCompleted": "Order completed",

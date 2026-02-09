@@ -77,6 +77,8 @@ interface OrdersMapProps {
   showZones?: boolean;
   /** Map base layer style: street, satellite, terrain, dark. Applied live per user. */
   mapStyle?: 'street' | 'satellite' | 'terrain' | 'dark';
+  /** When driver popup "Show route" is clicked — parent can fetch and set routeData for that driver. */
+  onShowDriverRoute?: (driver: DriverForMap) => void;
 }
 
 /** Map style tile layer configs. Each style can have one or more layers (base + overlay). */
@@ -316,6 +318,7 @@ export default function OrdersMap({
   myLocationLabel,
   onMyLocation,
   mapStyle = 'street',
+  onShowDriverRoute,
 }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -621,11 +624,20 @@ export default function OrdersMap({
 
         contentHtml += `</div>`; // Close details div
 
+        const showRouteLabel = escapeHtml(t('dashboard.showRoute'));
         const exitLabel = escapeHtml(t('common.close'));
+        if (onShowDriverRoute) {
+          contentHtml += `
+            <button type="button" data-action="show-driver-route" data-driver-id="${escapeHtml(driver.id)}" style="
+              margin-top: 0.75rem; width: 100%; padding: 0.5rem;
+              background-color: #059669; color: white; border: none; border-radius: 0.375rem;
+              font-size: 0.875rem; font-weight: 500; cursor: pointer;
+            ">${showRouteLabel}</button>`;
+        }
         contentHtml += `
           <button type="button" class="orders-map-popup-close" style="
-            margin-top: 1rem; width: 100%; padding: 0.5rem; 
-            background-color: #2563eb; color: white; border: none; border-radius: 0.375rem; 
+            margin-top: 0.5rem; width: 100%; padding: 0.5rem;
+            background-color: #2563eb; color: white; border: none; border-radius: 0.375rem;
             font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s;
           " onmouseover="this.style.backgroundColor='#1d4ed8'" onmouseout="this.style.backgroundColor='#2563eb'">
             ${exitLabel}
@@ -638,6 +650,17 @@ export default function OrdersMap({
           autoClose: false,
           className: 'orders-map-dark-popup',
         });
+        if (onShowDriverRoute) {
+          marker.on('popupopen', () => {
+            const content = marker.getPopup()?.getContent();
+            if (content && typeof content !== 'string') {
+              const btn = (content as HTMLElement).querySelector?.('[data-action="show-driver-route"]');
+              if (btn) {
+                (btn as HTMLElement).onclick = () => onShowDriverRoute(driver);
+              }
+            }
+          });
+        }
         cluster.addLayer(marker);
         driverMarkersByIdRef.current.set(driver.id, marker);
       }
@@ -649,17 +672,46 @@ export default function OrdersMap({
         driverMarkersByIdRef.current.delete(id);
       }
     });
-  }, [drivers, showDriverMarkers, t]);
+  }, [drivers, showDriverMarkers, t, onShowDriverRoute]);
+
+  // Vehicle emoji by car type (like on reference image)
+  const vehicleEmoji = (d: DriverForMap): string => {
+    const t = (d.carType || '').toUpperCase();
+    if (t === 'SUV') return '🚙';
+    if (t === 'MINIVAN') return '🚐';
+    if (t === 'SEDAN') return '🚗';
+    return '🚗';
+  };
 
   // Helper function to create driver icons
   const driverIcon = (d: DriverForMap) => {
     const isBusy = d.status === 'busy';
     const isOffline = d.status === 'offline';
     const statusClass = isBusy ? 'filter-busy' : isOffline ? 'filter-offline' : 'filter-available';
+    const speedMph = d.speedMph != null && Number.isFinite(d.speedMph) ? d.speedMph : 0;
+    const standingStartedAt = d.standingStartedAt;
+    const now = Date.now();
+    const standingMin =
+      standingStartedAt != null && Number.isFinite(standingStartedAt)
+        ? Math.floor((now - standingStartedAt) / 60000)
+        : 0;
+    const showStanding = standingMin >= 1;
 
-    // Construct the label content:
     let infoLabel = '';
-    if (isBusy && (d.currentOrderDistance || d.assignedOrderDropoff || d.assignedOrderPickup)) {
+    if (speedMph > 0) {
+      infoLabel = `<div class="driver-marker-info driver-marker-speed" style="
+          position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+          background: white; color: #111; padding: 2px 6px; border-radius: 6px;
+          font-size: 11px; font-weight: 600; white-space: nowrap; z-index: 1000;
+          border: 1px solid #ef4444; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        ">🚗 ${speedMph} mph</div>`;
+    } else if (showStanding) {
+      infoLabel = `<div class="driver-marker-info driver-marker-standing" style="
+          position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+          background: rgba(0,0,0,0.85); color: #fbbf24; padding: 2px 6px; border-radius: 6px;
+          font-size: 10px; white-space: nowrap; z-index: 1000;
+        ">⏱ ${standingMin} min</div>`;
+    } else if (isBusy && (d.currentOrderDistance || d.assignedOrderDropoff || d.assignedOrderPickup)) {
       const dest = d.assignedOrderDropoff
         ? d.assignedOrderDropoff.split(',')[0]
         : d.assignedOrderPickup
@@ -668,33 +720,24 @@ export default function OrdersMap({
       const dist = d.currentOrderDistance ? `(${d.currentOrderDistance})` : '';
       if (dest || dist) {
         infoLabel = `<div class="driver-marker-info" style="
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            white-space: nowrap;
-            z-index: 1000;
+            position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 2px 6px; border-radius: 4px;
+            font-size: 10px; white-space: nowrap; z-index: 1000;
           ">${dest} ${dist}</div>`;
       }
     }
 
+    const emoji = vehicleEmoji(d);
     return L.divIcon({
       className: 'driver-marker-icon',
       html: `
       <div class="driver-marker-wrapper ${statusClass}" style="position: relative;">
-         <div class="driver-marker-car">
-            <img src="/marker-car.png" alt="Car" />
-         </div>
+         <div class="driver-marker-car" style="width:36px;height:36px;border-radius:50%;background:var(--rd-bg-panel,#1f2937);border:2px solid ${isBusy ? '#f87171' : isOffline ? '#9ca3af' : '#4ade80'};display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;">${emoji}</div>
          ${infoLabel}
       </div>
     `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
+      iconSize: [40, 50],
+      iconAnchor: [20, 25],
     });
   };
 
@@ -1227,7 +1270,8 @@ export default function OrdersMap({
           style={{
             position: 'absolute',
             inset: 0,
-            zIndex: 500,
+            zIndex: 2000,
+            pointerEvents: 'auto',
             cursor: 'crosshair',
             background: 'rgba(0,0,0,0.02)',
           }}

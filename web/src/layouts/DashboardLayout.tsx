@@ -59,6 +59,7 @@ export default function DashboardLayout() {
   const groups = {
     operations: [] as typeof nav,
     dispatch: [] as typeof nav,
+    information: [] as typeof nav,
     system: [] as typeof nav,
   };
   nav.forEach((item) => {
@@ -212,7 +213,7 @@ function DashboardLayoutInner({
                 ))}
               </div>
 
-              {/* Bottom Tier: Sub-items */}
+              {/* Bottom Tier: Sub-items + Language (EN RU KA ES) */}
               <div className="dashboard-layout__sub-nav-container">
                 <div className="dashboard-layout__sub-nav">
                   {activeSubItemsResolved.map((item) => (
@@ -226,6 +227,30 @@ function DashboardLayoutInner({
                     </Link>
                   ))}
                 </div>
+                <select
+                  value={i18n.language}
+                  aria-label={t('nav.language') || 'Language'}
+                  onChange={(e) => {
+                    const lng = e.target.value;
+                    i18n.changeLanguage(lng);
+                    const uid = user?.id;
+                    if (uid) {
+                      api
+                        .patch<{ id: string; nickname: string; role: string; locale: string }>(
+                          '/users/me',
+                          { locale: lng },
+                        )
+                        .then((data) => setUser(data ? { ...data, role: data.role as Role } : null))
+                        .catch(() => {});
+                    }
+                  }}
+                  className="rd-input lang-select dashboard-layout__lang-select"
+                >
+                  <option value="en">EN</option>
+                  <option value="ru">RU</option>
+                  <option value="ka">KA</option>
+                  <option value="es">ES</option>
+                </select>
               </div>
             </>
         </nav>
@@ -260,30 +285,32 @@ function DashboardLayoutInner({
           >
             {theme === 'dark' ? '☀' : '🌙'}
           </button>
-          <select
-            value={i18n.language}
-            aria-label={t('nav.language') || 'Language'}
-            onChange={(e) => {
-              const lng = e.target.value;
-              i18n.changeLanguage(lng);
-              const uid = user?.id;
-              if (uid) {
-                api
-                  .patch<{ id: string; nickname: string; role: string; locale: string }>(
-                    '/users/me',
-                    { locale: lng },
-                  )
-                  .then((data) => setUser(data ? { ...data, role: data.role as Role } : null))
-                  .catch(() => {});
-              }
-            }}
-            className="rd-input lang-select"
-          >
-            <option value="en">EN</option>
-            <option value="ru">RU</option>
-            <option value="ka">KA</option>
-            <option value="es">ES</option>
-          </select>
+          {effectiveIsDriver && (
+            <select
+              value={i18n.language}
+              aria-label={t('nav.language') || 'Language'}
+              onChange={(e) => {
+                const lng = e.target.value;
+                i18n.changeLanguage(lng);
+                const uid = user?.id;
+                if (uid) {
+                  api
+                    .patch<{ id: string; nickname: string; role: string; locale: string }>(
+                      '/users/me',
+                      { locale: lng },
+                    )
+                    .then((data) => setUser(data ? { ...data, role: data.role as Role } : null))
+                    .catch(() => {});
+                }
+              }}
+              className="rd-input lang-select"
+            >
+              <option value="en">EN</option>
+              <option value="ru">RU</option>
+              <option value="ka">KA</option>
+              <option value="es">ES</option>
+            </select>
+          )}
           <span className="user-role-badge rd-badge">
             {user?.role ? t('roles.' + user.role.toLowerCase()) : ''}
           </span>

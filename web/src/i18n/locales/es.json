@@ -20,6 +20,8 @@
     "register": "Registrarse",
     "noAccount": "¿No tienes cuenta?",
     "nickname": "Usuario",
+    "name": "Nombre",
+    "surname": "Apellido",
     "phone": "Teléfono",
     "email": "Correo",
     "password": "Contraseña",
@@ -36,9 +38,9 @@
     "forgotPasswordSubmit": "Solicitar restablecimiento",
     "registerFailed": "Error al registrarse",
     "fillRequiredDriverFields": "El teléfono y el tipo de coche son obligatorios para enviar a aprobación.",
-    "fillAllRequiredFields": "Complete todos los campos obligatorios: usuario, teléfono, contraseña y tipo de coche.",
+    "fillAllRequiredFields": "Complete todos los campos. Todos son obligatorios.",
     "phonePlaceholder": "+1 555 123-4567",
-    "registerDriverOnly": "Las nuevas cuentas se registran como conductores. Inicia sesión con usuario y contraseña.",
+    "registerDriverOnly": "Las nuevas cuentas se registran como conductores. Inicia sesión con nombre y contraseña.",
     "carPlateNumber": "Matrícula del coche",
     "carType": "Tipo de coche",
     "carType_SEDAN": "Sedán",
@@ -122,6 +124,7 @@
     "group": {
       "operations": "Despachador",
       "dispatch": "Información",
+      "information": "Información",
       "bi": "BI",
       "system": "Sistema"
     }
@@ -697,7 +700,10 @@
     "filterByType": "Driver type",
     "allTypes": "All types",
     "other": "Other",
-    "active": "active"
+    "active": "active",
+    "selectDriverFirst": "Selecciona un conductor para centrar",
+    "showRoute": "Ver ruta",
+    "hideRoute": "Ocultar ruta"
   },
   "chat": {
     "title": "Soporte",
@@ -711,6 +717,7 @@
   "toast": {
     "orderCreated": "Order created",
     "orderCreateFailed": "Failed to create order",
+    "duplicateOrder": "Ya existe un pedido con el mismo punto de recogida y destino.",
     "driverAssigned": "Driver assigned",
     "assignFailed": "Failed to assign driver",
     "orderCompleted": "Order completed",

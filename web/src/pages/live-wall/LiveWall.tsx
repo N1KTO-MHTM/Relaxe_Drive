@@ -4,7 +4,7 @@ import { api } from '../../api/client';
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore } from '../../store/auth';
 import OrdersMap from '../../components/OrdersMap';
-import type { DriverForMap } from '../../types';
+import type { DriverForMap, OrderRouteData } from '../../types';
 import './LiveWall.css';
 
 const CAR_TYPES = ['SEDAN', 'MINIVAN', 'SUV'] as const;
@@ -15,6 +15,7 @@ interface Order {
   pickupAt: string;
   pickupAddress: string;
   dropoffAddress: string;
+  driverId?: string | null;
 }
 
 /** Parse "lat,lng" or "lat lng" or two numbers. Returns null if not valid geo. */
@@ -73,6 +74,7 @@ export default function LiveWall() {
   });
   const [filterCarType, setFilterCarType] = useState<string>('');
   const [focusCenter, setFocusCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverRouteData, setDriverRouteData] = useState<OrderRouteData | null>(null);
 
   useEffect(() => {
     try {
@@ -83,6 +85,20 @@ export default function LiveWall() {
   }, [searchQuery]);
 
   const canAssign = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
+
+  const handleShowDriverRoute = (driver: DriverForMap) => {
+    const order = orders.find(
+      (o) => o.driverId === driver.id && ['ASSIGNED', 'IN_PROGRESS'].includes(o.status),
+    );
+    if (order) {
+      api
+        .get<OrderRouteData>(`/orders/${order.id}/route`)
+        .then((data) => setDriverRouteData(data))
+        .catch(() => setDriverRouteData(null));
+    } else {
+      setDriverRouteData(null);
+    }
+  };
 
   useEffect(() => {
     if (!socket) return;
@@ -123,7 +139,12 @@ export default function LiveWall() {
         const list = Array.isArray(data) ? data : [];
         const driverUsers = list.filter((u) => u.role === 'DRIVER');
         const withCoords = driverUsers.filter(
-          (d) => d.lat != null && d.lng != null && Number.isFinite(d.lat) && Number.isFinite(d.lng),
+          (d) =>
+            d.lat != null &&
+            d.lng != null &&
+            Number.isFinite(d.lat) &&
+            Number.isFinite(d.lng) &&
+            d.available === true,
         );
         setDrivers(
           withCoords.map((d) => ({
@@ -314,6 +335,15 @@ export default function LiveWall() {
         >
           {t('common.refresh')}
         </button>
+        {driverRouteData && (
+          <button
+            type="button"
+            className="rd-btn rd-btn-secondary"
+            onClick={() => setDriverRouteData(null)}
+          >
+            {t('liveWall.hideRoute')}
+          </button>
+        )}
         <span className="rd-text-muted live-wall-status" style={{ fontSize: '0.875rem' }}>
           {filteredDrivers.length} {t('dashboard.drivers')}
           {Object.keys(typeCounts).length > 0 && (
@@ -347,7 +377,7 @@ export default function LiveWall() {
         <OrdersMap
           drivers={filteredDrivers}
           showDriverMarkers={canAssign}
-          routeData={null}
+          routeData={driverRouteData}
           currentUserLocation={undefined}
           centerTrigger={centerTrigger}
           onRecenter={() => {
@@ -359,6 +389,7 @@ export default function LiveWall() {
           futureOrderPickups={futurePickups}
           focusCenter={focusCenter}
           zones={undefined}
+          onShowDriverRoute={canAssign ? handleShowDriverRoute : undefined}
         />
       </div>
     </div>

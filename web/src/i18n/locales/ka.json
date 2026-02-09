@@ -20,6 +20,8 @@
     "register": "რეგისტრაცია",
     "noAccount": "არ გაქვთ ანგარიში?",
     "nickname": "ნიკნეიმი",
+    "name": "სახელი",
+    "surname": "გვარი",
     "phone": "ტელეფონი",
     "email": "Email",
     "password": "პაროლი",
@@ -36,9 +38,9 @@
     "forgotPasswordSubmit": "პაროლის გასაუქმების მოთხოვნა",
     "registerFailed": "რეგისტრაცია ვერ მოხდა",
     "fillRequiredDriverFields": "დასამტკიცებლად საჭიროა ტელეფონი და მანქანის ტიპი.",
-    "fillAllRequiredFields": "შეავსეთ ყველა სავალდებულო ველი: ნიკნეიმი, ტელეფონი, პაროლი და მანქანის ტიპი.",
+    "fillAllRequiredFields": "შეავსეთ ყველა ველი. ყოველი ველი სავალდებულოა.",
     "phonePlaceholder": "+1 555 123-4567",
-    "registerDriverOnly": "ახალი ანგარიშები რეგისტრირდება მძღოლებად. შედით ნიკნეიმით და პაროლით.",
+    "registerDriverOnly": "ახალი ანგარიშები რეგისტრირდება მძღოლებად. შედით სახელით და პაროლით.",
     "carPlateNumber": "მანქანის ნომერი",
     "carType": "მანქანის ტიპი",
     "carType_SEDAN": "სედანი",
@@ -121,6 +123,7 @@
     "group": {
       "operations": "დისპეტჩერი",
       "dispatch": "ინფორმაცია",
+      "information": "ინფორმაცია",
       "bi": "BI",
       "system": "სისტემა"
     }
@@ -690,11 +693,15 @@
     "filterByType": "Driver type",
     "allTypes": "All types",
     "other": "Other",
-    "active": "active"
+    "active": "active",
+    "selectDriverFirst": "Select a driver first to re-center",
+    "showRoute": "მარშრუტის ჩვენება",
+    "hideRoute": "მარშრუტის დამალვა"
   },
   "toast": {
     "orderCreated": "Order created",
     "orderCreateFailed": "Failed to create order",
+    "duplicateOrder": "შეკვეთა იგივე ადგილებით უკვე არსებობს.",
     "driverAssigned": "Driver assigned",
     "assignFailed": "Failed to assign driver",
     "orderCompleted": "Order completed",

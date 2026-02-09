@@ -170,4 +170,8 @@ export interface DriverForMap {
   currentOrderDistance?: string | null; // For map display
   /** When busy: "Busy until HH:MM" */
   busyUntil?: string | null;
+  /** Current speed in mph (show next to marker when moving). */
+  speedMph?: number | null;
+  /** When set, driver is standing; show timer after 1 min. */
+  standingStartedAt?: number | null;
 }

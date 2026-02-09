@@ -20,6 +20,8 @@
     "register": "Регистрация",
     "noAccount": "Нет аккаунта?",
     "nickname": "Никнейм",
+    "name": "Имя",
+    "surname": "Фамилия",
     "phone": "Телефон",
     "email": "Email",
     "password": "Пароль",
@@ -36,9 +38,9 @@
     "forgotPasswordSubmit": "Запросить сброс",
     "registerFailed": "Ошибка регистрации",
     "fillRequiredDriverFields": "Для отправки на одобрение нужны телефон и тип машины.",
-    "fillAllRequiredFields": "Заполните все обязательные поля: никнейм, телефон, пароль и тип автомобиля.",
+    "fillAllRequiredFields": "Заполните все поля. Каждое поле обязательно.",
     "phonePlaceholder": "+1 555 123-4567",
-    "registerDriverOnly": "Новые аккаунты регистрируются как водители. Вход по никнейму и паролю.",
+    "registerDriverOnly": "Новые аккаунты регистрируются как водители. Вход по имени и паролю.",
     "carPlateNumber": "Номер автомобиля",
     "carType": "Тип автомобиля",
     "carType_SEDAN": "Седан",
@@ -121,6 +123,7 @@
     "group": {
       "operations": "Диспетчер",
       "dispatch": "Информация",
+      "information": "Информация",
       "bi": "BI",
       "system": "Система"
     }
@@ -128,6 +131,7 @@
   "toast": {
     "orderCreated": "Заказ создан",
     "orderCreateFailed": "Не удалось создать заказ",
+    "duplicateOrder": "Заказ с такими же адресами подачи и высадки уже существует.",
     "driverAssigned": "Водитель назначен",
     "assignFailed": "Не удалось назначить водителя",
     "orderCompleted": "Заказ завершён",
@@ -526,7 +530,10 @@
     "filterByType": "Тип авто",
     "allTypes": "Все типы",
     "other": "Другое",
-    "active": "активных"
+    "active": "активных",
+    "selectDriverFirst": "Выберите водителя для центрирования",
+    "showRoute": "Показать маршрут",
+    "hideRoute": "Скрыть маршрут"
   },
   "passengers": {
     "title": "Клиенты",

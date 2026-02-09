@@ -1,0 +1,56 @@
+.phone-base-page {
+  padding: var(--rd-space-md);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.phone-base-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.phone-base-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.phone-base-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.phone-base-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.phone-base-list__original,
+.phone-base-list__target {
+  font-weight: 500;
+}
+
+.phone-base-list__arrow {
+  color: var(--rd-text-muted);
+}
+
+.phone-base-list__desc {
+  font-size: 0.875rem;
+  color: var(--rd-text-muted);
+  margin-left: 0.25rem;
+}
+
+.phone-base-list__actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.35rem;
+}

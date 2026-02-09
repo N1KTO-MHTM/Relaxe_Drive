@@ -23,27 +23,45 @@
   position: absolute;
   top: var(--rd-space-lg);
   right: var(--rd-space-lg);
+  left: var(--rd-space-lg);
   display: flex;
-  gap: var(--rd-space-xs);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rd-space-sm);
+  z-index: 10;
+}
+
+.auth-layout__lang-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--rd-text);
+  margin-right: 0.25rem;
 }
 
 .auth-layout__lang button {
   padding: var(--rd-space-sm) var(--rd-space-md);
   min-height: 44px;
   min-width: 44px;
-  background: transparent;
+  background: var(--rd-bg-panel, rgba(255, 255, 255, 0.08));
   border: 1px solid var(--rd-border);
   border-radius: var(--rd-radius);
-  color: var(--rd-text-muted);
+  color: var(--rd-text);
   cursor: pointer;
   font-size: 0.875rem;
+  font-weight: 500;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
 
+.auth-layout__lang button:hover {
+  border-color: var(--rd-accent);
+  background: var(--rd-bg-panel, rgba(255, 255, 255, 0.12));
+}
+
 .auth-layout__lang button.active {
   border-color: var(--rd-accent);
-  color: var(--rd-text);
+  color: var(--rd-accent);
+  background: var(--rd-bg-panel, rgba(255, 255, 255, 0.12));
 }
 
 .auth-layout__center {

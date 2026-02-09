@@ -6,7 +6,7 @@ import { api } from '../../api/client';
 import './Login.css';
 
 export default function Login() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [nickname, setNickname] = useState('');
@@ -54,31 +54,6 @@ export default function Login() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: '1.5rem',
-          gap: '0.75rem',
-        }}
-      >
-        <button
-          type="button"
-          className={`rd-btn rd-btn--small ${i18n.language === 'en' ? 'rd-btn-primary' : 'rd-btn-secondary'}`}
-          onClick={() => i18n.changeLanguage('en')}
-          style={{ minWidth: 60 }}
-        >
-          EN
-        </button>
-        <button
-          type="button"
-          className={`rd-btn rd-btn--small ${i18n.language === 'es' ? 'rd-btn-primary' : 'rd-btn-secondary'}`}
-          onClick={() => i18n.changeLanguage('es')}
-          style={{ minWidth: 60 }}
-        >
-          ES
-        </button>
-      </div>
       <h1>{t('auth.login')}</h1>
       <p className="rd-text-muted" style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
         {t('auth.staffOnly')}

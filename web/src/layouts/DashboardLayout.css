@@ -73,6 +73,12 @@
 /* Sub-nav row (the pill) */
 .dashboard-layout__sub-nav-container {
   display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dashboard-layout__lang-select {
+  margin-left: auto;
 }
 
 .dashboard-layout__sub-nav {

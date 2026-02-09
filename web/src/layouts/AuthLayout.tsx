@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import './AuthLayout.css';
 
 export default function AuthLayout() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const current = (i18n.language || 'en').split('-')[0];
   const lngs = [
     { code: 'en', label: 'EN' },
     { code: 'ru', label: 'RU' },
@@ -13,13 +14,15 @@ export default function AuthLayout() {
 
   return (
     <div className="auth-layout">
-      <div className="auth-layout__lang">
+      <div className="auth-layout__lang" role="group" aria-label={t('nav.language') || 'Language'}>
+        <span className="auth-layout__lang-label">{t('nav.language') || 'Language'}</span>
         {lngs.map((l) => (
           <button
             key={l.code}
             type="button"
-            className={i18n.language === l.code ? 'active' : ''}
+            className={current === l.code ? 'active' : ''}
             onClick={() => i18n.changeLanguage(l.code)}
+            title={l.label}
           >
             {l.label}
           </button>

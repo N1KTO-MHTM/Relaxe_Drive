@@ -4,6 +4,15 @@ type Props = { children: ReactNode };
 
 type State = { hasError: boolean; error: Error | null };
 
+/** True if the error is a stale asset (old CSS/chunk after deploy). Reload fixes it. */
+function isStaleAssetError(error: Error): boolean {
+  const msg = error?.message ?? '';
+  return (
+    /preload CSS|Loading chunk|Failed to fetch dynamically imported module|Importing a module script failed/i.test(msg) ||
+    /\/assets\/.*\.(css|js)/i.test(msg)
+  );
+}
+
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
 
@@ -16,6 +25,11 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   retry = () => {
+    const { error } = this.state;
+    if (error && isStaleAssetError(error)) {
+      window.location.reload();
+      return;
+    }
     this.setState({ hasError: false, error: null });
   };
 
@@ -28,6 +42,11 @@ export default class ErrorBoundary extends Component<Props, State> {
             <p className="rd-muted" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
               {this.state.error.message}
             </p>
+            {isStaleAssetError(this.state.error) && (
+              <p className="rd-muted" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
+                A new version may be available. Reload the page to get the latest update.
+              </p>
+            )}
             <button type="button" className="rd-btn rd-btn-primary" onClick={this.retry}>
               Try again
             </button>

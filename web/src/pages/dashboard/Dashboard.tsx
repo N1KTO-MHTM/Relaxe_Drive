@@ -163,6 +163,8 @@ export default function Dashboard() {
   const [passengerAddressHistory, setPassengerAddressHistory] = useState<
     Array<{ id: string; address: string; type?: string }>
   >([]);
+  /** Saved addresses from /addresses (dispatcher/admin) for address field suggestions. */
+  const [savedAddressesList, setSavedAddressesList] = useState<Array<{ id: string; address: string }>>([]);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -379,14 +381,16 @@ export default function Dashboard() {
     });
     orders.forEach((o) => {
       if (o.pickupAddress?.trim()) set.add(o.pickupAddress.trim());
-      if (o.pickupAddress?.trim()) set.add(o.pickupAddress.trim());
       if (o.dropoffAddress?.trim()) set.add(o.dropoffAddress.trim());
     });
     passengerAddressHistory.forEach((a) => {
       if (a.address?.trim()) set.add(a.address.trim());
     });
+    savedAddressesList.forEach((a) => {
+      if (a.address?.trim()) set.add(a.address.trim());
+    });
     return Array.from(set).sort();
-  }, [passengersSuggestions, orders, passengerAddressHistory]);
+  }, [passengersSuggestions, orders, passengerAddressHistory, savedAddressesList]);
 
   /** Up to 5 address suggestions for pickup (no duplicates; filter by current input). */
   const pickupAddressSuggestions = useMemo(() => {
@@ -1153,6 +1157,15 @@ export default function Dashboard() {
       .then((data) => {
         setPassengersSuggestions(Array.isArray(data) ? data : []);
       })
+      .catch(() => {});
+  }, [canCreateOrder, showForm]);
+
+  // Load saved addresses (Addresses page data) for address field suggestions — dispatcher/admin only
+  useEffect(() => {
+    if (!canCreateOrder || !showForm) return;
+    api
+      .get<Array<{ id: string; address: string }>>('/addresses')
+      .then((data) => setSavedAddressesList(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, [canCreateOrder, showForm]);
 
@@ -2042,6 +2055,20 @@ export default function Dashboard() {
       setSubmitError('Roundtrip requires a second location');
       return;
     }
+    const pickupNorm = pickupAddress.trim().toLowerCase();
+    const dropoffNorm = (dropoffAddress.trim() || '').toLowerCase();
+    const activeStatuses = ['SCHEDULED', 'SEARCHING', 'ASSIGNED', 'AT_PICKUP', 'ON_TRIP'];
+    const duplicateOrder = orders.some(
+      (o) =>
+        activeStatuses.includes(o.status) &&
+        o.pickupAddress?.trim().toLowerCase() === pickupNorm &&
+        (o.dropoffAddress?.trim() || '').toLowerCase() === dropoffNorm
+    );
+    if (duplicateOrder) {
+      setSubmitError(t('toast.duplicateOrder'));
+      toast.error(t('toast.duplicateOrder'));
+      return;
+    }
     let pickupAtIso: string | undefined;
     if (pickupAtForm.trim()) {
       const d = new Date(pickupAtForm.trim());
@@ -2070,6 +2097,15 @@ export default function Dashboard() {
         amount: isAutoOrder ? 0 : undefined, // Explicit amount handling if needed
         ...(pickupAtIso ? { pickupAt: pickupAtIso } : {}),
       });
+      const phoneVal = orderPhone.trim() || undefined;
+      const pickupAddr = pickupAddress.trim();
+      const dropoffAddr = dropoffAddress.trim();
+      if (pickupAddr) {
+        api.post('/addresses', { address: pickupAddr, type: 'pickup', phone: phoneVal }).catch(() => {});
+      }
+      if (dropoffAddr && dropoffAddr !== pickupAddr) {
+        api.post('/addresses', { address: dropoffAddr, type: 'dropoff', phone: phoneVal }).catch(() => {});
+      }
       setPickupAddress('');
       setMiddleAddress('');
       setDropoffAddress('');
