@@ -112,6 +112,10 @@ export default function Dashboard() {
   const [driverSpeedMph, setDriverSpeedMph] = useState<number | null>(null);
   const lastDriverLocationRef = useRef<{ lat: number; lng: number; ts: number } | null>(null);
   const [driverHeadingDegrees, setDriverHeadingDegrees] = useState<number | null>(null);
+  /** Smoothed heading for map arrow rotation (lerps toward driverHeadingDegrees). */
+  const [driverHeadingSmooth, setDriverHeadingSmooth] = useState<number | null>(null);
+  const driverHeadingSmoothRef = useRef<number | null>(null);
+  const driverHeadingLastRenderedRef = useRef<number | null>(null);
   const [standingStartedAt, setStandingStartedAt] = useState<number | null>(null);
   const [pickMode, setPickMode] = useState<'pickup' | 'dropoff' | null>(
     null,
@@ -1557,6 +1561,45 @@ export default function Dashboard() {
     return () => window.removeEventListener('deviceorientation', onOrientation);
   }, [user?.role]);
 
+  // Smooth driver arrow rotation: lerp display heading toward raw heading (0–360)
+  useEffect(() => {
+    if (user?.role !== 'DRIVER') return;
+    const SMOOTH_FACTOR = 0.14;
+    const MIN_DELTA = 0.2;
+    const interval = setInterval(() => {
+      const target = driverHeadingDegrees;
+      if (target == null || !Number.isFinite(target)) {
+        if (driverHeadingSmoothRef.current != null) {
+          driverHeadingSmoothRef.current = null;
+          driverHeadingLastRenderedRef.current = null;
+          setDriverHeadingSmooth(null);
+        }
+        return;
+      }
+      const norm = (a: number) => ((a % 360) + 360) % 360;
+      const targetNorm = norm(target);
+      let current = driverHeadingSmoothRef.current;
+      if (current == null || !Number.isFinite(current)) {
+        driverHeadingSmoothRef.current = targetNorm;
+        setDriverHeadingSmooth(targetNorm);
+        return;
+      }
+      current = norm(current);
+      let delta = targetNorm - current;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      if (Math.abs(delta) < MIN_DELTA) return;
+      const next = norm(current + delta * SMOOTH_FACTOR);
+      driverHeadingSmoothRef.current = next;
+      const lastRendered = driverHeadingLastRenderedRef.current;
+      if (lastRendered == null || Math.abs(((next - lastRendered + 180) % 360) - 180) > 0.35) {
+        driverHeadingLastRenderedRef.current = next;
+        setDriverHeadingSmooth(next);
+      }
+    }, 40);
+    return () => clearInterval(interval);
+  }, [user?.role, driverHeadingDegrees]);
+
   async function handleAssign(orderId: string, driverId: string) {
     if (!driverId) return;
     setAssigningId(orderId);
@@ -2880,9 +2923,10 @@ export default function Dashboard() {
               currentUserSpeedMph={isDriver ? driverSpeedMph : undefined}
               currentUserStandingStartedAt={isDriver ? standingStartedAt : undefined}
               currentUserHeadingTo={isDriver ? (driverHeadingTo ?? undefined) : undefined}
-              currentUserHeadingDegrees={isDriver ? driverHeadingDegrees : undefined}
+              currentUserHeadingDegrees={isDriver ? (driverHeadingSmooth ?? driverHeadingDegrees) : undefined}
               driverView={effectiveIsDriver}
               onToggleFullscreen={effectiveIsDriver ? () => setDriverMapFullScreen((v) => !v) : undefined}
+              mapExpanded={effectiveIsDriver ? driverMapFullScreen : undefined}
               onMapClick={canCreateOrder && showForm && pickMode ? handleMapClick : undefined}
               pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
               navMode={isDriver && !!routeData && !!driverLocation}
@@ -2912,7 +2956,8 @@ export default function Dashboard() {
               }
               zones={showZones ? zones : undefined}
               showZones={showZones}
-              focusCenter={!isDriver ? myLocationCenter : undefined}
+              focusCenter={myLocationCenter}
+              focusZoom={isDriver ? 15.5 : undefined}
               initialCenter={savedMapView?.center}
               initialZoom={savedMapView?.zoom}
               onMapViewChange={handleMapViewChange}

@@ -38,63 +38,69 @@ export default function MyProfile() {
         <h1>{t('dashboard.myProfileCategory')}</h1>
       </header>
 
-      <section className="my-profile-page__section rd-premium-panel">
-        <h2>{t('dashboard.driverInfo')}</h2>
-        <div className="dashboard-stats-card">
-          <div className="stat-row">
-            <span>{t('auth.nickname')}</span>
-            <span>{user?.nickname ?? '—'}</span>
+      <div className="my-profile-page__grid">
+        <section className="my-profile-page__section rd-premium-panel">
+          <h2>{t('dashboard.driverInfo')}</h2>
+          <div className="my-profile-stats">
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('auth.nickname')}</span>
+              <span className="my-profile-stat-row__value">{user?.nickname ?? '—'}</span>
+            </div>
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('auth.phone')}</span>
+              <span className="my-profile-stat-row__value">{user?.phone ?? '—'}</span>
+            </div>
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('auth.carType')}</span>
+              <span className="my-profile-stat-row__value">
+                {user?.carType ? t('auth.carType_' + user.carType) : '—'}
+              </span>
+            </div>
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('auth.carPlateNumber')}</span>
+              <span className="my-profile-stat-row__value">{user?.carPlateNumber ?? '—'}</span>
+            </div>
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('drivers.driverId')}</span>
+              <span className="my-profile-stat-row__value">{user?.driverId ?? '—'}</span>
+            </div>
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('drivers.carId')}</span>
+              <span className="my-profile-stat-row__value">{user?.carId ?? '—'}</span>
+            </div>
           </div>
-          <div className="stat-row">
-            <span>{t('auth.phone')}</span>
-            <span>{user?.phone ?? '—'}</span>
-          </div>
-          <div className="stat-row">
-            <span>{t('auth.carType')}</span>
-            <span>{user?.carType ? t('auth.carType_' + user.carType) : '—'}</span>
-          </div>
-          <div className="stat-row">
-            <span>{t('auth.carPlateNumber')}</span>
-            <span>{user?.carPlateNumber ?? '—'}</span>
-          </div>
-          <div className="stat-row">
-            <span>{t('drivers.driverId')}</span>
-            <span>{user?.driverId ?? '—'}</span>
-          </div>
-          <div className="stat-row">
-            <span>{t('drivers.carId')}</span>
-            <span>{user?.carId ?? '—'}</span>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="my-profile-page__section rd-premium-panel">
-        <h2>{t('dashboard.driverStats')}</h2>
-        <div className="dashboard-stats-card">
-          <div className="stat-row">
-            <span>{t('dashboard.totalEarned')}</span>
-            <span>
-              {driverStats != null
-                ? `$${(driverStats.totalEarningsCents / 100).toFixed(2)}`
-                : '—'}
-            </span>
+        <section className="my-profile-page__section rd-premium-panel">
+          <h2>{t('dashboard.driverStats')}</h2>
+          <div className="my-profile-stats">
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('dashboard.totalEarned')}</span>
+              <span className="my-profile-stat-row__value">
+                {driverStats != null
+                  ? `$${(driverStats.totalEarningsCents / 100).toFixed(2)}`
+                  : '—'}
+              </span>
+            </div>
+            <div className="my-profile-stat-row">
+              <span className="my-profile-stat-row__label">{t('dashboard.totalMiles')}</span>
+              <span className="my-profile-stat-row__value">
+                {driverStats != null ? driverStats.totalMiles.toFixed(1) : '—'}
+              </span>
+            </div>
           </div>
-          <div className="stat-row">
-            <span>{t('dashboard.totalMiles')}</span>
-            <span>{driverStats != null ? driverStats.totalMiles.toFixed(1) : '—'}</span>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="my-profile-page__section rd-premium-panel">
-        <h2>{t('nav.about')}</h2>
-        <p className="rd-text-muted" style={{ marginBottom: '1rem' }}>
-          {t('about.description')}
-        </p>
-        <Link to="/about" className="rd-btn rd-btn-secondary">
-          {t('nav.about')}
-        </Link>
-      </section>
+        <section className="my-profile-page__section rd-premium-panel my-profile-page__section--full">
+          <h2>{t('nav.about')}</h2>
+          <p className="rd-text-muted">
+            {t('about.description')}
+          </p>
+          <Link to="/about" className="rd-btn rd-btn-secondary my-profile-page__about-link">
+            {t('about.learnMore')}
+          </Link>
+        </section>
+      </div>
 
       <section className="my-profile-page__footer">
         <button

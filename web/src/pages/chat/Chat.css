@@ -1,0 +1,42 @@
+/* Chat page: fill main content and enforce two-column layout */
+.chat-page {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chat-page > div:first-child {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.chat-page > div:last-child {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat window: header, scrollable messages, fixed input */
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-window > div:nth-child(2) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .chat-page > div:first-child {
+    width: 100%;
+    max-width: 100%;
+  }
+}

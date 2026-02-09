@@ -1,12 +1,12 @@
-// RelaxDrive — Prisma schema for PostgreSQL (Render, production)
-// Use this on Render: copy to schema.prisma before build, or set in Render build command.
+// RelaxDrive — Prisma schema
+// Local: SQLite (no install). Production (Render): copy schema.postgres.prisma over this before build.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -19,8 +19,8 @@ model User {
   role             String
   tenantId         String?   @map("tenant_id")
   locale           String    @default("en")
-  lat              Float?    @db.DoublePrecision
-  lng              Float?    @db.DoublePrecision
+  lat              Float?
+  lng              Float?
   online           Boolean   @default(false)
   available        Boolean   @default(true)
   blocked          Boolean   @default(false)

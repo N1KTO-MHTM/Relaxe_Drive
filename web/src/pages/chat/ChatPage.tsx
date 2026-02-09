@@ -5,6 +5,7 @@ import { useSocket } from '../../ws/useSocket';
 import ChatList, { type ChatFilter } from './ChatList';
 import ChatWindow from './ChatWindow';
 import { Chat, ChatMessage } from '../../types/chat';
+import './Chat.css';
 import { useAuthStore } from '../../store/auth';
 
 const DEFAULT_FILTER: ChatFilter = 'OPEN';
@@ -169,7 +170,7 @@ export default function ChatPage() {
       : null);
 
   return (
-    <div className="chat-page" style={{ display: 'flex', height: '100%', minHeight: '60vh', overflow: 'hidden' }}>
+    <div className="chat-page">
       <div style={{ width: 320, minWidth: 280, maxWidth: '40%', height: '100%' }}>
         <ChatList
           chats={chats}

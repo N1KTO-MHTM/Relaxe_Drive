@@ -64,6 +64,7 @@
     "version": "ვერსია",
     "creator": "შემქმნელი",
     "description": "RelaxDrive — დისპეტჩერული პლატფორმა. ვებ, Desktop Control Center, შეკვეთები და მძღოლები რეალურ დროში.",
+    "learnMore": "მეტის ნახვა",
     "staffOnly": "ვებ აპლიკაცია მხოლოდ პერსონალისთვის: მძღოლები, დისპეტჩერები და ადმინისტრატორები. კლიენტებს (მგზავრებს) წვდომა არ აქვთ — მათ დისპეტჩერები მართავენ განყოფილებაში «მგზავრები».",
     "yourAccess": "თქვენი წვდომა",
     "roleDriver": "მძღოლი",
@@ -742,5 +743,20 @@
     "rejectDriverFailed": "Failed to reject driver",
     "locationRequiredForMap": "Allow location access to appear on the map. Check browser or device settings.",
     "youAreOnMap": "You're on the map"
+  },
+  "chat": {
+    "title": "მხარდაჭერა",
+    "selectToStart": "აირჩიეთ საუბარი",
+    "startConversation": "საუბრის დაწყება",
+    "sendImageFiles": "სურათისა და ფაილის გაგზავნა",
+    "takePicture": "ფოტოს გადაღება",
+    "exit": "გასვლა",
+    "closeChat": "ჩატის დახურვა",
+    "loadingChat": "იტვირთება…",
+    "filterChat": "ჩატი",
+    "filterWaiting": "მოცდა",
+    "filterClosed": "დახურული",
+    "noChatsFound": "საუბრები არ არის",
+    "supportWith": "მხარდაჭერა"
   }
 }

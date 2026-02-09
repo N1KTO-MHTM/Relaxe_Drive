@@ -22,6 +22,7 @@ export default function AuthLayout() {
           className={current === l.code ? 'active' : ''}
           onClick={() => i18n.changeLanguage(l.code)}
           title={l.label}
+          lang="en"
         >
           {l.label}
         </button>

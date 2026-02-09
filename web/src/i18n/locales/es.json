@@ -64,6 +64,7 @@
     "version": "Versión",
     "creator": "Creador",
     "description": "RelaxDrive — plataforma de despacho. Web, órdenes y conductores en tiempo real.",
+    "learnMore": "Saber más",
     "staffOnly": "Esta web es solo para personal: conductores, despachadores y administradores. Los clientes (pasajeros) no tienen acceso; los gestionan los despachadores en la sección Clientes.",
     "yourAccess": "Tu acceso",
     "roleDriver": "Conductor",
@@ -733,7 +734,13 @@
     "sendImageFiles": "Enviar imagen y archivos",
     "takePicture": "Tomar foto",
     "exit": "Salir",
-    "loadingChat": "Cargando soporte…"
+    "closeChat": "Cerrar chat",
+    "loadingChat": "Cargando soporte…",
+    "filterChat": "Chat",
+    "filterWaiting": "En espera",
+    "filterClosed": "Cerrado",
+    "noChatsFound": "Sin conversaciones",
+    "supportWith": "Soporte"
   },
   "toast": {
     "orderCreated": "Order created",

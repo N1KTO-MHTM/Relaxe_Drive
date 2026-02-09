@@ -87,6 +87,7 @@ export default function ChatWindow({
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           padding: '1rem',
           display: 'flex',
@@ -120,7 +121,7 @@ export default function ChatWindow({
                     <div style={{ marginBottom: '0.5rem' }}>
                       {msg.fileType?.startsWith('image/') ? (
                         <img
-                          src={`${import.meta.env.VITE_API_URL}${msg.fileUrl}`}
+                          src={`${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}${msg.fileUrl}`}
                           alt="attachment"
                           style={{
                             maxWidth: '100%',
@@ -131,7 +132,7 @@ export default function ChatWindow({
                         />
                       ) : (
                         <a
-                          href={`${import.meta.env.VITE_API_URL}${msg.fileUrl}`}
+                          href={`${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}${msg.fileUrl}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{

@@ -62,14 +62,18 @@
 .auth-layout__lang button {
   padding: var(--rd-space-sm) var(--rd-space-md);
   min-height: 44px;
-  min-width: 44px;
+  width: 2.75rem;
+  min-width: 2.75rem;
   background: var(--rd-bg-panel, rgba(255, 255, 255, 0.08));
   border: 1px solid var(--rd-border);
   border-radius: var(--rd-radius);
   color: var(--rd-text);
   cursor: pointer;
+  font-family: var(--rd-font-sans), system-ui, sans-serif;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }

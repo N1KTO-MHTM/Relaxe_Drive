@@ -1,4 +1,13 @@
-import { Controller, Post, Body, UseGuards, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -72,6 +81,30 @@ export class AuthController {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const link = `${baseUrl.replace(/\/$/, '')}/forgot-password?token=${encodeURIComponent(token)}`;
     return { token, link };
+  }
+
+  @Public()
+  @Post('bootstrap')
+  @HttpCode(HttpStatus.CREATED)
+  async bootstrap(
+    @Body('nickname') nickname: string,
+    @Body('password') password: string,
+    @Req() req?: { headers?: { 'x-bootstrap-secret'?: string } },
+  ) {
+    const allowByEnv = process.env.ALLOW_BOOTSTRAP === 'true';
+    const userCount = await this.authService.getUserCount();
+    const allowByDev =
+      process.env.NODE_ENV === 'development' && userCount === 0;
+    if (!allowByEnv && !allowByDev) {
+      throw new ForbiddenException('Bootstrap is disabled');
+    }
+    if (allowByEnv) {
+      const secret = process.env.BOOTSTRAP_SECRET;
+      if (secret && req?.headers?.['x-bootstrap-secret'] !== secret) {
+        throw new ForbiddenException('Invalid bootstrap secret');
+      }
+    }
+    return this.authService.bootstrap(nickname ?? 'admin', password ?? 'admin');
   }
 
   @Public()

@@ -175,14 +175,6 @@ function DashboardLayoutInner({
     >
       <header className="dashboard-layout__header">
         <div className="dashboard-layout__brand-row">
-          <button
-            type="button"
-            className="dashboard-layout__menu-btn"
-            onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            aria-label={mobileNavOpen ? t('nav.closeMenu') : t('nav.openMenu')}
-          >
-            {mobileNavOpen ? '✕' : '☰'}
-          </button>
           <div className="dashboard-layout__brand">
             <span className="brand-name">{t('app.name')}</span>
             <span className="brand-tagline">

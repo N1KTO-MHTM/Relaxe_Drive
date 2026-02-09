@@ -44,6 +44,8 @@ interface OrdersMapProps {
   };
   /** When set, Re-center / centerTrigger will move map to this point (e.g. search by geo or driver location) */
   focusCenter?: { lat: number; lng: number } | null;
+  /** When set with focusCenter, use this zoom (e.g. driver "My location" uses higher zoom to be ~35% closer). */
+  focusZoom?: number;
   /** Optional "My location" button label and callback to center map on user's geo */
   myLocationLabel?: string;
   onMyLocation?: () => void;
@@ -66,6 +68,8 @@ interface OrdersMapProps {
   driverView?: boolean;
   /** When driver view: callback to toggle map fullscreen. */
   onToggleFullscreen?: () => void;
+  /** When true (e.g. driver full map), map container grew — call invalidateSize so tiles paint. */
+  mapExpanded?: boolean;
   /** Zones to display (polygons) */
   zones?: Array<{
     id: string;
@@ -179,7 +183,7 @@ function currentUserDotArrowIcon(rotationDegrees?: number): L.DivIcon {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="14" height="14" style="transform-origin:center;"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
   return L.divIcon({
     className: 'orders-map-current-user-marker',
-    html: `<span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#1a1a1a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);${transform}" title="You">${arrow}</span>`,
+    html: `<span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#1a1a1a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:transform 0.18s ease-out;${transform}" title="You">${arrow}</span>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
@@ -189,7 +193,7 @@ function currentUserDotArrowIcon(rotationDegrees?: number): L.DivIcon {
 function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
   const transform =
     rotationDegrees != null && Number.isFinite(rotationDegrees)
-      ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;`
+      ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;transition:transform 0.18s ease-out;`
       : '';
   const svg = CAR_ICON_SVG.replace('width="18" height="18"', 'width="32" height="32"')
     .replace('fill="white"', 'fill="#2563eb"')
@@ -206,7 +210,7 @@ function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
 function currentUserArrowIcon(rotationDegrees?: number): L.DivIcon {
   const transform =
     rotationDegrees != null && Number.isFinite(rotationDegrees)
-      ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;`
+      ? `transform:rotate(${rotationDegrees}deg);transform-origin:center center;transition:transform 0.18s ease-out;`
       : '';
   const svg = ARROW_ICON_SVG.replace('width="22" height="22"', 'width="32" height="32"')
     .replace('fill="white"', 'fill="#2563eb"')
@@ -303,6 +307,7 @@ export default function OrdersMap({
   zones = [],
   showZones = true,
   focusCenter,
+  focusZoom,
   initialCenter,
   initialZoom,
   onMapViewChange,
@@ -313,6 +318,7 @@ export default function OrdersMap({
   currentUserHeadingDegrees,
   driverView = false,
   onToggleFullscreen,
+  mapExpanded,
   myLocationLabel,
   onMyLocation,
   mapStyle = 'street',
@@ -350,7 +356,7 @@ export default function OrdersMap({
         : DEFAULT_CENTER;
     const startZoom =
       typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
-    const map = L.map(el).setView(startCenter, startZoom);
+    const map = L.map(el, { zoomSnap: 0.5 }).setView(startCenter, startZoom);
     const initialLayers = getTileLayersForStyle('street');
     initialLayers.forEach((layer) => layer.addTo(map));
     baseLayersRef.current = initialLayers;
@@ -423,6 +429,25 @@ export default function OrdersMap({
     layers.forEach((layer) => layer.addTo(map));
     baseLayersRef.current = layers;
   }, [mapStyle]);
+
+  // When map container expands (e.g. driver full map), repaint so tiles show instead of gray
+  useEffect(() => {
+    if (!mapExpanded) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const container = map.getContainer();
+    const timeouts: number[] = [];
+    [50, 200, 450, 800].forEach((ms) => timeouts.push(window.setTimeout(() => map.invalidateSize(), ms)));
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && container) {
+      resizeObserver = new ResizeObserver(() => map.invalidateSize());
+      resizeObserver.observe(container);
+    }
+    return () => {
+      timeouts.forEach((t) => clearTimeout(t));
+      if (resizeObserver && container) resizeObserver.unobserve(container);
+    };
+  }, [mapExpanded]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1199,7 +1224,8 @@ export default function OrdersMap({
     const map = mapRef.current;
     if (focusCenter && Number.isFinite(focusCenter.lat) && Number.isFinite(focusCenter.lng)) {
       map.invalidateSize();
-      map.setView([focusCenter.lat, focusCenter.lng], 14);
+      const zoom = focusZoom != null && Number.isFinite(focusZoom) ? focusZoom : 14;
+      map.setView([focusCenter.lat, focusCenter.lng], zoom);
       return;
     }
     const allLatLngs: L.LatLng[] = [];
@@ -1224,7 +1250,7 @@ export default function OrdersMap({
       map.fitBounds(L.latLngBounds(allLatLngs).pad(0.2), { maxZoom: 15 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-center on button click (centerTrigger), not when drivers/route update
-  }, [centerTrigger, focusCenter?.lat, focusCenter?.lng]);
+  }, [centerTrigger, focusCenter?.lat, focusCenter?.lng, focusZoom]);
 
   // Nav mode: map follows the driver (center on car when moving). Updates every 1s so map tracks driver.
   useEffect(() => {
@@ -1338,7 +1364,7 @@ export default function OrdersMap({
           ⛶
         </button>
       )}
-      {(!navMode || driverView) && (
+      {(!navMode || driverView) && (!driverView || routeData) && (
         <div
           className="orders-map-overlay rd-text-muted"
           style={{
@@ -1355,7 +1381,7 @@ export default function OrdersMap({
           }}
         >
           {driverView
-            ? (routeData ? t('dashboard.mapHintDriverView') : t('dashboard.mapHintDriverViewNoRoute'))
+            ? t('dashboard.mapHintDriverView')
             : onMapClick
               ? t('dashboard.mapHintClick')
               : showDriverMarkers

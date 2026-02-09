@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const WS_URL = import.meta.env.VITE_WS_URL || '';
+const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : '');
 
 export function useSocket() {
   const [connected, setConnected] = useState(false);

@@ -24,6 +24,10 @@ export class UsersService {
     private ws: RelaxDriveWsGateway,
   ) {}
 
+  async getUserCount(): Promise<number> {
+    return this.prisma.user.count();
+  }
+
   async findByNickname(nickname: string) {
     return this.prisma.user.findUnique({ where: { nickname } });
   }
@@ -623,5 +627,53 @@ export class UsersService {
     this.eventEmitter.emit('planning.recalculate');
     this.ws.broadcastDrivers(await this.findAll());
     return { deleted: ids.length };
+  }
+
+  /** Wipe ALL users and all dependent data. Use only for bootstrap/reset. Returns count of deleted users. */
+  async wipeAllUsers(): Promise<{ deleted: number }> {
+    const userIds = await this.prisma.user.findMany({ select: { id: true } }).then((u) => u.map((x) => x.id));
+    if (userIds.length === 0) return { deleted: 0 };
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orderEvent.deleteMany({});
+      await tx.order.updateMany({ data: { driverId: null } });
+      await tx.order.deleteMany({});
+      await tx.session.deleteMany({});
+      await tx.auditLog.deleteMany({});
+      await tx.chatMessage.deleteMany({});
+      await tx.chat.deleteMany({});
+      await tx.passenger.updateMany({ data: { userId: null } });
+      await tx.translationRecord.deleteMany({});
+      await tx.driverReport.deleteMany({});
+      await tx.driverTripSummary.deleteMany({});
+      await tx.driverStats.deleteMany({});
+      await tx.user.deleteMany({});
+    });
+
+    return { deleted: userIds.length };
+  }
+
+  /** Create an admin user (for bootstrap). No approval needed. */
+  async createAdmin(nickname: string, password: string) {
+    const nick = (nickname || '').trim();
+    const pass = (password || '').trim();
+    if (!nick || !pass) throw new BadRequestException('Nickname and password required');
+    const existing = await this.findByNickname(nick);
+    if (existing) throw new ConflictException('Nickname already registered');
+    const passwordHash = await bcrypt.hash(pass, 10);
+    return this.prisma.user.create({
+      data: {
+        nickname: nick,
+        passwordHash,
+        role: 'ADMIN',
+        locale: 'en',
+      },
+      select: {
+        id: true,
+        nickname: true,
+        role: true,
+        createdAt: true,
+      },
+    });
   }
 }

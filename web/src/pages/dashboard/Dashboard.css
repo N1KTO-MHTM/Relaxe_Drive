@@ -269,6 +269,27 @@
 .dashboard-page--driver.dashboard-page--full-map .dashboard-page__grid {
   grid-template-columns: 1fr;
   grid-template-areas: 'map-area';
+  min-height: 100vh;
+}
+
+/* Full map ~30% bigger: map area fills viewport and extends 30% so map is visibly larger */
+.dashboard-page--driver.dashboard-page--full-map .dashboard-page__map {
+  min-height: 130vh;
+  height: 130vh;
+  max-height: none;
+  overflow: hidden;
+}
+
+.dashboard-page--driver.dashboard-page--full-map .dashboard-page__map .orders-map-container {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+}
+
+.dashboard-page--driver.dashboard-page--full-map .dashboard-page__map .orders-map-container .leaflet-container {
+  height: 100% !important;
+  min-height: 100%;
 }
 
 .dashboard-page--driver.dashboard-page--full-map

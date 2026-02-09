@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  HttpException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -96,9 +97,40 @@ export class AuthService {
     ip?: string,
     rememberDevice = false,
   ) {
+    try {
+      return await this.loginInternal(nickname, password, device, ip, rememberDevice);
+    } catch (e) {
+      if (e instanceof HttpException) throw e;
+      logger.error('Login failed', 'AuthService', { err: String(e) });
+      throw new UnauthorizedException('Invalid credentials');
+    }
+  }
+
+  private async loginInternal(
+    nickname: string,
+    password: string,
+    device?: string,
+    ip?: string,
+    rememberDevice = false,
+  ) {
     const nick = (nickname || '').trim();
     const pass = (password || '').trim();
-    const user = await this.validateUser(nick, pass);
+    let user = await this.validateUser(nick, pass);
+    if (!user) {
+      try {
+        const count = await this.usersService.getUserCount();
+        if (
+          process.env.NODE_ENV === 'development' &&
+          count === 0 &&
+          nick.toLowerCase() === 'admin'
+        ) {
+          await this.bootstrap('admin', pass);
+          user = (await this.validateUser(nick, pass)) ?? null;
+        }
+      } catch (e) {
+        logger.warn('Auto-bootstrap admin failed', 'AuthService', { err: String(e) });
+      }
+    }
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (user.blocked) throw new UnauthorizedException('Account is blocked');
     if (user.role === 'DRIVER' && user.approvedAt == null) {
@@ -217,5 +249,17 @@ export class AuthService {
       if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('Invalid or expired reset link');
     }
+  }
+
+  async getUserCount(): Promise<number> {
+    return this.usersService.getUserCount();
+  }
+
+  /** Wipe all users and create a single admin. Use only when ALLOW_BOOTSTRAP is set or dev with 0 users. */
+  async bootstrap(nickname: string, password: string) {
+    const nick = (nickname || 'admin').trim() || 'admin';
+    const pass = (password || 'admin').trim() || 'admin';
+    await this.usersService.wipeAllUsers();
+    return this.usersService.createAdmin(nick, pass);
   }
 }

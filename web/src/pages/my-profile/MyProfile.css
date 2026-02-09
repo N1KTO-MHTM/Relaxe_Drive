@@ -1,5 +1,5 @@
 .my-profile-page {
-  max-width: 560px;
+  max-width: 720px;
   margin: 0 auto;
   padding: var(--rd-space-md);
 }
@@ -16,20 +16,72 @@
 }
 
 .my-profile-page__section {
-  padding: 1.25rem;
-  border-radius: var(--rd-radius);
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--rd-radius-md, 10px);
   margin-bottom: 1rem;
+  background: var(--rd-bg-elevated, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--rd-border-subtle, rgba(255, 255, 255, 0.08));
 }
 
 .my-profile-page__section h2 {
   margin: 0 0 1rem;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--rd-accent-neon, var(--rd-text));
+  color: var(--rd-accent-neon, #38bdf8);
+  letter-spacing: 0.02em;
+}
+
+/* Profile & stats rows: label and value clearly separated */
+.my-profile-page__section .my-profile-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.my-profile-stat-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rd-border-subtle, rgba(255, 255, 255, 0.06));
+  font-size: 0.9375rem;
+}
+
+.my-profile-stat-row:last-child {
+  border-bottom: none;
+}
+
+.my-profile-stat-row__label {
+  flex-shrink: 0;
+  min-width: 10rem;
+  color: var(--rd-text-muted);
+}
+
+.my-profile-stat-row__label::after {
+  content: ':';
+  margin-left: 0.15em;
+}
+
+.my-profile-stat-row__value {
+  color: var(--rd-text);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
 }
 
 .my-profile-page__section .rd-btn {
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.my-profile-page__section p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--rd-text-muted);
+  font-size: 0.9375rem;
+}
+
+.my-profile-page__about-link {
+  display: inline-block;
+  margin-top: 1rem;
 }
 
 .my-profile-page__footer {
@@ -41,4 +93,20 @@
 .my-profile-page__footer .rd-btn {
   width: 100%;
   max-width: 280px;
+}
+
+@media (min-width: 600px) {
+  .my-profile-page__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .my-profile-page__grid .my-profile-page__section {
+    margin-bottom: 0;
+  }
+
+  .my-profile-page__section.my-profile-page__section--full {
+    grid-column: 1 / -1;
+  }
 }

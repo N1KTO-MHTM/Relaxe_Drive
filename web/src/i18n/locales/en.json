@@ -76,6 +76,7 @@
     "version": "Version",
     "creator": "Creator",
     "description": "RelaxDrive — dispatch control platform. Web, Desktop Control Center, real-time orders and drivers.",
+    "learnMore": "Learn more",
     "staffOnly": "This web app is for staff only: drivers, dispatchers, and administrators. Clients (passengers) do not have access — they are managed in the Clients section by dispatchers.",
     "yourAccess": "Your access",
     "driverAccess": "As a driver you have access to: My trips, Map, Translation.",
