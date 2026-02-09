@@ -60,6 +60,7 @@ export default function DashboardLayout() {
     operations: [] as typeof nav,
     dispatch: [] as typeof nav,
     information: [] as typeof nav,
+    driverSupport: [] as typeof nav,
     system: [] as typeof nav,
   };
   nav.forEach((item) => {

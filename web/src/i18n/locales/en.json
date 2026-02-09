@@ -188,9 +188,11 @@
       "operations": "Dispatcher",
       "dispatch": "Dispatch",
       "information": "Information",
+      "driverSupport": "Driver support",
       "bi": "BI",
       "system": "System"
-    }
+    },
+    "statements": "Statements"
   },
   "dashboard": {
     "title": "Dispatcher Dashboard",
@@ -832,6 +834,11 @@
     "lastCheck": "Last check",
     "services": "Services"
   },
+  "statements": {
+    "title": "Statements",
+    "description": "View and manage support statements, earnings, or reports.",
+    "placeholder": "Add content here: list statements, export, or link to external reports."
+  },
   "toast": {
     "orderCreated": "Order created",
     "orderCreateFailed": "Failed to create order",
@@ -855,6 +862,10 @@
     "rejectDriverFailed": "Failed to reject driver",
     "locationRequiredForMap": "Allow location access to appear on the map. Check browser or device settings.",
     "youAreOnMap": "You're on the map"
+  },
+  "newVersion": {
+    "available": "A new version is available.",
+    "reload": "Reload"
   },
   "status": {
     "ok": "OK",

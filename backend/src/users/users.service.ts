@@ -547,16 +547,15 @@ export class UsersService {
     });
   }
 
-  /** Delete a user (admin only). Cannot delete self or the last admin. */
+  /** Delete a user (admin only). Cannot delete self, any admin, or the last admin. */
   async deleteUser(targetUserId: string, requestingAdminId: string) {
     if (targetUserId === requestingAdminId) {
       throw new ConflictException('Cannot delete your own account');
     }
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new NotFoundException('User not found');
-    const adminCount = await this.prisma.user.count({ where: { role: 'ADMIN' } });
-    if (target.role === 'ADMIN' && adminCount <= 1) {
-      throw new ConflictException('Cannot delete the last administrator');
+    if (target.role === 'ADMIN') {
+      throw new ConflictException('Cannot delete an administrator');
     }
     await this.prisma.order.updateMany({
       where: { createdById: targetUserId },
@@ -580,5 +579,49 @@ export class UsersService {
     await this.prisma.driverStats.deleteMany({ where: { driverId: targetUserId } });
     await this.prisma.user.delete({ where: { id: targetUserId } });
     return { deleted: true };
+  }
+
+  /** Wipe all non-admin users. Admins are never touched. Caller must be ADMIN. */
+  async wipeNonAdminUsers(adminId: string): Promise<{ deleted: number }> {
+    const admins = await this.prisma.user.findMany({
+      where: { role: 'ADMIN' },
+      select: { id: true },
+    });
+    if (admins.length === 0) throw new ConflictException('No admin account exists');
+    const toDelete = await this.prisma.user.findMany({
+      where: { role: { not: 'ADMIN' } },
+      select: { id: true },
+    });
+    const ids = toDelete.map((u) => u.id);
+    if (ids.length === 0) return { deleted: 0 };
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.order.updateMany({
+        where: { createdById: { in: ids } },
+        data: { createdById: adminId },
+      });
+      await tx.order.updateMany({
+        where: { driverId: { in: ids } },
+        data: { driverId: null },
+      });
+      await tx.auditLog.deleteMany({ where: { userId: { in: ids } } });
+      await tx.passenger.updateMany({
+        where: { userId: { in: ids } },
+        data: { userId: null },
+      });
+      await tx.translationRecord.updateMany({
+        where: { userId: { in: ids } },
+        data: { userId: null },
+      });
+      await tx.driverReport.deleteMany({ where: { userId: { in: ids } } });
+      await tx.driverTripSummary.deleteMany({ where: { driverId: { in: ids } } });
+      await tx.driverStats.deleteMany({ where: { driverId: { in: ids } } });
+      await tx.session.deleteMany({ where: { userId: { in: ids } } });
+      await tx.user.deleteMany({ where: { id: { in: ids } } });
+    });
+
+    this.eventEmitter.emit('planning.recalculate');
+    this.ws.broadcastDrivers(await this.findAll());
+    return { deleted: ids.length };
   }
 }

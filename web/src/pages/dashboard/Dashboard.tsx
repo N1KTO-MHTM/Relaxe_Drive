@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../ws/useSocket';
-import { useAuthStore } from '../../store/auth';
+import { useAuthStore, type Role } from '../../store/auth';
 import { api } from '../../api/client';
 import OrdersMap from '../../components/OrdersMap';
 import type { OrderRouteData, DriverForMap } from '../../types';
@@ -625,6 +625,11 @@ export default function Dashboard() {
   /** Refresh all data: orders, drivers, reports, route, and completed list if on that tab. */
   function refreshAll() {
     loadOrders();
+    if (effectiveIsDriver && user?.id) {
+      api.get<{ id: string; nickname: string; role: string; available?: boolean; locale?: string }>('/users/me').then((data) => {
+        if (data) setUser({ ...user, ...data, role: data.role as Role });
+      }).catch(() => {});
+    }
     if (canAssign) {
       api
         .get<User[]>('/users')
@@ -705,6 +710,16 @@ export default function Dashboard() {
     }, DRIVER_POLL_MS);
     return () => clearInterval(t);
   }, [canAssign]);
+
+  // Driver: poll orders + user when tab visible so mobile gets updates even if WebSocket drops
+  useEffect(() => {
+    if (!effectiveIsDriver || !user?.id || typeof document === 'undefined') return;
+    const DRIVER_UPDATE_POLL_MS = 15000;
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') refreshAllRef.current();
+    }, DRIVER_UPDATE_POLL_MS);
+    return () => clearInterval(t);
+  }, [effectiveIsDriver, user?.id]);
 
   /** Trigger one immediate location send (so driver appears on map right after going online). */
   const sendLocationOnceRef = useRef<(() => void) | null>(null);
@@ -2292,6 +2307,35 @@ export default function Dashboard() {
                     : 'Offline'}
             </span>
           )}
+          {effectiveIsDriver && (
+            <div className="dashboard-driver-status-top">
+              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`}>
+                <span className="rd-ws-dot" />
+                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
+              </span>
+              <button
+                type="button"
+                className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
+                style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
+                onClick={handleToggleAvailability}
+                disabled={availabilityUpdating}
+                aria-busy={availabilityUpdating}
+              >
+                <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
+                    <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
+                    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+                    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                  </svg>
+                </span>
+                <span className="dashboard-status-btn__label">
+                  {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {reconnecting && (
@@ -2919,7 +2963,7 @@ export default function Dashboard() {
                   ? t('status.connected')
                   : reconnecting
                     ? t('dashboard.reconnecting')
-                    : 'Offline'}
+                    : t('dashboard.driverStatusOffline')}
               </span>
               <div className="dashboard-status-btn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button

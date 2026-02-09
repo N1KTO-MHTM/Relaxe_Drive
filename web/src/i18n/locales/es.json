@@ -126,9 +126,16 @@
       "operations": "Despachador",
       "dispatch": "Despacho",
       "information": "Información",
+      "driverSupport": "Soporte al conductor",
       "bi": "BI",
       "system": "Sistema"
-    }
+    },
+    "statements": "Informes"
+  },
+  "statements": {
+    "title": "Informes",
+    "description": "Ver informes, ingresos o declaraciones.",
+    "placeholder": "Añadir contenido: listado, exportación o enlaces."
   },
   "dashboard": {
     "title": "Panel del despachador",
@@ -683,6 +690,10 @@
     "subtitle": "Estado de los servicios y última comprobación.",
     "lastCheck": "Última comprobación",
     "services": "Servicios"
+  },
+  "newVersion": {
+    "available": "Hay una nueva versión disponible.",
+    "reload": "Recargar"
   },
   "status": {
     "ok": "OK",

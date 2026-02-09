@@ -125,9 +125,16 @@
       "operations": "Диспетчер",
       "dispatch": "Водители",
       "information": "Информация",
+      "driverSupport": "Поддержка водителей",
       "bi": "BI",
       "system": "Система"
-    }
+    },
+    "statements": "Отчёты"
+  },
+  "statements": {
+    "title": "Отчёты",
+    "description": "Просмотр отчётов, заработка или заявлений.",
+    "placeholder": "Добавьте сюда: список отчётов, экспорт или ссылки."
   },
   "toast": {
     "orderCreated": "Заказ создан",
@@ -720,6 +727,10 @@
     "subtitle": "Статус сервисов и последняя проверка.",
     "lastCheck": "Проверка",
     "services": "Сервисы"
+  },
+  "newVersion": {
+    "available": "Доступна новая версия.",
+    "reload": "Обновить"
   },
   "status": {
     "ok": "OK",

@@ -11,6 +11,7 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/roles',
     '/about',
     '/chat',
+    '/statements',
     '/translation',
     '/my-profile',
     '/addresses',
@@ -24,13 +25,14 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/pendings',
     '/about',
     '/chat',
+    '/statements',
     '/translation',
     '/my-profile',
     '/addresses',
     '/phone-base',
   ],
-  /** Driver: Dashboard (My trips), Translation, Chat, My Profile; About and Driver reports via My Profile. */
-  DRIVER: ['/dashboard', '/translation', '/chat', '/my-profile', '/driver-reports', '/about'],
+  /** Driver: Dashboard (My trips), Translation, Chat, Statements, My Profile; About and Driver reports via My Profile. */
+  DRIVER: ['/dashboard', '/translation', '/chat', '/statements', '/my-profile', '/driver-reports', '/about'],
   CLIENT: [],
 };
 
@@ -41,11 +43,12 @@ export function canAccessPath(role: Role | null, path: string): boolean {
   return allowed.includes(path) || path === '/';
 }
 
-/** Driver nav: My trips, Translation, Chat, My Profile. */
+/** Driver nav: My trips, Translation, Chat, Statements, My Profile. */
 export const DRIVER_NAV_ITEMS: { path: string; key: string }[] = [
   { path: '/dashboard', key: 'myTrips' },
   { path: '/translation', key: 'translation' },
   { path: '/chat', key: 'chat' },
+  { path: '/statements', key: 'statements' },
   { path: '/my-profile', key: 'myProfile' },
 ];
 
@@ -63,10 +66,13 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
   { path: '/addresses', key: 'addresses', group: 'information' },
   { path: '/phone-base', key: 'phoneBase', group: 'information' },
 
-  // System (Roles, Pending drivers, Chat, About)
+  // Driver support (Chat, Statements — subcategories)
+  { path: '/chat', key: 'chat', group: 'driverSupport' },
+  { path: '/statements', key: 'statements', group: 'driverSupport' },
+
+  // System (Roles, Pending drivers, About)
   { path: '/roles', key: 'roles', group: 'system' },
   { path: '/pendings', key: 'pendings', group: 'system' },
-  { path: '/chat', key: 'chat', group: 'system' },
   { path: '/about', key: 'about', group: 'system' },
 ];
 

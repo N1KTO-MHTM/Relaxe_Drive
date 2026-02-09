@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Delete, Param, Body, Query, UseGuards, Request, HttpException, HttpStatus, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Delete, Param, Body, Query, UseGuards, Request, HttpException, HttpStatus, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuditService } from '../audit/audit.service';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -225,6 +225,15 @@ export class UsersController {
     await this.audit.log(req.user.id, 'user.driver_ids_update', 'user', { targetUserId: id });
     this.ws.emitUserUpdated(id);
     return updated;
+  }
+
+  @Post('wipe-non-admins')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async wipeNonAdminUsers(@Request() req: { user: { id: string } }) {
+    const result = await this.usersService.wipeNonAdminUsers(req.user.id);
+    await this.audit.log(req.user.id, 'user.wipe_non_admins', 'user', { deletedCount: result.deleted });
+    return result;
   }
 
   @Delete(':id')
