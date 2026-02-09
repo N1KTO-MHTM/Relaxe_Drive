@@ -34,6 +34,7 @@
     "invalidCredentials": "Invalid nickname or password",
     "pendingApproval": "Your account is pending approval. An administrator must approve your registration before you can sign in.",
     "serverError": "Cannot reach server. Is the backend running?",
+    "serverErrorHint": "On free hosting the backend may need 30–60 seconds to wake up. Tap Retry and try again.",
     "retry": "Retry",
     "forgotPasswordSent": "If an account with this nickname exists, contact your administrator to reset the password.",
     "forgotPasswordHint": "Enter your nickname. An administrator can reset your password.",
@@ -185,7 +186,7 @@
     "themeDark": "Dark theme",
     "group": {
       "operations": "Dispatcher",
-      "dispatch": "Information",
+      "dispatch": "Dispatch",
       "information": "Information",
       "bi": "BI",
       "system": "System"

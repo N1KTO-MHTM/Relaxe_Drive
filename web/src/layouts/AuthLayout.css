@@ -19,16 +19,37 @@
   }
 }
 
-.auth-layout__lang {
+/* Top bar: visible on desktop */
+.auth-layout__lang-wrap--top {
   position: absolute;
   top: var(--rd-space-lg);
   right: var(--rd-space-lg);
   left: var(--rd-space-lg);
+  z-index: 10;
+}
+
+/* In-card: visible only on mobile so language is always in view */
+.auth-layout__lang-wrap--in-card {
+  display: none;
+  padding-bottom: var(--rd-space-md);
+  margin-bottom: var(--rd-space-md);
+  border-bottom: 1px solid var(--rd-border);
+}
+
+@media (max-width: 480px) {
+  .auth-layout__lang-wrap--top {
+    display: none;
+  }
+  .auth-layout__lang-wrap--in-card {
+    display: block;
+  }
+}
+
+.auth-layout__lang {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--rd-space-sm);
-  z-index: 10;
 }
 
 .auth-layout__lang-label {

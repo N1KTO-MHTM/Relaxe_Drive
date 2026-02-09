@@ -90,7 +90,14 @@ export default function Pendings() {
           </button>
         </div>
         <p className="rd-text-muted pendings-subtitle">{t('pendings.subtitle')}</p>
-        {error && <p className="rd-text-critical pendings-error">{error}</p>}
+        {error && (
+          <div className="pendings-error-wrap">
+            <p className="rd-text-critical pendings-error">{error}</p>
+            <button type="button" className="rd-btn rd-btn-primary" onClick={() => load()}>
+              {t('auth.retry')}
+            </button>
+          </div>
+        )}
         {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
         {!loading && !error && list.length === 0 && (
           <p className="rd-text-muted">{t('pendings.noPending')}</p>

@@ -59,21 +59,27 @@ export default function Login() {
         {t('auth.staffOnly')}
       </p>
       {error && (
-        <p
-          className="rd-text-critical"
-          style={{
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-          }}
-        >
-          {error}
-          <button type="button" className="rd-btn rd-btn-link" onClick={() => setError('')}>
-            {t('auth.retry')}
-          </button>
-        </p>
+        <div style={{ marginBottom: '1rem' }}>
+          <p
+            className="rd-text-critical"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            }}
+          >
+            {error}
+            <button type="button" className="rd-btn rd-btn-link" onClick={() => setError('')}>
+              {t('auth.retry')}
+            </button>
+          </p>
+          {error === t('auth.serverError') && (
+            <p className="rd-text-muted" style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+              {t('auth.serverErrorHint')}
+            </p>
+          )}
+        </div>
       )}
       <div style={{ marginBottom: '1rem' }}>
         <label className="rd-label">{t('auth.nickname')}</label>

@@ -32,6 +32,7 @@
     "invalidCredentials": "Usuario o contraseña incorrectos",
     "pendingApproval": "Su cuenta está pendiente de aprobación. Un administrador debe aprobar su registro antes de poder iniciar sesión.",
     "serverError": "No se puede conectar al servidor. ¿Está en ejecución el backend?",
+    "serverErrorHint": "En hosting gratuito el backend puede tardar 30–60 segundos en despertar. Pulse Reintentar e intente de nuevo.",
     "retry": "Reintentar",
     "forgotPasswordSent": "Si existe una cuenta con este usuario, contacta a tu administrador para restablecer la contraseña.",
     "forgotPasswordHint": "Ingresa tu usuario. Un administrador puede restablecer tu contraseña.",
@@ -123,7 +124,7 @@
     "themeDark": "Tema oscuro",
     "group": {
       "operations": "Despachador",
-      "dispatch": "Información",
+      "dispatch": "Despacho",
       "information": "Información",
       "bi": "BI",
       "system": "Sistema"
