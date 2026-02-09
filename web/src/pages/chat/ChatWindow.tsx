@@ -23,6 +23,7 @@ export default function ChatWindow({
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -67,15 +68,16 @@ export default function ChatWindow({
           <button
             onClick={onCloseChat}
             style={{
-              padding: '0.5rem',
+              padding: '0.5rem 0.75rem',
               background: 'rgba(255, 255, 255, 0.1)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               borderRadius: '4px',
               cursor: 'pointer',
               color: '#fff',
+              fontSize: '0.875rem',
             }}
           >
-            {t('common.close')}
+            {t('chat.exit')}
           </button>
         )}
       </div>
@@ -224,6 +226,18 @@ export default function ChatWindow({
               }
             }}
           />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                setSelectedFile(e.target.files[0]);
+              }
+            }}
+          />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -240,15 +254,37 @@ export default function ChatWindow({
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            title="Attach file"
+            title={t('chat.sendImageFiles')}
+            aria-label={t('chat.sendImageFiles')}
           >
             📎
+          </button>
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            style={{
+              padding: '0.75rem',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              width: '42px',
+              height: '42px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title={t('chat.takePicture')}
+            aria-label={t('chat.takePicture')}
+          >
+            📷
           </button>
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={t('chat.startConversation')}
             style={{
               flex: 1,
               padding: '0.75rem',

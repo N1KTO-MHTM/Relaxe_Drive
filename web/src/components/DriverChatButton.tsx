@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { useSocket } from '../ws/useSocket';
 import ChatWindow from '../pages/chat/ChatWindow';
@@ -10,6 +11,7 @@ interface DriverChatButtonProps {
 }
 
 export default function DriverChatButton({ userId }: DriverChatButtonProps) {
+  const { t } = useTranslation();
   const { socket } = useSocket();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -137,7 +139,7 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
           e.currentTarget.style.transform = 'scale(1)';
           e.currentTarget.style.boxShadow = '0 4px 12px rgba(56, 189, 248, 0.4)';
         }}
-        aria-label="Open Chat"
+        aria-label={t('chat.title')}
       >
         💬
         {unreadCount > 0 && (
@@ -194,7 +196,33 @@ export default function DriverChatButton({ userId }: DriverChatButtonProps) {
               loading={loading}
             />
           ) : (
-            <div style={{ padding: '2rem', textAlign: 'center' }}>Loading chat...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    color: '#fff',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {t('chat.exit')}
+                </button>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', color: 'rgba(255,255,255,0.8)' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem' }}>{t('chat.loadingChat')}</p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', textAlign: 'left', fontSize: '0.875rem' }}>
+                  <li>{t('chat.startConversation')}</li>
+                  <li>{t('chat.sendImageFiles')}</li>
+                  <li>{t('chat.takePicture')}</li>
+                </ul>
+              </div>
+            </div>
           )}
         </div>
       )}

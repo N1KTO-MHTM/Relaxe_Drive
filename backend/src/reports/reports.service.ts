@@ -150,13 +150,13 @@ export class ReportsService {
     }));
   }
 
-  // Auto-delete reports older than 1 minute every 30 seconds
+  // Auto-delete reports older than 5 minutes every 30 seconds
   @Cron('*/30 * * * * *')
   async autoDeleteOldReports() {
-    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     await this.prisma.driverReport.deleteMany({
       where: {
-        createdAt: { lt: oneMinuteAgo },
+        createdAt: { lt: fiveMinutesAgo },
       },
     });
   }

@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
-import { downloadCsv } from '../../utils/exportCsv';
-
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import { TripCardMap } from '../../components/TripCardMap';
 import './Drivers.css';
@@ -277,17 +275,6 @@ export default function Drivers() {
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label={t('drivers.search')}
             />
-            <button type="button" className="rd-btn" onClick={() => downloadCsv(filteredList, 'drivers.csv', [
-              { key: 'nickname', label: t('drivers.nickname') },
-              { key: 'phone', label: t('drivers.phone') },
-              { key: 'email', label: t('auth.email') },
-              { key: 'driverId', label: t('drivers.driverId') },
-              { key: 'carId', label: t('drivers.carId') },
-              { key: 'carType', label: t('auth.carType') },
-              { key: 'carPlateNumber', label: t('auth.carPlateNumber') },
-            ])}>
-              {t('drivers.exportCsv')}
-            </button>
             <Link to="/dashboard" className="rd-btn rd-btn-primary">
               {t('drivers.showOnMap')}
             </Link>
@@ -498,39 +485,6 @@ export default function Drivers() {
                       <label className="drivers-trip-history-filter-label">{t('drivers.tripHistoryTo')}</label>
                       <input type="date" className="rd-input" value={tripHistoryTo} onChange={(e) => setTripHistoryTo(e.target.value)} />
                     </div>
-                    {tripHistory.length > 0 && (
-                      <div className="drivers-trip-history-actions">
-                        <button
-                          type="button"
-                          className="rd-btn rd-btn-secondary"
-                          onClick={() => downloadCsv(
-                            tripHistory.map((t) => ({
-                              date: new Date(t.completedAt).toLocaleDateString(),
-                              time: formatTripTime(t.startedAt, t.completedAt),
-                              pickup: t.pickupAddress,
-                              dropoff: t.dropoffAddress,
-                              distanceMi: (t.distanceKm / 1.60934).toFixed(1),
-                              duration: formatTripDuration(t.startedAt, t.completedAt),
-                              avgSpeedMph: tripAvgSpeedMph(t.distanceKm, t.startedAt, t.completedAt),
-                              earnings: `$${(t.earningsCents / 100).toFixed(2)}`,
-                            })),
-                            `trips-${selectedDriver.nickname.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`,
-                            [
-                              { key: 'date', label: t('drivers.exportDate') },
-                              { key: 'time', label: t('drivers.exportTime') },
-                              { key: 'pickup', label: t('dashboard.pickupAddress') },
-                              { key: 'dropoff', label: t('dashboard.dropoffAddress') },
-                              { key: 'distanceMi', label: t('drivers.exportDistance') },
-                              { key: 'duration', label: t('drivers.duration') },
-                              { key: 'avgSpeedMph', label: t('drivers.avgSpeed') },
-                              { key: 'earnings', label: t('drivers.earnings') },
-                            ]
-                          )}
-                        >
-                          {t('drivers.exportCsv')}
-                        </button>
-                      </div>
-                    )}
                     {tripHistory.length === 0 ? (
                       <p className="rd-text-muted">{t('drivers.noTripHistory')}</p>
                     ) : (

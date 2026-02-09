@@ -499,6 +499,15 @@ export class OrdersController {
     return this.transformOrder(updated);
   }
 
+  @Patch(':id/decline')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  async declineOffer(@Param('id') orderId: string, @Request() req: { user: { id: string } }) {
+    const order = await this.ordersService.driverDeclineOffer(orderId, req.user.id);
+    await this.audit.log(req.user.id, 'order.decline_offer', 'order', { orderId });
+    return this.transformOrder(order);
+  }
+
   @Patch(':id/arrived-at-pickup')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'DISPATCHER', 'DRIVER')

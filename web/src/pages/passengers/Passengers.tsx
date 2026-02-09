@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useToastStore } from '../../store/toast';
-import { downloadCsv } from '../../utils/exportCsv';
 import Pagination, { paginate, DEFAULT_PAGE_SIZE } from '../../components/Pagination';
 import { PassengersMap } from './PassengersMap';
 import type { PassengerRow } from '../../types';
@@ -65,11 +64,11 @@ export default function Passengers() {
 
   const filteredList = searchQuery.trim()
     ? list.filter(
-      (p) =>
-        (p.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.id ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-    )
+        (p) =>
+          (p.phone ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.id ?? '').toLowerCase().includes(searchQuery.toLowerCase()),
+      )
     : list;
 
   const paginatedList = useMemo(
@@ -194,18 +193,19 @@ export default function Passengers() {
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label={t('passengers.search')}
             />
-            <button type="button" className="rd-btn" onClick={() => downloadCsv(filteredList, 'clients.csv', [
-              { key: 'id', label: t('passengers.id') },
-              { key: 'phone', label: t('passengers.phone') },
-              { key: 'name', label: t('passengers.name') },
-              { key: 'pickupAddr', label: t('passengers.pickup') },
-            ])}>
-              {t('passengers.exportCsv')}
-            </button>
-            <button type="button" className="rd-btn rd-btn-primary" onClick={() => setShowForm(!showForm)}>
+            <button
+              type="button"
+              className="rd-btn rd-btn-primary"
+              onClick={() => setShowForm(!showForm)}
+            >
               {t('passengers.addClient')}
             </button>
-            <button type="button" className="rd-btn rd-btn-secondary" onClick={loadPassengers} disabled={loading}>
+            <button
+              type="button"
+              className="rd-btn rd-btn-secondary"
+              onClick={loadPassengers}
+              disabled={loading}
+            >
               {t('common.refresh')}
             </button>
           </div>
@@ -214,13 +214,34 @@ export default function Passengers() {
         {showForm && (
           <form onSubmit={handleAdd} className="passengers-form">
             <label>{t('passengers.phone')} *</label>
-            <input type="text" className="rd-input" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} required />
+            <input
+              type="text"
+              className="rd-input"
+              value={formPhone}
+              onChange={(e) => setFormPhone(e.target.value)}
+              required
+            />
             <label>{t('passengers.name')}</label>
-            <input type="text" className="rd-input" value={formName} onChange={(e) => setFormName(e.target.value)} />
+            <input
+              type="text"
+              className="rd-input"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+            />
             <label>{t('passengers.pickup')}</label>
             <div className="passengers-form-row">
-              <input type="text" className="rd-input" value={formPickup} onChange={(e) => setFormPickup(e.target.value)} placeholder={t('passengers.pickup')} />
-              <select className="rd-input passengers-form-select" value={formPickupType} onChange={(e) => setFormPickupType(e.target.value)}>
+              <input
+                type="text"
+                className="rd-input"
+                value={formPickup}
+                onChange={(e) => setFormPickup(e.target.value)}
+                placeholder={t('passengers.pickup')}
+              />
+              <select
+                className="rd-input passengers-form-select"
+                value={formPickupType}
+                onChange={(e) => setFormPickupType(e.target.value)}
+              >
                 <option value="">—</option>
                 <option value="home">{t('passengers.placeHome')}</option>
                 <option value="synagogue">{t('passengers.placeSynagogue')}</option>
@@ -241,8 +262,12 @@ export default function Passengers() {
 
         {error && <p className="rd-text-critical passengers-error">{error}</p>}
         {loading && <p className="rd-text-muted">{t('common.loading')}</p>}
-        {!loading && !error && list.length === 0 && <p className="rd-text-muted">{t('passengers.noClients')}</p>}
-        {!loading && !error && list.length > 0 && filteredList.length === 0 && <p className="rd-text-muted">{t('passengers.noMatch')}</p>}
+        {!loading && !error && list.length === 0 && (
+          <p className="rd-text-muted">{t('passengers.noClients')}</p>
+        )}
+        {!loading && !error && list.length > 0 && filteredList.length === 0 && (
+          <p className="rd-text-muted">{t('passengers.noMatch')}</p>
+        )}
         {!loading && !error && list.length > 0 && (
           <section className="passengers-map-section" aria-label={t('passengers.clientsOnMap')}>
             <h2 className="passengers-map-heading">{t('passengers.clientsOnMap')}</h2>
@@ -270,12 +295,51 @@ export default function Passengers() {
                       {editingClient?.id === p.id ? (
                         <>
                           <td colSpan={7}>
-                            <form onSubmit={(e) => handleEdit(e, p.id)} className="passengers-form" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
+                            <form
+                              onSubmit={(e) => handleEdit(e, p.id)}
+                              className="passengers-form"
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '0.5rem',
+                                alignItems: 'flex-end',
+                              }}
+                            >
                               <label style={{ width: '100%' }}>{t('passengers.editClient')}</label>
-                              <input type="text" className="rd-input" placeholder={t('passengers.phone')} value={editingClient.phone ?? ''} onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })} />
-                              <input type="text" className="rd-input" placeholder={t('passengers.name')} value={editingClient.name ?? ''} onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })} />
-                              <input type="text" className="rd-input" placeholder={t('passengers.pickup')} value={editingClient.pickupAddr ?? ''} onChange={(e) => setEditingClient({ ...editingClient, pickupAddr: e.target.value })} />
-                              <select className="rd-input" value={editingClient.pickupType ?? ''} onChange={(e) => setEditingClient({ ...editingClient, pickupType: e.target.value })}>
+                              <input
+                                type="text"
+                                className="rd-input"
+                                placeholder={t('passengers.phone')}
+                                value={editingClient.phone ?? ''}
+                                onChange={(e) =>
+                                  setEditingClient({ ...editingClient, phone: e.target.value })
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="rd-input"
+                                placeholder={t('passengers.name')}
+                                value={editingClient.name ?? ''}
+                                onChange={(e) =>
+                                  setEditingClient({ ...editingClient, name: e.target.value })
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="rd-input"
+                                placeholder={t('passengers.pickup')}
+                                value={editingClient.pickupAddr ?? ''}
+                                onChange={(e) =>
+                                  setEditingClient({ ...editingClient, pickupAddr: e.target.value })
+                                }
+                              />
+                              <select
+                                className="rd-input"
+                                value={editingClient.pickupType ?? ''}
+                                onChange={(e) =>
+                                  setEditingClient({ ...editingClient, pickupType: e.target.value })
+                                }
+                              >
                                 <option value="">—</option>
                                 <option value="home">{t('passengers.placeHome')}</option>
                                 <option value="synagogue">{t('passengers.placeSynagogue')}</option>
@@ -285,17 +349,40 @@ export default function Passengers() {
                                 <option value="office">{t('passengers.placeOffice')}</option>
                                 <option value="other">{t('passengers.placeOther')}</option>
                               </select>
-                              <button type="submit" className="rd-btn rd-btn-primary" disabled={submitting}>{submitting ? '…' : t('passengers.save')}</button>
-                              <button type="button" className="rd-btn" onClick={() => setEditingClient(null)}>{t('dashboard.cancel')}</button>
+                              <button
+                                type="submit"
+                                className="rd-btn rd-btn-primary"
+                                disabled={submitting}
+                              >
+                                {submitting ? '…' : t('passengers.save')}
+                              </button>
+                              <button
+                                type="button"
+                                className="rd-btn"
+                                onClick={() => setEditingClient(null)}
+                              >
+                                {t('dashboard.cancel')}
+                              </button>
                             </form>
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="passengers-cell-id rd-id-compact" title={p.pickupAddr ?? p.id}>{extractPostalCode(p.pickupAddr)}</td>
+                          <td
+                            className="passengers-cell-id rd-id-compact"
+                            title={p.pickupAddr ?? p.id}
+                          >
+                            {extractPostalCode(p.pickupAddr)}
+                          </td>
                           <td>{p.phone ?? '—'}</td>
                           <td>{p.name ?? '—'}</td>
-                          <td>{p.userId ? <span className="rd-badge rd-badge-ok">{t('passengers.driver')}</span> : '—'}</td>
+                          <td>
+                            {p.userId ? (
+                              <span className="rd-badge rd-badge-ok">{t('passengers.driver')}</span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
                           <td>
                             {p.pickupAddr ?? '—'}
                             {p.pickupType && p.pickupType !== 'home' && (
@@ -307,24 +394,40 @@ export default function Passengers() {
                               type="button"
                               className="rd-btn rd-btn-primary"
                               style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}
-                              onClick={() => navigate('/dashboard', {
-                                state: {
-                                  openForm: true,
-                                  passengerPrefill: {
-                                    phone: p.phone ?? '',
-                                    name: p.name ?? '',
-                                    pickupAddr: p.pickupAddr ?? '',
-                                    pickupType: p.pickupType ?? '',
+                              onClick={() =>
+                                navigate('/dashboard', {
+                                  state: {
+                                    openForm: true,
+                                    passengerPrefill: {
+                                      phone: p.phone ?? '',
+                                      name: p.name ?? '',
+                                      pickupAddr: p.pickupAddr ?? '',
+                                      pickupType: p.pickupType ?? '',
+                                    },
                                   },
-                                },
-                              })}
+                                })
+                              }
                             >
                               + {t('nav.newOrder')}
                             </button>
                           </td>
                           <td>
-                            <button type="button" className="rd-btn" style={{ marginRight: '0.25rem' }} onClick={() => setEditingClient({ ...p })}>{t('passengers.edit')}</button>
-                            <button type="button" className="rd-btn" disabled={deletingId === p.id} onClick={() => handleDelete(p.id)}>{deletingId === p.id ? '…' : t('passengers.delete')}</button>
+                            <button
+                              type="button"
+                              className="rd-btn"
+                              style={{ marginRight: '0.25rem' }}
+                              onClick={() => setEditingClient({ ...p })}
+                            >
+                              {t('passengers.edit')}
+                            </button>
+                            <button
+                              type="button"
+                              className="rd-btn"
+                              disabled={deletingId === p.id}
+                              onClick={() => handleDelete(p.id)}
+                            >
+                              {deletingId === p.id ? '…' : t('passengers.delete')}
+                            </button>
                           </td>
                         </>
                       )}

@@ -111,6 +111,10 @@
   color: inherit;
 }
 
+.dashboard-layout__show-as-driver {
+  white-space: nowrap;
+}
+
 .lang-select {
   width: auto;
   min-width: 60px;
@@ -139,6 +143,135 @@
   padding-bottom: max(var(--rd-space-lg), env(safe-area-inset-bottom));
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ----- Driver app view: mobile-app style ----- */
+.dashboard-layout--driver-app .dashboard-layout__header {
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  min-height: 52px;
+}
+
+.dashboard-layout--driver-app .dashboard-layout__brand-row {
+  flex: 1;
+}
+
+.dashboard-layout--driver-app .brand-tagline,
+.dashboard-layout--driver-app .app-version {
+  display: none;
+}
+
+.dashboard-layout--driver-app .brand-name {
+  font-size: 1.125rem;
+}
+
+.dashboard-layout--driver-app .dashboard-layout__right .user-role-badge,
+.dashboard-layout--driver-app .dashboard-layout__right .user-info {
+  display: none;
+}
+
+.dashboard-layout--driver-app .dashboard-layout__main {
+  padding: var(--rd-space-md);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Optional: on large screens, constrain driver app to phone-like width and center */
+@media (min-width: 768px) {
+  .dashboard-layout--driver-app {
+    max-width: 430px;
+    margin: 0 auto;
+    box-shadow: 0 0 0 1px var(--rd-border);
+    min-height: 100vh;
+  }
+
+  .dashboard-layout--driver-app .dashboard-layout__main {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Driver app: fixed bottom tab bar */
+.driver-app-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  background: var(--rd-bg-elevated);
+  border-top: 1px solid var(--rd-border);
+  z-index: 100;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 768px) {
+  .dashboard-layout--driver-app .driver-app-tab-bar {
+    left: 50%;
+    transform: translateX(-50%);
+    width: 430px;
+    max-width: 100%;
+  }
+}
+
+.driver-app-tab-bar__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  text-decoration: none;
+  color: var(--rd-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  transition: color 0.2s, background 0.2s;
+  min-width: 0;
+}
+
+.driver-app-tab-bar__item:hover {
+  color: var(--rd-text);
+}
+
+.driver-app-tab-bar__item--active {
+  color: var(--rd-accent, #3b82f6);
+}
+
+.driver-app-tab-bar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.driver-app-tab-bar__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.driver-app-tab-bar__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+/* Driver app: dashboard content single-column (stack map above orders) */
+.dashboard-layout--driver-app .dashboard-layout__main .dashboard-page--driver .dashboard-page__grid {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    'map-area'
+    'orders-area';
+  grid-template-rows: minmax(240px, 40vh) 1fr;
+}
+
+.dashboard-layout--driver-app .dashboard-layout__main .dashboard-page--driver .dashboard-page__map {
+  min-height: 240px;
+  max-height: 45vh;
 }
 
 /* ----- Mobile: hamburger + overlay nav ----- */
@@ -189,7 +322,9 @@
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
-    transition: visibility 0.2s ease, opacity 0.2s ease;
+    transition:
+      visibility 0.2s ease,
+      opacity 0.2s ease;
   }
 
   .dashboard-layout__nav--open {

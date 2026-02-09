@@ -25,6 +25,11 @@
   margin-top: var(--rd-space-lg);
 }
 
+.calendar-grid--month {
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--rd-space-sm);
+}
+
 .calendar-day {
   border: 1px solid var(--rd-border);
   border-radius: var(--rd-radius-md);

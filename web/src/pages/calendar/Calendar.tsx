@@ -49,7 +49,7 @@ export default function Calendar() {
   const toast = useToastStore();
   const user = useAuthStore((s) => s.user);
   const todayKey = getTodayKey();
-  const [view, setView] = useState<'day' | 'week'>('week');
+  const [view, setView] = useState<'day' | 'week' | 'month'>('week');
   const [selectedDate, setSelectedDate] = useState(() => todayKey);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,10 +59,24 @@ export default function Calendar() {
   const canCreateOrder = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
   const canEditCalendar = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
 
-  const from = view === 'week'
-    ? startOfDay(new Date(todayKey + 'T00:00:00'))
-    : startOfDay(new Date(selectedDate + 'T00:00:00'));
-  const to = view === 'day' ? endOfDay(from) : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const from =
+    view === 'month'
+      ? (() => {
+          const [y, m] = selectedDate.split('-').map(Number);
+          return new Date(y, m - 1, 1);
+        })()
+      : view === 'week'
+        ? startOfDay(new Date(todayKey + 'T00:00:00'))
+        : startOfDay(new Date(selectedDate + 'T00:00:00'));
+  const to =
+    view === 'day'
+      ? endOfDay(from)
+      : view === 'month'
+        ? (() => {
+            const [y, m] = selectedDate.split('-').map(Number);
+            return endOfDay(new Date(y, m, 0));
+          })()
+        : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   function loadCalendar() {
     setLoading(true);
@@ -111,12 +125,9 @@ export default function Calendar() {
     }).catch(() => setDrivers([]));
   }, [user?.role]);
 
-  const isDispatcherOnly = user?.role === 'DISPATCHER';
   const filteredOrders = selectedDriverId
     ? orders.filter((o) => o.driverId === selectedDriverId)
-    : isDispatcherOnly
-      ? []
-      : orders;
+    : [];
 
   const ordersByDay = filteredOrders.reduce<Record<string, Order[]>>((acc, o) => {
     const key = toDateKey(new Date(o.pickupAt));
@@ -128,6 +139,12 @@ export default function Calendar() {
   const weekDays: string[] = [];
   if (view === 'day') {
     weekDays.push(selectedDate);
+  } else if (view === 'month') {
+    const [y, m] = selectedDate.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    for (let d = 1; d <= lastDay; d++) {
+      weekDays.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+    }
   } else {
     const start = new Date(todayKey + 'T12:00:00');
     for (let i = 0; i < 7; i++) {
@@ -191,6 +208,13 @@ export default function Calendar() {
           >
             {t('calendar.week')}
           </button>
+          <button
+            type="button"
+            className={`rd-btn ${view === 'month' ? 'rd-btn-primary' : ''}`}
+            onClick={() => setView('month')}
+          >
+            {t('calendar.month')}
+          </button>
           <button type="button" className="rd-btn rd-btn-secondary" onClick={loadCalendar} disabled={loading}>
             {t('common.refresh')}
           </button>
@@ -199,9 +223,7 @@ export default function Calendar() {
       <p className="rd-text-muted">
         {selectedDriverId
           ? t('calendar.driverSchedule', { name: drivers.find((d) => d.id === selectedDriverId)?.nickname ?? '' })
-          : user?.role === 'DISPATCHER'
-            ? t('calendar.chooseDriverToSeeSchedule')
-            : t('calendar.preOrder')}
+          : t('calendar.chooseDriverToSeeSchedule')}
       </p>
       {selectedDriverId && (
         <p style={{ marginTop: '0.25rem' }}>
@@ -210,10 +232,12 @@ export default function Calendar() {
           </Link>
         </p>
       )}
-      {loading ? (
+      {!selectedDriverId ? (
+        <p className="rd-text-muted" style={{ marginTop: '1rem' }}>{t('calendar.chooseDriverToSeeSchedule')}</p>
+      ) : loading ? (
         <p className="rd-text-muted">{t('common.loading')}</p>
       ) : (
-        <div className="calendar-grid">
+        <div className={`calendar-grid ${view === 'month' ? 'calendar-grid--month' : ''}`}>
           {weekDays.map((dayKey) => (
             <div
               key={dayKey}

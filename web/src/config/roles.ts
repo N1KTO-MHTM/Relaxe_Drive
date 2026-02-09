@@ -6,42 +6,27 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/dashboard',
     '/wall',
     '/calendar',
-    '/clients',
-    '/addresses',
     '/drivers',
-    '/phone-base',
     '/pendings',
-    '/analytics',
-    '/driver-reports',
-    '/cost-control',
-    '/sessions',
-    '/audit',
     '/roles',
-    '/translation',
-    '/white-label',
-    '/health',
     '/about',
     '/chat',
+    '/translation',
+    '/my-profile',
   ],
   DISPATCHER: [
     '/dashboard',
     '/wall',
     '/calendar',
-    '/clients',
-    '/addresses',
     '/drivers',
-    '/phone-base',
     '/pendings',
-    '/analytics',
-    '/driver-reports',
-    '/sessions',
-    '/audit',
-    '/translation',
     '/about',
     '/chat',
+    '/translation',
+    '/my-profile',
   ],
-  /** Driver: Dashboard, My Reports, Translation, About. */
-  DRIVER: ['/dashboard', '/driver-reports', '/translation', '/about'],
+  /** Driver: Dashboard (My trips), Translation, Chat, My Profile; About and Driver reports via My Profile. */
+  DRIVER: ['/dashboard', '/translation', '/chat', '/my-profile', '/driver-reports', '/about'],
   CLIENT: [],
 };
 
@@ -52,6 +37,14 @@ export function canAccessPath(role: Role | null, path: string): boolean {
   return allowed.includes(path) || path === '/';
 }
 
+/** Driver nav: My trips, Translation, Chat, My Profile. */
+export const DRIVER_NAV_ITEMS: { path: string; key: string }[] = [
+  { path: '/dashboard', key: 'myTrips' },
+  { path: '/translation', key: 'translation' },
+  { path: '/chat', key: 'chat' },
+  { path: '/my-profile', key: 'myProfile' },
+];
+
 /** Nav items in logical order: Main → People → Tools → Admin → About. */
 const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
   // Operations
@@ -61,24 +54,11 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
 
   // Dispatch Center
   { path: '/drivers', key: 'drivers', group: 'dispatch' },
-  { path: '/clients', key: 'passengers', group: 'dispatch' },
-  { path: '/addresses', key: 'addresses', group: 'dispatch' },
-  { path: '/phone-base', key: 'phoneBase', group: 'dispatch' },
-  { path: '/pendings', key: 'pendings', group: 'dispatch' },
-  { path: '/chat', key: 'chat', group: 'dispatch' },
 
-  // Business Intelligence
-  { path: '/analytics', key: 'analytics', group: 'bi' },
-  { path: '/driver-reports', key: 'driverReports', group: 'bi' }, // New
-  { path: '/cost-control', key: 'costControl', group: 'bi' },
-  { path: '/sessions', key: 'sessions', group: 'bi' },
-  { path: '/audit', key: 'audit', group: 'bi' },
-
-  // System Settings
+  // System (Roles, Pending drivers, Chat, About)
   { path: '/roles', key: 'roles', group: 'system' },
-  { path: '/translation', key: 'translation', group: 'system' },
-  { path: '/white-label', key: 'whiteLabel', group: 'system' },
-  { path: '/health', key: 'health', group: 'system' },
+  { path: '/pendings', key: 'pendings', group: 'system' },
+  { path: '/chat', key: 'chat', group: 'system' },
   { path: '/about', key: 'about', group: 'system' },
 ];
 
@@ -86,6 +66,7 @@ export function getAllowedNavItems(
   role: Role | null,
 ): { path: string; key: string; group?: string }[] {
   if (!role) return [];
+  if (role === 'DRIVER') return DRIVER_NAV_ITEMS.map((item) => ({ ...item, group: undefined }));
   const allowedPaths = ROLE_PATHS[role];
   if (!allowedPaths) return [];
   return FULL_NAV_ORDER.filter((item) => allowedPaths.includes(item.path));

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 import { useSocket } from '../../ws/useSocket';
 import ChatList from './ChatList';
@@ -7,6 +8,7 @@ import { Chat, ChatMessage } from '../../types/chat';
 import { useAuthStore } from '../../store/auth';
 
 export default function ChatPage() {
+    const { t } = useTranslation();
     const { user } = useAuthStore();
     const { socket } = useSocket();
 
@@ -111,6 +113,8 @@ export default function ChatPage() {
                     onSelectChat={setSelectedChat}
                     filter={filter}
                     onFilterChange={setFilter}
+                    currentUserId={user?.id}
+                    currentUserRole={user?.role}
                 />
             </div>
             <div style={{ flex: 1, height: '100%' }}>
@@ -124,7 +128,7 @@ export default function ChatPage() {
                     />
                 ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#f9fafb', color: '#9ca3af' }}>
-                        Select a chat to start messaging
+                        {t('chat.selectToStart')}
                     </div>
                 )}
             </div>

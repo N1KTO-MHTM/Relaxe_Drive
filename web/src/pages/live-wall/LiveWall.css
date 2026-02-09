@@ -1,4 +1,17 @@
-/* Live Wall — search bar, type filter, status */
+/* Live Wall — full-height map, compact toolbar */
+.live-wall-page {
+  box-sizing: border-box;
+}
+
+.live-wall-toolbar {
+  flex-shrink: 0;
+}
+
+.live-wall-map-wrap {
+  flex: 1;
+  min-height: 400px;
+}
+
 .live-wall-search {
   min-width: 240px;
   max-width: 320px;

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 
 const CAR_TYPES = ['SEDAN', 'MINIVAN', 'SUV'] as const;
+const CAR_PLATE_TYPES = ['TAXI', 'TLC', 'PRIVATE', 'OTHER'] as const;
 
 export default function Register() {
   const { t } = useTranslation();
@@ -14,6 +15,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [carPlateNumber, setCarPlateNumber] = useState('');
+  const [carPlateType, setCarPlateType] = useState<string>('');
   const [carType, setCarType] = useState<string>('');
   const [carCapacity, setCarCapacity] = useState<number | ''>('');
   const [carModelAndYear, setCarModelAndYear] = useState('');
@@ -43,6 +45,7 @@ export default function Register() {
         phone: phone.trim() || undefined,
         password,
         carPlateNumber: carPlateNumber.trim() || undefined,
+        carPlateType: carPlateType || undefined,
         carType: carType || undefined,
         carCapacity: carType && carCapacity !== '' ? Number(carCapacity) : undefined,
         carModelAndYear: carModelAndYear.trim() || undefined,
@@ -96,6 +99,19 @@ export default function Register() {
           <option value="">—</option>
           {CAR_TYPES.map((type) => (
             <option key={type} value={type}>{t('auth.carType_' + type)}</option>
+          ))}
+        </select>
+      </div>
+      <div style={row}>
+        <label className="rd-label">{t('auth.carPlateType')}</label>
+        <select
+          className="rd-input"
+          value={carPlateType}
+          onChange={(e) => setCarPlateType(e.target.value)}
+        >
+          <option value="">—</option>
+          {CAR_PLATE_TYPES.map((type) => (
+            <option key={type} value={type}>{t('auth.carPlateType_' + type)}</option>
           ))}
         </select>
       </div>

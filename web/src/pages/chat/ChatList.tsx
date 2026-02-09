@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Chat } from '../../types/chat';
 
 interface ChatListProps {
@@ -6,10 +7,12 @@ interface ChatListProps {
     onSelectChat: (chat: Chat) => void;
     filter: 'ALL' | 'ONLINE' | 'WAITING' | 'CLOSED';
     onFilterChange: (filter: 'ALL' | 'ONLINE' | 'WAITING' | 'CLOSED') => void;
+    currentUserId?: string;
+    currentUserRole?: string;
 }
 
-export default function ChatList({ chats, selectedChatId, onSelectChat, filter, onFilterChange }: ChatListProps) {
-    // const { t } = useTranslation(); // Unused for now as labels are hardcoded English/Icons
+export default function ChatList({ chats, selectedChatId, onSelectChat, filter, onFilterChange, currentUserId, currentUserRole }: ChatListProps) {
+    const { t } = useTranslation();
 
     const getStatusColor = (status: string, unread: number) => {
         if (status === 'WAITING' || unread > 0) return '#eab308'; // Yellow
@@ -70,7 +73,9 @@ export default function ChatList({ chats, selectedChatId, onSelectChat, filter, 
                                     }}
                                 />
                                 <span style={{ fontWeight: 600, color: '#111827' }}>
-                                    {chat.driver?.nickname || chat.driver?.phone || 'Unknown Driver'}
+                                    {currentUserRole === 'DRIVER' && chat.driverId === currentUserId
+                                        ? t('chat.title')
+                                        : (chat.driver?.nickname || chat.driver?.phone || 'Unknown Driver')}
                                 </span>
                                 {chat.unreadCount > 0 && (
                                     <span style={{

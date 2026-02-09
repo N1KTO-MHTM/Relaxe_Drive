@@ -187,6 +187,15 @@ export class OrdersService {
     });
   }
 
+  /** Driver declined an auto-order offer (order is SEARCHING). No DB change; audit only. */
+  async driverDeclineOffer(orderId: string, driverId: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== 'SEARCHING') return order;
+    // No state change; order stays SEARCHING for other drivers
+    return order;
+  }
+
   /** Passenger requested an extra stop (not in original route). Add waypoint and keep trip IN_PROGRESS. */
   async stopUnderway(
     orderId: string,

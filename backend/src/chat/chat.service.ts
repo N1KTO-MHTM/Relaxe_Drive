@@ -10,12 +10,17 @@ export class ChatService {
   ) {}
 
   /**
-   * Get all chats with optional status filter
+   * Get all chats with optional status filter. For DRIVER, only return their own chat.
    */
-  async getChats(status?: string) {
+  async getChats(status?: string, userId?: string, role?: string) {
     const where: any = {};
-    if (status && ['OPEN', 'WAITING', 'CLOSED'].includes(status)) {
-      where.status = status;
+    if (role === 'DRIVER' && userId) {
+      where.driverId = userId;
+    }
+    // Map frontend "ONLINE" to backend "OPEN"
+    const statusFilter = status === 'ONLINE' ? 'OPEN' : status;
+    if (statusFilter && ['OPEN', 'WAITING', 'CLOSED'].includes(statusFilter)) {
+      where.status = statusFilter;
     }
 
     return this.prisma.chat.findMany({

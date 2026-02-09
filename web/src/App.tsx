@@ -22,6 +22,7 @@ const WhiteLabel = lazy(() => import('./pages/white-label/WhiteLabel'));
 const Audit = lazy(() => import('./pages/audit/Audit'));
 const Health = lazy(() => import('./pages/health/Health'));
 const About = lazy(() => import('./pages/about/About'));
+const MyProfile = lazy(() => import('./pages/my-profile/MyProfile'));
 const LiveWall = lazy(() => import('./pages/live-wall/LiveWall'));
 const PhoneBase = lazy(() => import('./pages/phone-base/PhoneBase'));
 const Addresses = lazy(() => import('./pages/addresses/Addresses'));
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="/audit" element={<Audit />} />
         <Route path="/health" element={<Health />} />
         <Route path="/about" element={<About />} />
+        <Route path="/my-profile" element={<MyProfile />} />
         <Route path="/phone-base" element={<PhoneBase />} />
         <Route path="/driver-reports" element={<DriverReports />} />
         <Route path="/chat" element={<Chat />} />

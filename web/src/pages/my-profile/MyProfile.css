@@ -1,0 +1,44 @@
+.my-profile-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--rd-space-md);
+}
+
+.my-profile-page__header {
+  margin-bottom: 1.5rem;
+}
+
+.my-profile-page__header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--rd-text);
+}
+
+.my-profile-page__section {
+  padding: 1.25rem;
+  border-radius: var(--rd-radius);
+  margin-bottom: 1rem;
+}
+
+.my-profile-page__section h2 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--rd-accent-neon, var(--rd-text));
+}
+
+.my-profile-page__section .rd-btn {
+  margin-top: 0.25rem;
+}
+
+.my-profile-page__footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rd-border, rgba(255, 255, 255, 0.1));
+}
+
+.my-profile-page__footer .rd-btn {
+  width: 100%;
+  max-width: 280px;
+}

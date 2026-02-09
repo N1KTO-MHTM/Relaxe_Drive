@@ -38,6 +38,7 @@ export class AuthService {
       phone?: string;
       email?: string;
       carPlateNumber?: string;
+      carPlateType?: string;
       carId?: string;
       carType?: string;
       carCapacity?: number;
@@ -62,6 +63,7 @@ export class AuthService {
       phone: opts?.phone,
       email: opts?.email,
       carPlateNumber: opts?.carPlateNumber,
+      carPlateType: opts?.carPlateType,
       carId: opts?.carId,
       carType: opts?.carType,
       carCapacity: opts?.carCapacity,

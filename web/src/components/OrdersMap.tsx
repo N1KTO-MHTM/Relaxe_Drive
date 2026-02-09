@@ -64,6 +64,8 @@ interface OrdersMapProps {
   currentUserHeadingDegrees?: number | null;
   /** When true (driver view): only show reports, route line and my location; no pickup/dropoff markers. */
   driverView?: boolean;
+  /** When driver view: callback to toggle map fullscreen. */
+  onToggleFullscreen?: () => void;
   /** Zones to display (polygons) */
   zones?: Array<{
     id: string;
@@ -73,6 +75,49 @@ interface OrdersMapProps {
   }>;
   /** Whether to show the zones on the map */
   showZones?: boolean;
+  /** Map base layer style: street, satellite, terrain, dark. Applied live per user. */
+  mapStyle?: 'street' | 'satellite' | 'terrain' | 'dark';
+}
+
+/** Map style tile layer configs. Each style can have one or more layers (base + overlay). */
+function getTileLayersForStyle(style: 'street' | 'satellite' | 'terrain' | 'dark'): L.TileLayer[] {
+  const common = { maxZoom: 19 as const };
+  switch (style) {
+    case 'satellite':
+      return [
+        L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { attribution: '&copy; Esri', ...common },
+        ),
+      ];
+    case 'terrain':
+      return [
+        L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+          { attribution: '&copy; Esri', ...common },
+        ),
+      ];
+    case 'dark':
+      return [
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap, &copy; CARTO',
+          subdomains: 'abcd',
+          ...common,
+        }),
+      ];
+    case 'street':
+    default:
+      return [
+        L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+          { attribution: '&copy; Esri', ...common },
+        ),
+        L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19, opacity: 0.85 },
+        ),
+      ];
+  }
 }
 
 /** Decode encoded polyline (OSRM format) into [lat, lng][] */
@@ -123,6 +168,22 @@ const CAR_ICON_SVG =
 /** SVG arrow (pointing up) for driver "You" marker */
 const ARROW_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
+
+/** "You" marker: black circle with white outline and white arrow (like reference app). */
+function currentUserDotArrowIcon(rotationDegrees?: number): L.DivIcon {
+  const transform =
+    rotationDegrees != null && Number.isFinite(rotationDegrees)
+      ? `transform:rotate(${rotationDegrees}deg);`
+      : '';
+  const arrow =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" width="14" height="14" style="transform-origin:center;"><path d="M12 2L4 14h5v8h6v-8h5L12 2z"/></svg>';
+  return L.divIcon({
+    className: 'orders-map-current-user-marker',
+    html: `<span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#1a1a1a;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);${transform}" title="You">${arrow}</span>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+}
 
 /** "You" marker: blue car icon, optional rotation (degrees) for heading. */
 function currentUserCarIcon(rotationDegrees?: number): L.DivIcon {
@@ -251,12 +312,15 @@ export default function OrdersMap({
   currentUserHeadingTo,
   currentUserHeadingDegrees,
   driverView = false,
+  onToggleFullscreen,
   myLocationLabel,
   onMyLocation,
+  mapStyle = 'street',
 }: OrdersMapProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const baseLayersRef = useRef<L.TileLayer[]>([]);
   const driverClusterRef = useRef<L.MarkerClusterGroup | null>(null);
   const routeLayersRef = useRef<L.Polyline[]>([]);
   const orderMarkersRef = useRef<L.Marker[]>([]);
@@ -286,13 +350,9 @@ export default function OrdersMap({
     const startZoom =
       typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
     const map = L.map(el).setView(startCenter, startZoom);
-    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    });
-    tileLayer.addTo(map);
-
-    // Traffic layer removed (not implemented)
+    const initialLayers = getTileLayersForStyle('street');
+    initialLayers.forEach((layer) => layer.addTo(map));
+    baseLayersRef.current = initialLayers;
 
     mapRef.current = map;
     let handleMoveEnd: (() => void) | undefined;
@@ -312,14 +372,19 @@ export default function OrdersMap({
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
     const timeouts: number[] = [];
-    [100, 400, 1000].forEach((ms) =>
+    [100, 400, 1000, 2000, 3500].forEach((ms) =>
       timeouts.push(
         window.setTimeout(() => {
           map.invalidateSize();
         }, ms),
       ),
     );
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.invalidateSize();
+    });
+    resizeObserver.observe(el);
     return () => {
+      resizeObserver.disconnect();
       timeouts.forEach((id) => clearTimeout(id));
       if (handleMoveEnd) {
         map.off('moveend', handleMoveEnd);
@@ -339,10 +404,24 @@ export default function OrdersMap({
         map.removeLayer(pickPointMarkerRef.current);
         pickPointMarkerRef.current = null;
       }
+      baseLayersRef.current.forEach((layer) => map.removeLayer(layer));
+      baseLayersRef.current = [];
       map.remove();
       mapRef.current = null;
     };
   }, []);
+
+  // Swap base tile layers when mapStyle changes (live per user)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    baseLayersRef.current.forEach((layer) => map.removeLayer(layer));
+    baseLayersRef.current = [];
+    const style = mapStyle === 'street' || mapStyle === 'satellite' || mapStyle === 'terrain' || mapStyle === 'dark' ? mapStyle : 'street';
+    const layers = getTileLayersForStyle(style);
+    layers.forEach((layer) => layer.addTo(map));
+    baseLayersRef.current = layers;
+  }, [mapStyle]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -773,9 +852,11 @@ export default function OrdersMap({
     const target = { lat: currentUserLocation.lat, lng: currentUserLocation.lng };
     if (!currentUserMarkerRef.current) {
       const icon =
-        driverMarkerStyle === 'arrow'
-          ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined)
-          : currentUserCarIcon(currentUserHeadingDegrees ?? undefined);
+        driverView
+          ? currentUserDotArrowIcon(currentUserHeadingDegrees ?? undefined)
+          : driverMarkerStyle === 'arrow'
+            ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined)
+            : currentUserCarIcon(currentUserHeadingDegrees ?? undefined);
       const m = L.marker([target.lat, target.lng], { icon }).addTo(map);
       const popupLines = ['You'];
       if (currentUserStandingStartedAt != null) {
@@ -797,12 +878,15 @@ export default function OrdersMap({
       };
     }
     currentUserMarkerRef.current.setIcon(
-      driverMarkerStyle === 'arrow'
-        ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined)
-        : currentUserCarIcon(currentUserHeadingDegrees ?? undefined),
+      driverView
+        ? currentUserDotArrowIcon(currentUserHeadingDegrees ?? undefined)
+        : driverMarkerStyle === 'arrow'
+          ? currentUserArrowIcon(currentUserHeadingDegrees ?? undefined)
+          : currentUserCarIcon(currentUserHeadingDegrees ?? undefined),
     );
     currentUserTargetRef.current = target;
   }, [
+    driverView,
     driverMarkerStyle,
     currentUserLocation?.lat,
     currentUserLocation?.lng,
@@ -957,16 +1041,16 @@ export default function OrdersMap({
     } else if (dropoffCoords) {
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
-    // Route style: more visible roads (thicker outline + brighter main line)
+    // Route style: highly visible (thick outline + bright main line)
     const routeOutline = {
       color: '#0f172a',
-      weight: 20,
+      weight: 24,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
     };
     const routeMain = {
-      color: '#3b82f6',
-      weight: 12,
+      color: '#2563eb',
+      weight: 14,
       opacity: 1,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
@@ -978,7 +1062,7 @@ export default function OrdersMap({
           L.latLng(lat, lng),
         );
         const outline = L.polyline(latLngs, { ...routeOutline, dashArray: '14,12' }).addTo(map);
-        const line = L.polyline(latLngs, { ...routeMain, weight: 8, dashArray: '12,10' }).addTo(
+        const line = L.polyline(latLngs, { ...routeMain, weight: 10, dashArray: '12,10' }).addTo(
           map,
         );
         routeLayersRef.current.push(outline, line);
@@ -1184,7 +1268,35 @@ export default function OrdersMap({
           )}
         </div>
       )}
-      {!navMode && (
+      {driverView && onToggleFullscreen && (
+        <button
+          type="button"
+          className="rd-btn orders-map-fullscreen-toggle"
+          onClick={onToggleFullscreen}
+          aria-label={t('dashboard.mapMaximize')}
+          title={t('dashboard.mapMaximize')}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            zIndex: 1000,
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--rd-bg-panel)',
+            border: '1px solid var(--rd-border)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            fontSize: '1.25rem',
+          }}
+        >
+          ⛶
+        </button>
+      )}
+      {(!navMode || driverView) && (
         <div
           className="orders-map-overlay rd-text-muted"
           style={{
@@ -1200,11 +1312,13 @@ export default function OrdersMap({
             pointerEvents: onMapClick ? 'none' : undefined,
           }}
         >
-          {onMapClick
-            ? t('dashboard.mapHintClick')
-            : showDriverMarkers
-              ? t('dashboard.mapHintDriver')
-              : t('dashboard.mapHintOrders')}
+          {driverView
+            ? (routeData ? t('dashboard.mapHintDriverView') : t('dashboard.mapHintDriverViewNoRoute'))
+            : onMapClick
+              ? t('dashboard.mapHintClick')
+              : showDriverMarkers
+                ? t('dashboard.mapHintDriver')
+                : t('dashboard.mapHintOrders')}
         </div>
       )}
     </div>

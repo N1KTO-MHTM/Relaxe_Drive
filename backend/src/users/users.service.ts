@@ -72,6 +72,7 @@ export class UsersService {
         carId: true,
         carType: true,
         carPlateNumber: true,
+        carPlateType: true,
         carCapacity: true,
         carModelAndYear: true,
         createdAt: true,
@@ -163,6 +164,7 @@ export class UsersService {
     locale?: string;
     tenantId?: string;
     carPlateNumber?: string;
+    carPlateType?: string;
     carId?: string;
     carType?: string;
     carCapacity?: number;
@@ -198,6 +200,7 @@ export class UsersService {
         locale: data.locale ?? 'en',
         tenantId: data.tenantId,
         carPlateNumber: data.carPlateNumber?.trim() || null,
+        carPlateType: data.carPlateType?.trim().toUpperCase() || null,
         carId: data.carId?.trim() || carId,
         carType: data.carType?.trim().toUpperCase() || null,
         carCapacity: data.carCapacity ?? null,
@@ -215,6 +218,7 @@ export class UsersService {
         carId: true,
         carType: true,
         carPlateNumber: true,
+        carPlateType: true,
         carCapacity: true,
         carModelAndYear: true,
         createdAt: true,
@@ -430,6 +434,7 @@ export class UsersService {
         carId: true,
         carType: true,
         carPlateNumber: true,
+        carPlateType: true,
       },
     });
   }
