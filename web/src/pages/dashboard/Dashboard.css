@@ -227,6 +227,11 @@
   }
 }
 
+/* Driver status bar: between map and My orders (red accent line) */
+.dashboard-driver-status-bar {
+  border-top: 3px solid var(--rd-color-critical, #ef4444) !important;
+}
+
 .dashboard-page--driver.dashboard-page--full-map .dashboard-page__grid {
   grid-template-columns: 1fr;
   grid-template-areas: 'map-area';

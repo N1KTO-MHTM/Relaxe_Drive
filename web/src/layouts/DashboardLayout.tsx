@@ -12,7 +12,7 @@ import Toast from '../components/Toast';
 import './DashboardLayout.css';
 
 export default function DashboardLayout() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -54,7 +54,6 @@ export default function DashboardLayout() {
   const nav = getAllowedNavItems(user?.role ?? null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [theme, setThemeState] = useState(themeStore.getTheme());
-  const isDriver = user?.role === 'DRIVER';
 
   // Group logic (not used for driver: driver gets direct tab links)
   const groups = {
@@ -77,7 +76,7 @@ export default function DashboardLayout() {
     for (const [key, items] of availableGroups) {
       if (
         items.some(
-          (item) =>
+          (item: { path: string }) =>
             location.pathname === item.path || location.pathname.startsWith(item.path + '/'),
         )
       ) {
@@ -125,7 +124,6 @@ export default function DashboardLayout() {
         clearAuth={clearAuth}
         i18n={i18n}
         location={location}
-        findCurrentGroup={findCurrentGroup}
       />
     </ShowAsDriverProvider>
   );
@@ -145,7 +143,6 @@ function DashboardLayoutInner({
   clearAuth,
   i18n,
   location,
-  findCurrentGroup,
 }: {
   nav: ReturnType<typeof getAllowedNavItems>;
   availableGroups: [string, typeof nav][];
@@ -160,7 +157,6 @@ function DashboardLayoutInner({
   clearAuth: () => void;
   i18n: { language: string; changeLanguage: (lng: string) => void };
   location: { pathname: string };
-  findCurrentGroup: () => string;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -181,7 +177,7 @@ function DashboardLayoutInner({
           <button
             type="button"
             className="dashboard-layout__menu-btn"
-            onClick={() => setMobileNavOpen((o) => !o)}
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
             aria-label={mobileNavOpen ? t('nav.closeMenu') : t('nav.openMenu')}
           >
             {mobileNavOpen ? '✕' : '☰'}
@@ -237,7 +233,7 @@ function DashboardLayoutInner({
         )}
 
         <div className="dashboard-layout__right">
-          {canShowAsDriver && (
+          {canShowAsDriver && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
             <button
               type="button"
               className={`rd-btn ${showAsDriverCtx?.showAsDriver ? 'rd-btn-primary' : 'rd-btn-secondary'} dashboard-layout__show-as-driver`}

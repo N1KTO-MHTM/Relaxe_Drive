@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore } from '../../store/auth';
 import { api } from '../../api/client';
 import OrdersMap from '../../components/OrdersMap';
 import type { OrderRouteData, DriverForMap } from '../../types';
 import type { DriverReportMap } from '../../components/OrdersMap';
-import { AddressRouteMap } from '../../components/AddressRouteMap';
 import NavBar, { formatDistanceHint, STEP_TYPE_ICON } from '../../components/NavBar';
 import RouteSelectionModal from '../../components/RouteSelectionModal';
 import DriverTripsModal from '../../components/DriverTripsModal';
@@ -84,9 +83,9 @@ export default function Dashboard() {
   const [drivers, setDrivers] = useState<User[]>([]);
   const [driversRefreshTrigger, setDriversRefreshTrigger] = useState(0);
   const [assigningId, setAssigningId] = useState<string | null>(null);
-  const [delayOrderingId, setDelayOrderingId] = useState<string | null>(null);
-  const [manualUpdatingId, setManualUpdatingId] = useState<string | null>(null);
-  const [focusMode, setFocusMode] = useState(false);
+  const [, setDelayOrderingId] = useState<string | null>(null);
+  const [, setManualUpdatingId] = useState<string | null>(null);
+  const [_focusMode, setFocusMode] = useState(false);
   const [futureOrderCoords, setFutureOrderCoords] = useState<
     Array<{ orderId: string; pickupAt: string; pickupLat: number; pickupLng: number }>
   >([]);
@@ -94,7 +93,7 @@ export default function Dashboard() {
     late: { lat: number; lng: number }[];
     cancelled: { lat: number; lng: number }[];
   } | null>(null);
-  const [showProblemZones, setShowProblemZones] = useState(false);
+  const [showProblemZones] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [stopUnderwayId, setStopUnderwayId] = useState<string | null>(null);
   const [confirmEndTripOrderId, setConfirmEndTripOrderId] = useState<string | null>(null);
@@ -138,11 +137,12 @@ export default function Dashboard() {
   const [orderPhone, setOrderPhone] = useState('');
   const [orderPassengerName, setOrderPassengerName] = useState('');
   const [orderTab, setOrderTab] = useState<'active' | 'completed' | 'addresses'>('active');
-  const [addressesTabPickup, setAddressesTabPickup] = useState('');
-  const [addressesTabDropoff, setAddressesTabDropoff] = useState('');
-  const [addressesTabPhone, setAddressesTabPhone] = useState('');
-  const [orderStatusFilter, setOrderStatusFilter] = useState('');
-  const [findByIdQuery, setFindByIdQuery] = useState('');
+  const [_addressesTabPickup, setAddressesTabPickup] = useState('');
+  const [_addressesTabDropoff, setAddressesTabDropoff] = useState('');
+  const [_addressesTabPhone, setAddressesTabPhone] = useState('');
+  void setAddressesTabPickup; void setAddressesTabDropoff; void setAddressesTabPhone;
+  const [orderStatusFilter] = useState('');
+  const [findByIdQuery] = useState('');
 
   const [isAutoOrder, setIsAutoOrder] = useState(false);
   const [dropoffImageUrl, setDropoffImageUrl] = useState('');
@@ -153,11 +153,11 @@ export default function Dashboard() {
     durationMinutes: number;
     distanceKm: number;
   } | null>(null);
-  const [driverStatusFilter, setDriverStatusFilter] = useState<
+  const [driverStatusFilter] = useState<
     'all' | 'active' | 'busy' | 'offline'
   >('all');
-  const [driverCarTypeFilter, setDriverCarTypeFilter] = useState<string>('');
-  const [driverSearchQuery, setDriverSearchQuery] = useState('');
+  const [driverCarTypeFilter] = useState<string>('');
+  const [driverSearchQuery] = useState('');
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
   const [completedLoading, setCompletedLoading] = useState(false);
   const [passengerAddressHistory, setPassengerAddressHistory] = useState<
@@ -169,13 +169,13 @@ export default function Dashboard() {
   );
   const [reports, setReports] = useState<DriverReportMap[]>([]);
 
-  const [autoAssignEnabled, setAutoAssignEnabled] = useState(false);
+  const [autoAssignEnabled] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
-  const [showZones, setShowZones] = useState(true);
+  const [showZones] = useState(true);
   const [alerts, setAlerts] = useState<any[]>([]);
 
   const [planningResult, setPlanningResult] = useState<PlanningResult | null>(null);
-  const [showPlanPanel, setShowPlanPanel] = useState(false);
+  const [_showPlanPanel, _setShowPlanPanel] = useState(false);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [postTripSummary, setPostTripSummary] = useState<{
     pickupAddress: string;
@@ -191,7 +191,7 @@ export default function Dashboard() {
     waitChargeAtPickupCents?: number | null;
     waitChargeAtMiddleCents?: number | null;
   } | null>(null);
-  const [driverStats, setDriverStats] = useState<{
+  const [_driverStats, setDriverStats] = useState<{
     totalEarningsCents: number;
     totalMiles: number;
   } | null>(null);
@@ -211,7 +211,7 @@ export default function Dashboard() {
   const [reportsRefreshTrigger, setReportsRefreshTrigger] = useState(0);
   const [reportTicks, setReportTicks] = useState(0);
   const [driverAssignSearch, setDriverAssignSearch] = useState<Record<string, string>>({});
-  const [driverAssignByIdInput, setDriverAssignByIdInput] = useState<Record<string, string>>({});
+  const [_driverAssignByIdInput, _setDriverAssignByIdInput] = useState<Record<string, string>>({});
   const [selectedDriverDetail, setSelectedDriverDetail] = useState<{
     orderId: string;
     driver: User;
@@ -598,7 +598,6 @@ export default function Dashboard() {
     return `${y}-${m}-${day}T${h}:${min}`;
   }
 
-  const canChangeStatus = !!user?.role;
 
   function loadOrders() {
     setLoading(true);
@@ -1440,7 +1439,7 @@ export default function Dashboard() {
     );
   }
 
-  function findDriverByIdOrPhone(value: string): User | null {
+  function _findDriverByIdOrPhone(value: string): User | null {
     const v = value.trim();
     if (!v) return null;
     const list = drivers.filter((d) => {
@@ -1594,7 +1593,7 @@ export default function Dashboard() {
     });
   }, [autoAssignEnabled, canAssign, planningResult, orders]);
 
-  async function handleDelayOrder(orderId: string, delayMinutes: number) {
+  async function _handleDelayOrder(orderId: string, delayMinutes: number) {
     setDelayOrderingId(orderId);
     try {
       await api.patch(`/orders/${orderId}/delay`, { delayMinutes });
@@ -1606,7 +1605,7 @@ export default function Dashboard() {
     }
   }
 
-  async function handleSetManual(orderId: string, manualAssignment: boolean) {
+  async function _handleSetManual(orderId: string, manualAssignment: boolean) {
     setManualUpdatingId(orderId);
     try {
       await api.patch(`/orders/${orderId}/manual`, { manualAssignment });
@@ -1988,7 +1987,7 @@ export default function Dashboard() {
     }
   }
 
-  function formatDuration(startedAt: string): string {
+  function _formatDuration(startedAt: string): string {
     const start = new Date(startedAt).getTime();
     const elapsed = Math.floor((now - start) / 1000);
     const min = Math.floor(elapsed / 60);
@@ -2018,7 +2017,7 @@ export default function Dashboard() {
     else if (pickMode === 'dropoff') setAddressFromCoords(lat, lng, 'dropoff');
   }
 
-  function handleUseMyLocation(which: 'pickup' | 'dropoff') {
+  function _handleUseMyLocation(which: 'pickup' | 'dropoff') {
     if (!navigator.geolocation) return;
     setReverseGeocodeLoading(true);
     navigator.geolocation.getCurrentPosition(
@@ -2126,8 +2125,10 @@ export default function Dashboard() {
     }
   }
 
-  const ordersTitle = effectiveIsDriver ? t('dashboard.myOrders') : t('dashboard.orders');
+  const _ordersTitle = effectiveIsDriver ? t('dashboard.myOrders') : t('dashboard.orders');
+  void _findDriverByIdOrPhone; void _handleDelayOrder; void _handleSetManual; void _formatDuration; void _handleUseMyLocation; void _ordersTitle; void _setShowPlanPanel; void _setDriverAssignByIdInput;
   const emptyMessage = effectiveIsDriver ? t('dashboard.noMyOrders') : t('dashboard.noOrders');
+  void [_findDriverByIdOrPhone, _handleDelayOrder, _handleSetManual, _formatDuration, _handleUseMyLocation, _ordersTitle, _setShowPlanPanel, _setDriverAssignByIdInput];
   /** Short address for list display (e.g. first 28 chars + …). */
   const shortAddress = (addr: string | null | undefined, maxLen = 28) =>
     !addr ? '' : addr.length <= maxLen ? addr : addr.slice(0, maxLen).trim() + '…';
@@ -2722,90 +2723,6 @@ export default function Dashboard() {
             );
           })()}
           <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {effectiveIsDriver && (
-              <div
-                className="dashboard-driver-map-overlay"
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  pointerEvents: 'none',
-                  zIndex: 5,
-                }}
-              >
-                <div
-                  style={{
-                    pointerEvents: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1rem',
-                    background: 'rgba(15, 23, 42, 0.85)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                  }}
-                >
-                  <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}>
-                    <span className="rd-ws-dot" />
-                    {connected
-                      ? t('status.connected')
-                      : reconnecting
-                        ? t('dashboard.reconnecting')
-                        : 'Offline'}
-                  </span>
-                  <div className="dashboard-status-btn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <button
-                      type="button"
-                      className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
-                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
-                      onClick={handleToggleAvailability}
-                      disabled={availabilityUpdating}
-                      aria-busy={availabilityUpdating}
-                    >
-                      <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <circle cx="12" cy="12" r="4" />
-                          <line x1="12" y1="2" x2="12" y2="6" />
-                          <line x1="12" y1="18" x2="12" y2="22" />
-                          <line x1="2" y1="12" x2="6" y2="12" />
-                          <line x1="18" y1="12" x2="22" y2="12" />
-                          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
-                          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-                          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
-                          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-                        </svg>
-                      </span>
-                      <span className="dashboard-status-btn__label">
-                        {availabilityUpdating
-                          ? '…'
-                          : user?.available !== false
-                            ? t('dashboard.goOffline')
-                            : t('dashboard.startOnline')}
-                      </span>
-                    </button>
-                    {currentDriverOrder && (
-                      <button
-                        type="button"
-                        className={`rd-btn rd-btn--small ${driverMapFullScreen ? 'rd-btn-primary' : ''}`}
-                        onClick={() => setDriverMapFullScreen((v) => !v)}
-                      >
-                        {driverMapFullScreen ? t('dashboard.showList') : t('dashboard.fullMap')}
-                      </button>
-                    )}
-                  </div>
-                  {alerts.length > 0 && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--rd-text-muted)' }} role="status">
-                      {t('dashboard.updatesCount', { count: alerts.length })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
             {/* Map style selector: for everyone, live per user (bottom right; driver: above report button) */}
             <div
               style={{
@@ -2946,6 +2863,76 @@ export default function Dashboard() {
             {/* Speedometer removed from map to avoid clutter. */}
             {/* Driver Trip Card moved to bottom panel */}
           </div>
+          {effectiveIsDriver && (
+            <div
+              className="dashboard-driver-status-bar"
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.6rem 1rem',
+                background: 'var(--rd-bg-panel, rgba(0,0,0,0.25))',
+                borderTop: '1px solid var(--rd-border)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}>
+                <span className="rd-ws-dot" />
+                {connected
+                  ? t('status.connected')
+                  : reconnecting
+                    ? t('dashboard.reconnecting')
+                    : 'Offline'}
+              </span>
+              <div className="dashboard-status-btn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
+                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
+                  onClick={handleToggleAvailability}
+                  disabled={availabilityUpdating}
+                  aria-busy={availabilityUpdating}
+                >
+                  <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="12" r="4" />
+                      <line x1="12" y1="2" x2="12" y2="6" />
+                      <line x1="12" y1="18" x2="12" y2="22" />
+                      <line x1="2" y1="12" x2="6" y2="12" />
+                      <line x1="18" y1="12" x2="22" y2="12" />
+                      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+                      <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+                      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+                      <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                    </svg>
+                  </span>
+                  <span className="dashboard-status-btn__label">
+                    {availabilityUpdating
+                      ? '…'
+                      : user?.available !== false
+                        ? t('dashboard.goOffline')
+                        : t('dashboard.startOnline')}
+                  </span>
+                </button>
+                {currentDriverOrder && (
+                  <button
+                    type="button"
+                    className={`rd-btn rd-btn--small ${driverMapFullScreen ? 'rd-btn-primary' : ''}`}
+                    onClick={() => setDriverMapFullScreen((v) => !v)}
+                  >
+                    {driverMapFullScreen ? t('dashboard.showList') : t('dashboard.fullMap')}
+                  </button>
+                )}
+              </div>
+              {alerts.length > 0 && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--rd-text-muted)' }} role="status">
+                  {t('dashboard.updatesCount', { count: alerts.length })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {canCreateOrder && (
           <aside className="dashboard-page__create-order-panel" aria-label={t('dashboard.newOrderForm')}>

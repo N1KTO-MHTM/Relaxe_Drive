@@ -185,10 +185,11 @@ export default function Drivers() {
     return `${s.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} – ${e.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
   }
 
-  function formatTripDuration(start: string, end: string): string {
+  function _formatTripDuration(start: string, end: string): string {
     const min = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60_000);
     return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
   }
+  void _formatTripDuration;
 
   /** Average speed in mph from distance (km) and time. Returns 0 if duration < 1 min or speed > 120 mph (bad data). */
   function tripAvgSpeedMph(distanceKm: number, startedAt: string, completedAt: string): number {
