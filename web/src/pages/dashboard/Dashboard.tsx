@@ -2294,49 +2294,45 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      <div className="dashboard-page__top">
+      <div className={`dashboard-page__top ${effectiveIsDriver ? 'dashboard-page__top--driver' : ''}`}>
         {!effectiveIsDriver && <h1>{t('dashboard.title')}</h1>}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {!effectiveIsDriver && (
-            <span className={`rd-ws-pill ${connected ? 'connected' : ''}`}>
-                <span className="rd-ws-dot" />
-                {connected
-                  ? t('status.connected')
-                  : reconnecting
-                    ? t('dashboard.reconnecting')
-                    : 'Offline'}
+        {effectiveIsDriver ? (
+          <div className="dashboard-driver-status-top-center">
+            <span className="dashboard-my-orders-panel__status-label">{t('dashboard.status')}</span>
+            <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}>
+              <span className="rd-ws-dot" />
+              {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
             </span>
-          )}
-          {effectiveIsDriver && (
-            <div className="dashboard-driver-status-top">
-              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`}>
-                <span className="rd-ws-dot" />
-                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
+            <button
+              type="button"
+              className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
+              style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
+              onClick={handleToggleAvailability}
+              disabled={availabilityUpdating}
+              aria-busy={availabilityUpdating}
+            >
+              <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
+                  <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
+                  <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
+                  <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+                  <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
+                </svg>
               </span>
-              <button
-                type="button"
-                className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
-                style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
-                onClick={handleToggleAvailability}
-                disabled={availabilityUpdating}
-                aria-busy={availabilityUpdating}
-              >
-                <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
-                    <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
-                    <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
-                    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-                    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-                  </svg>
-                </span>
-                <span className="dashboard-status-btn__label">
-                  {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
+              <span className="dashboard-status-btn__label">
+                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+              </span>
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span className={`rd-ws-pill ${connected ? 'connected' : ''}`}>
+              <span className="rd-ws-dot" />
+              {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : 'Offline'}
+            </span>
+          </div>
+        )}
       </div>
       {reconnecting && (
         <div className="dashboard-reconnecting" role="status" aria-live="polite">
@@ -2943,7 +2939,7 @@ export default function Dashboard() {
             {/* Speedometer removed from map to avoid clutter. */}
             {/* Driver Trip Card moved to bottom panel */}
           </div>
-          {effectiveIsDriver && (
+          {effectiveIsDriver && currentDriverOrder && (
             <div
               className="dashboard-driver-status-bar"
               style={{
@@ -2957,55 +2953,13 @@ export default function Dashboard() {
                 flexWrap: 'wrap',
               }}
             >
-              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}>
-                <span className="rd-ws-dot" />
-                {connected
-                  ? t('status.connected')
-                  : reconnecting
-                    ? t('dashboard.reconnecting')
-                    : t('dashboard.driverStatusOffline')}
-              </span>
-              <div className="dashboard-status-btn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
-                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
-                  onClick={handleToggleAvailability}
-                  disabled={availabilityUpdating}
-                  aria-busy={availabilityUpdating}
-                >
-                  <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="4" />
-                      <line x1="12" y1="2" x2="12" y2="6" />
-                      <line x1="12" y1="18" x2="12" y2="22" />
-                      <line x1="2" y1="12" x2="6" y2="12" />
-                      <line x1="18" y1="12" x2="22" y2="12" />
-                      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
-                      <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-                      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
-                      <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-                    </svg>
-                  </span>
-                  <span className="dashboard-status-btn__label">
-                    {availabilityUpdating
-                      ? '…'
-                      : user?.available !== false
-                        ? t('dashboard.goOffline')
-                        : t('dashboard.startOnline')}
-                  </span>
-                </button>
-                {currentDriverOrder && (
-                  <button
-                    type="button"
-                    className={`rd-btn rd-btn--small ${driverMapFullScreen ? 'rd-btn-primary' : ''}`}
-                    onClick={() => setDriverMapFullScreen((v) => !v)}
-                  >
-                    {driverMapFullScreen ? t('dashboard.showList') : t('dashboard.fullMap')}
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                className={`rd-btn rd-btn--small ${driverMapFullScreen ? 'rd-btn-primary' : ''}`}
+                onClick={() => setDriverMapFullScreen((v) => !v)}
+              >
+                {driverMapFullScreen ? t('dashboard.showList') : t('dashboard.fullMap')}
+              </button>
               {alerts.length > 0 && (
                 <div style={{ fontSize: '0.8rem', color: 'var(--rd-text-muted)' }} role="status">
                   {t('dashboard.updatesCount', { count: alerts.length })}

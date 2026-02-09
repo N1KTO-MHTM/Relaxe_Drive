@@ -109,15 +109,13 @@ function getTileLayersForStyle(style: 'street' | 'satellite' | 'terrain' | 'dark
       ];
     case 'street':
     default:
+      /* OpenStreetMap shows streets and small roads clearly at all zoom levels, not only highways. */
       return [
-        L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-          { attribution: '&copy; Esri', ...common },
-        ),
-        L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
-          { maxZoom: 19, opacity: 0.85 },
-        ),
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          subdomains: 'abc',
+          ...common,
+        }),
       ];
   }
 }

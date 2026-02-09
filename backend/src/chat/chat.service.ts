@@ -23,7 +23,7 @@ export class ChatService {
       where.status = statusFilter;
     }
 
-    return this.prisma.chat.findMany({
+    const chats = await this.prisma.chat.findMany({
       where,
       orderBy: { lastMessageAt: 'desc' },
       include: {
@@ -33,6 +33,24 @@ export class ChatService {
         },
       },
     });
+    if (chats.length === 0) return chats;
+    const driverIds = [...new Set(chats.map((c) => c.driverId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: driverIds } },
+      select: { id: true, nickname: true, phone: true, driverId: true },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    return chats.map((c) => ({
+      ...c,
+      driver: userMap.get(c.driverId)
+        ? {
+            id: userMap.get(c.driverId)!.id,
+            nickname: userMap.get(c.driverId)!.nickname,
+            phone: userMap.get(c.driverId)!.phone ?? undefined,
+            driverId: userMap.get(c.driverId)!.driverId ?? undefined,
+          }
+        : undefined,
+    }));
   }
 
   /**

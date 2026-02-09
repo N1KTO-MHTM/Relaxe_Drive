@@ -25,6 +25,7 @@ export default function PhoneBase() {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -43,7 +44,7 @@ export default function PhoneBase() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canEdit) return;
+    if (!canEdit || !editingId) return;
     setDuplicateError('');
     setError('');
     const orig = originalPhone.trim();
@@ -60,45 +61,21 @@ export default function PhoneBase() {
     }
 
     setSaving(true);
-    if (editingId) {
-      api
-        .patch<PhoneBaseEntry>(`/phone-base/${editingId}`, {
-          originalPhone: orig,
-          targetPhone: target,
-          description: description.trim() || undefined,
-        })
-        .then((updated) => {
-          setList((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
-          setEditingId(null);
-          setOriginalPhone('');
-          setTargetPhone('');
-          setDescription('');
-        })
-        .catch((e) => setError(e instanceof Error ? e.message : 'Failed to update'))
-        .finally(() => setSaving(false));
-    } else {
-      api
-        .post<PhoneBaseEntry>('/phone-base', {
-          originalPhone: orig,
-          targetPhone: target,
-          description: description.trim() || undefined,
-        })
-        .then((created) => {
-          setList((prev) => [created, ...prev]);
-          setOriginalPhone('');
-          setTargetPhone('');
-          setDescription('');
-        })
-        .catch((e) => {
-          const msg = e instanceof Error ? e.message : '';
-          if (msg.includes('unique') || msg.includes('already') || msg.includes('duplicate')) {
-            setDuplicateError(t('phoneBase.duplicateError'));
-          } else {
-            setError(msg || 'Failed to add');
-          }
-        })
-        .finally(() => setSaving(false));
-    }
+    api
+      .patch<PhoneBaseEntry>(`/phone-base/${editingId}`, {
+        originalPhone: orig,
+        targetPhone: target,
+        description: description.trim() || undefined,
+      })
+      .then((updated) => {
+        setList((prev) => prev.map((x) => (x.id === editingId ? updated : x)));
+        setEditingId(null);
+        setOriginalPhone('');
+        setTargetPhone('');
+        setDescription('');
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to update'))
+      .finally(() => setSaving(false));
   }
 
   function startEdit(entry: PhoneBaseEntry) {
@@ -123,9 +100,17 @@ export default function PhoneBase() {
     setError('');
     api
       .delete(`/phone-base/${id}`)
-      .then(() => setList((prev) => prev.filter((x) => x.id !== id)))
+      .then(() => {
+        setList((prev) => prev.filter((x) => x.id !== id));
+        setDeleteConfirmId(null);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to delete'))
       .finally(() => setSaving(false));
+  }
+
+  function copyToClipboard(entry: PhoneBaseEntry) {
+    const text = `${entry.originalPhone} → ${entry.targetPhone}`;
+    navigator.clipboard.writeText(text).catch(() => {});
   }
 
   if (!canEdit) {
@@ -143,42 +128,6 @@ export default function PhoneBase() {
       {error && <p className="rd-text-critical" style={{ marginBottom: '0.75rem' }}>{error}</p>}
       {duplicateError && <p className="rd-text-critical" style={{ marginBottom: '0.75rem' }}>{duplicateError}</p>}
 
-      <form onSubmit={handleSubmit} className="phone-base-form">
-        <input
-          type="text"
-          className="rd-input"
-          placeholder={t('phoneBase.originalPhone')}
-          value={originalPhone}
-          onChange={(e) => { setOriginalPhone(e.target.value); setDuplicateError(''); }}
-          required
-        />
-        <input
-          type="text"
-          className="rd-input"
-          placeholder={t('phoneBase.targetPhone')}
-          value={targetPhone}
-          onChange={(e) => setTargetPhone(e.target.value)}
-          required
-        />
-        <input
-          type="text"
-          className="rd-input"
-          placeholder={t('phoneBase.description')}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <div className="phone-base-form__actions">
-          <button type="submit" className="rd-btn rd-btn-primary" disabled={saving}>
-            {editingId ? t('common.save') : t('phoneBase.addNew')}
-          </button>
-          {editingId && (
-            <button type="button" className="rd-btn" onClick={cancelEdit}>
-              {t('common.cancel')}
-            </button>
-          )}
-        </div>
-      </form>
-
       {loading ? (
         <p className="rd-text-muted">{t('common.loading')}</p>
       ) : list.length === 0 ? (
@@ -192,16 +141,67 @@ export default function PhoneBase() {
               <span className="phone-base-list__target">{entry.targetPhone}</span>
               {entry.description && <span className="phone-base-list__desc">{entry.description}</span>}
               <div className="phone-base-list__actions">
-                <button type="button" className="rd-btn rd-btn--small" onClick={() => startEdit(entry)}>
+                <button type="button" className="rd-btn rd-btn--small" onClick={() => copyToClipboard(entry)} title={t('common.copy')}>
+                  {t('common.copy')}
+                </button>
+                <button type="button" className="rd-btn rd-btn--small" onClick={() => startEdit(entry)} disabled={!!deleteConfirmId}>
                   {t('common.edit')}
                 </button>
-                <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => handleDelete(entry.id)} disabled={saving}>
-                  {t('common.delete')}
-                </button>
+                {deleteConfirmId === entry.id ? (
+                  <>
+                    <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => handleDelete(entry.id)}>
+                      {t('common.confirm')}
+                    </button>
+                    <button type="button" className="rd-btn rd-btn--small" onClick={() => setDeleteConfirmId(null)}>
+                      {t('common.cancel')}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="rd-btn rd-btn--small" onClick={() => setDeleteConfirmId(entry.id)} disabled={saving}>
+                    {t('common.delete')}
+                  </button>
+                )}
               </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {editingId && (
+        <form onSubmit={handleSubmit} className="phone-base-form phone-base-form--edit">
+          <h2 className="phone-base-form__add-title">{t('phoneBase.editMapping')}</h2>
+          <input
+            type="text"
+            className="rd-input"
+            placeholder={t('phoneBase.originalPhone')}
+            value={originalPhone}
+            onChange={(e) => { setOriginalPhone(e.target.value); setDuplicateError(''); }}
+            required
+          />
+          <input
+            type="text"
+            className="rd-input"
+            placeholder={t('phoneBase.targetPhone')}
+            value={targetPhone}
+            onChange={(e) => setTargetPhone(e.target.value)}
+            required
+          />
+          <input
+            type="text"
+            className="rd-input"
+            placeholder={t('phoneBase.description')}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <div className="phone-base-form__actions">
+            <button type="submit" className="rd-btn rd-btn-primary" disabled={saving}>
+              {t('common.save')}
+            </button>
+            <button type="button" className="rd-btn" onClick={cancelEdit}>
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
       )}
     </div>
   );

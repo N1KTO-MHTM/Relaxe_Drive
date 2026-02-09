@@ -96,16 +96,6 @@ export default function MyProfile() {
         </Link>
       </section>
 
-      <section className="my-profile-page__section rd-premium-panel">
-        <h2>{t('nav.driverReports')}</h2>
-        <p className="rd-text-muted" style={{ marginBottom: '1rem' }}>
-          {t('dashboard.driverReportsHint')}
-        </p>
-        <Link to="/driver-reports" className="rd-btn rd-btn-secondary">
-          {t('nav.driverReports')}
-        </Link>
-      </section>
-
       <section className="my-profile-page__footer">
         <button
           type="button"

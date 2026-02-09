@@ -9,6 +9,7 @@
     "close": "Cerrar",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
+    "copy": "Copiar",
     "delete": "Eliminar",
     "edit": "Editar",
     "save": "Guardar",
@@ -126,16 +127,23 @@
       "operations": "Despachador",
       "dispatch": "Despacho",
       "information": "Información",
-      "driverSupport": "Soporte al conductor",
+      "driverSupport": "Soporte",
       "bi": "BI",
       "system": "Sistema"
     },
-    "statements": "Informes"
+    "statements": "Informes",
+    "support": "Soporte"
   },
   "statements": {
     "title": "Informes",
     "description": "Ver informes, ingresos o declaraciones.",
     "placeholder": "Añadir contenido: listado, exportación o enlaces."
+  },
+  "support": {
+    "title": "Soporte",
+    "intro": "Elige una opción.",
+    "chat": "Chat",
+    "statements": "Informes"
   },
   "dashboard": {
     "title": "Panel del despachador",
@@ -215,6 +223,7 @@
     "myProfileCategory": "Mi perfil",
     "driverReportsHint": "Ver y descargar tus informes mensuales.",
     "myStatus": "Mi estado",
+    "status": "Estado",
     "noMyOrders": "Aún no tienes órdenes asignadas",
     "noMyOrdersHint": "Cuando un despachador te asigne un viaje, aparecerá aquí. Activa Compartir ubicación para aparecer en el mapa.",
     "assignedToYou": "Asignado a ti",

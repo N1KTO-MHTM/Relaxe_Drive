@@ -25,7 +25,6 @@ export default function Addresses() {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formAddress, setFormAddress] = useState('');
-  const [formPhone, setFormPhone] = useState('');
   const [formType, setFormType] = useState<string>('both');
   const [formCategory, setFormCategory] = useState<string>('other');
   const [saving, setSaving] = useState(false);
@@ -45,7 +44,6 @@ export default function Addresses() {
   function openEdit(item: SavedAddress) {
     setEditingId(item.id);
     setFormAddress(item.address);
-    setFormPhone(item.phone ?? '');
     setFormType(item.type ?? 'both');
     setFormCategory(item.category ?? 'other');
   }
@@ -53,32 +51,24 @@ export default function Addresses() {
   function cancelEdit() {
     setEditingId(null);
     setFormAddress('');
-    setFormPhone('');
     setFormType('both');
     setFormCategory('other');
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canEdit) return;
+    if (!canEdit || !editingId) return;
     setSaving(true);
     setError('');
     const body = {
       address: formAddress.trim(),
-      phone: formPhone.trim() || undefined,
       type: formType,
       category: formCategory,
     };
-    const promise = editingId
-      ? api.patch<SavedAddress>(`/addresses/${editingId}`, body)
-      : api.post<SavedAddress>('/addresses', body);
-    promise
+    api
+      .patch<SavedAddress>(`/addresses/${editingId}`, body)
       .then((saved) => {
-        if (editingId) {
-          setList((prev) => prev.map((a) => (a.id === editingId ? { ...a, ...saved } : a)));
-        } else {
-          setList((prev) => [saved as SavedAddress, ...prev]);
-        }
+        setList((prev) => prev.map((a) => (a.id === editingId ? { ...a, ...saved } : a)));
         cancelEdit();
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to save'))
@@ -109,99 +99,84 @@ export default function Addresses() {
 
   return (
     <div className="rd-page addresses-page">
-      <div className="addresses-page__grid">
-        <div className="addresses-page__half addresses-page__list-panel">
-          <h1>{t('addresses.title')}</h1>
-          <p className="rd-text-muted">{t('addresses.subtitle')}</p>
-          {error && <p className="rd-text-critical" style={{ marginBottom: '0.75rem' }}>{error}</p>}
+      <div className="addresses-page__list-panel">
+        <h1>{t('addresses.title')}</h1>
+        <p className="rd-text-muted">{t('addresses.subtitle')}</p>
+        {error && <p className="rd-text-critical" style={{ marginBottom: '0.75rem' }}>{error}</p>}
 
-          <form onSubmit={handleSubmit} className="addresses-form">
-            <input
-              type="text"
-              className="rd-input"
-              placeholder={t('addresses.address')}
-              value={formAddress}
-              onChange={(e) => setFormAddress(e.target.value)}
-              required
-            />
-            <input
-              type="text"
-              className="rd-input"
-              placeholder={t('addresses.phone')}
-              value={formPhone}
-              onChange={(e) => setFormPhone(e.target.value)}
-            />
-            <select className="rd-input" value={formType} onChange={(e) => setFormType(e.target.value)}>
-              <option value="pickup">{t('addresses.typePickup')}</option>
-              <option value="dropoff">{t('addresses.typeDropoff')}</option>
-              <option value="both">{t('addresses.typeBoth')}</option>
-            </select>
-            <select className="rd-input" value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
-              <option value="home">{t('addresses.categoryHome')}</option>
-              <option value="work">{t('addresses.categoryWork')}</option>
-              <option value="frequent">{t('addresses.categoryFrequent')}</option>
-              <option value="other">{t('addresses.categoryOther')}</option>
-            </select>
-            <div className="addresses-form__actions">
-              <button type="submit" className="rd-btn rd-btn-primary" disabled={saving || !formAddress.trim()}>
-                {editingId ? t('common.save') : t('addresses.addNew')}
-              </button>
-              {editingId && (
-                <button type="button" className="rd-btn" onClick={cancelEdit}>
-                  {t('common.cancel')}
-                </button>
-              )}
-            </div>
-          </form>
-
-          {loading ? (
-            <p className="rd-text-muted">{t('common.loading')}</p>
-          ) : list.length === 0 ? (
-            <p className="rd-text-muted">{t('addresses.noAddresses')}</p>
-          ) : (
-            <ul className="addresses-list">
-              {list.map((item) => (
-                <li key={item.id} className="addresses-list__item rd-panel">
-                  <div className="addresses-list__main">
-                    <span className="addresses-list__address">{item.address}</span>
-                    {item.phone && <span className="addresses-list__phone">{item.phone}</span>}
-                    <span className="addresses-list__meta">
-                      {item.type ?? 'both'} · {item.category ?? 'other'}
-                      {item.useCount != null && item.useCount > 0 && ` · ${t('addresses.useCount', { count: item.useCount })}`}
-                    </span>
-                  </div>
-                  <div className="addresses-list__actions">
-                    <button type="button" className="rd-btn rd-btn--small" onClick={() => openEdit(item)}>
-                      {t('common.edit')}
-                    </button>
-                    {deleteConfirmId === item.id ? (
-                      <>
-                        <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => handleDelete(item.id)}>
-                          {t('common.confirm')}
-                        </button>
-                        <button type="button" className="rd-btn rd-btn--small" onClick={() => setDeleteConfirmId(null)}>
-                          {t('common.cancel')}
-                        </button>
-                      </>
-                    ) : (
-                      <button type="button" className="rd-btn rd-btn--small" onClick={() => setDeleteConfirmId(item.id)}>
-                        {t('common.delete')}
+        {loading ? (
+          <p className="rd-text-muted">{t('common.loading')}</p>
+        ) : list.length === 0 ? (
+          <p className="rd-text-muted">{t('addresses.noAddresses')}</p>
+        ) : (
+          <ul className="addresses-list">
+            {list.map((item) => (
+              <li key={item.id} className="addresses-list__item rd-panel">
+                {editingId === item.id ? (
+                  <form onSubmit={handleSubmit} className="addresses-list__edit-form">
+                    <input
+                      type="text"
+                      className="rd-input"
+                      placeholder={t('addresses.address')}
+                      value={formAddress}
+                      onChange={(e) => setFormAddress(e.target.value)}
+                      required
+                      autoFocus
+                    />
+                    <select className="rd-input" value={formType} onChange={(e) => setFormType(e.target.value)}>
+                      <option value="pickup">{t('addresses.typePickup')}</option>
+                      <option value="dropoff">{t('addresses.typeDropoff')}</option>
+                      <option value="both">{t('addresses.typeBoth')}</option>
+                    </select>
+                    <select className="rd-input" value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
+                      <option value="home">{t('addresses.categoryHome')}</option>
+                      <option value="work">{t('addresses.categoryWork')}</option>
+                      <option value="frequent">{t('addresses.categoryFrequent')}</option>
+                      <option value="other">{t('addresses.categoryOther')}</option>
+                    </select>
+                    <div className="addresses-list__actions">
+                      <button type="submit" className="rd-btn rd-btn-primary rd-btn--small" disabled={saving || !formAddress.trim()}>
+                        {t('common.save')}
                       </button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="addresses-page__half addresses-page__detail-panel">
-          <div className="addresses-detail-placeholder">
-            <p className="rd-text-muted">{t('addresses.subtitle')}</p>
-            <p className="rd-text-muted" style={{ marginTop: '0.5rem' }}>
-              {list.length} {t('addresses.title').toLowerCase()}
-            </p>
-          </div>
-        </div>
+                      <button type="button" className="rd-btn rd-btn--small" onClick={cancelEdit}>
+                        {t('common.cancel')}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="addresses-list__main">
+                      <span className="addresses-list__address">{item.address}</span>
+                      <span className="addresses-list__meta">
+                        {item.type ?? 'both'} · {item.category ?? 'other'}
+                        {item.useCount != null && item.useCount > 0 && ` · ${t('addresses.useCount', { count: item.useCount })}`}
+                      </span>
+                    </div>
+                    <div className="addresses-list__actions">
+                      <button type="button" className="rd-btn rd-btn--small" onClick={() => openEdit(item)}>
+                        {t('common.edit')}
+                      </button>
+                      {deleteConfirmId === item.id ? (
+                        <>
+                          <button type="button" className="rd-btn rd-btn-danger rd-btn--small" onClick={() => handleDelete(item.id)}>
+                            {t('common.confirm')}
+                          </button>
+                          <button type="button" className="rd-btn rd-btn--small" onClick={() => setDeleteConfirmId(null)}>
+                            {t('common.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <button type="button" className="rd-btn rd-btn--small" onClick={() => setDeleteConfirmId(item.id)}>
+                          {t('common.delete')}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

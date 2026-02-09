@@ -342,7 +342,10 @@ function DashboardLayoutInner({
           aria-label={t('nav.myTrips')}
         >
           {navForDisplay.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive =
+              item.path === '/support'
+                ? ['/support', '/chat', '/statements'].includes(location.pathname)
+                : location.pathname === item.path;
             const label =
               item.path === '/dashboard'
                 ? t('nav.myTrips')
@@ -359,7 +362,7 @@ function DashboardLayoutInner({
                   <circle cx="12" cy="12" r="10" />
                   <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
                 </svg>
-              ) : item.path === '/chat' ? (
+              ) : item.path === '/support' ? (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>

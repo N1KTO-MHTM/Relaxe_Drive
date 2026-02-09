@@ -21,6 +21,7 @@ const LiveWall = lazy(() => import('./pages/live-wall/LiveWall'));
 const DriverReports = lazy(() => import('./pages/reports/DriverReports'));
 const Chat = lazy(() => import('./pages/chat/ChatPage'));
 const Statements = lazy(() => import('./pages/statements/Statements'));
+const Support = lazy(() => import('./pages/support/Support'));
 const Addresses = lazy(() => import('./pages/addresses/Addresses'));
 const PhoneBase = lazy(() => import('./pages/phone-base/PhoneBase'));
 
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/my-profile" element={<MyProfile />} />
         <Route path="/driver-reports" element={<DriverReports />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/statements" element={<Statements />} />
         <Route path="/addresses" element={<Addresses />} />

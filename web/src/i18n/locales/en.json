@@ -9,6 +9,7 @@
     "close": "Close",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "copy": "Copy",
     "delete": "Delete",
     "deleting": "Deleting…",
     "edit": "Edit",
@@ -188,11 +189,12 @@
       "operations": "Dispatcher",
       "dispatch": "Dispatch",
       "information": "Information",
-      "driverSupport": "Driver support",
+      "driverSupport": "Support",
       "bi": "BI",
       "system": "System"
     },
-    "statements": "Statements"
+    "statements": "Statements",
+    "support": "Support"
   },
   "dashboard": {
     "title": "Dispatcher Dashboard",
@@ -281,6 +283,7 @@
     "myProfileCategory": "My Profile",
     "driverReportsHint": "View and download your monthly reports.",
     "myStatus": "My status",
+    "status": "Status",
     "noMyOrders": "No orders assigned to you yet",
     "noMyOrdersHint": "When a dispatcher assigns you a trip, it will appear here. Turn on Share location so you appear on the map.",
     "assignedToYou": "Assigned to you",
@@ -608,7 +611,13 @@
     "sendImageFiles": "Send image & files",
     "takePicture": "Take picture",
     "exit": "Exit",
-    "loadingChat": "Loading support…"
+    "closeChat": "Close chat",
+    "loadingChat": "Loading support…",
+    "filterChat": "Chat",
+    "filterWaiting": "Waiting",
+    "filterClosed": "Closed",
+    "noChatsFound": "No conversations",
+    "supportWith": "Support"
   },
   "passengers": {
     "title": "Clients",
@@ -662,12 +671,13 @@
     "targetPhone": "Target number",
     "description": "Description",
     "addNew": "Add mapping",
+    "editMapping": "Edit mapping",
     "duplicateError": "This number already exists in the phone base.",
     "noEntries": "No entries yet"
   },
   "addresses": {
     "title": "Saved Addresses",
-    "subtitle": "Manage frequently used addresses and phone numbers",
+    "subtitle": "Manage frequently used addresses",
     "addNew": "Add Address",
     "phone": "Phone Number",
     "address": "Address",
@@ -838,6 +848,12 @@
     "title": "Statements",
     "description": "View and manage support statements, earnings, or reports.",
     "placeholder": "Add content here: list statements, export, or link to external reports."
+  },
+  "support": {
+    "title": "Support",
+    "intro": "Choose an option below.",
+    "chat": "Chat",
+    "statements": "Statements"
   },
   "toast": {
     "orderCreated": "Order created",

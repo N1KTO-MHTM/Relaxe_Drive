@@ -8,7 +8,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rd-border-subtle, rgba(255, 255, 255, 0.1));
+}
+
+.phone-base-form--add .phone-base-form__add-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
 }
 
 .phone-base-form__actions {

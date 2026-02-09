@@ -1,24 +1,7 @@
 .addresses-page {
   padding: var(--rd-space-md);
-  max-width: 1400px;
+  max-width: 800px;
   margin: 0 auto;
-}
-
-.addresses-page__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--rd-space-lg);
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .addresses-page__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.addresses-page__half {
-  min-width: 0;
 }
 
 .addresses-page__list-panel h1 {
@@ -29,7 +12,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 1.25rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rd-border-subtle, rgba(255, 255, 255, 0.1));
+}
+
+.addresses-form--add .addresses-form__add-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
 }
 
 .addresses-form__actions {
@@ -67,27 +58,26 @@
   margin-bottom: 0.25rem;
 }
 
-.addresses-list__phone {
-  display: block;
-  font-size: 0.875rem;
-  color: var(--rd-text-muted);
-  margin-bottom: 0.2rem;
-}
-
 .addresses-list__meta {
   font-size: 0.75rem;
   color: var(--rd-text-muted);
+}
+
+.addresses-list__edit-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.addresses-list__edit-form .rd-input {
+  flex: 1;
+  min-width: 120px;
 }
 
 .addresses-list__actions {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
-}
-
-.addresses-detail-placeholder {
-  padding: 1.5rem;
-  background: var(--rd-bg-panel);
-  border: 1px solid var(--rd-border);
-  border-radius: var(--rd-radius-md);
 }
