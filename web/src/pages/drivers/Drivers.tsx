@@ -77,8 +77,6 @@ export default function Drivers() {
   const [editDriverIdValue, setEditDriverIdValue] = useState('');
   const [editCarIdValue, setEditCarIdValue] = useState('');
   const [savingDriverIds, setSavingDriverIds] = useState(false);
-  const [deleteConfirmDriver, setDeleteConfirmDriver] = useState<DriverRow | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [editModalDriver, setEditModalDriver] = useState<DriverRow | null>(null);
   const [editModalDriverId, setEditModalDriverId] = useState('');
   const [editModalCarId, setEditModalCarId] = useState('');
@@ -224,21 +222,6 @@ export default function Drivers() {
       // keep edit mode; user can retry
     } finally {
       setSavingDriverIds(false);
-    }
-  }
-
-  async function handleDeleteDriver() {
-    if (!deleteConfirmDriver || !canEditDriverIds) return;
-    setDeleting(true);
-    try {
-      await api.delete(`/users/${deleteConfirmDriver.id}`);
-      setList((prev) => prev.filter((d) => d.id !== deleteConfirmDriver.id));
-      if (selectedDriver?.id === deleteConfirmDriver.id) setSelectedDriver(null);
-      setDeleteConfirmDriver(null);
-    } catch (err) {
-      alert(t('drivers.deleteFailed') || 'Failed to delete driver');
-    } finally {
-      setDeleting(false);
     }
   }
 
@@ -411,14 +394,6 @@ export default function Drivers() {
                             >
                               {t('common.edit')}
                             </button>
-                            <button
-                              type="button"
-                              className="rd-btn rd-btn-critical"
-                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmDriver(d); }}
-                              title={t('common.delete')}
-                            >
-                              {t('common.delete')}
-                            </button>
                           </div>
                         </td>
                       )}
@@ -571,30 +546,6 @@ export default function Drivers() {
                 )}
               </>
             )}
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {deleteConfirmDriver && (
-          <div className="rd-modal-overlay" onClick={() => !deleting && setDeleteConfirmDriver(null)}>
-            <div className="rd-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="rd-modal-header">
-                <h2>{t('drivers.deleteConfirmTitle')}</h2>
-                <button type="button" className="rd-btn" onClick={() => setDeleteConfirmDriver(null)} disabled={deleting}>×</button>
-              </div>
-              <div className="rd-modal-body">
-                <p>{t('drivers.deleteConfirmMessage', { name: deleteConfirmDriver.nickname })}</p>
-                <p className="rd-text-muted">{t('drivers.deleteConfirmWarning')}</p>
-              </div>
-              <div className="rd-modal-footer">
-                <button type="button" className="rd-btn rd-btn-critical" onClick={handleDeleteDriver} disabled={deleting}>
-                  {deleting ? t('common.deleting') : t('common.delete')}
-                </button>
-                <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setDeleteConfirmDriver(null)} disabled={deleting}>
-                  {t('common.cancel')}
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
