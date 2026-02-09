@@ -59,7 +59,6 @@ export default function DashboardLayout() {
   const groups = {
     operations: [] as typeof nav,
     dispatch: [] as typeof nav,
-    bi: [] as typeof nav,
     system: [] as typeof nav,
   };
   nav.forEach((item) => {
@@ -86,7 +85,7 @@ export default function DashboardLayout() {
     return availableGroups[0]?.[0] || 'operations';
   };
 
-  const [activeGroup, setActiveGroup] = useState<string>(findCurrentGroup);
+  const [activeGroup, setActiveGroup] = useState<string>(() => findCurrentGroup());
 
   // Sync active group when location changes (in case user navigates via other means)
   useEffect(() => {
@@ -161,9 +160,9 @@ function DashboardLayoutInner({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const showAsDriverCtx = useShowAsDriver();
-  const isDriver = user?.role === 'DRIVER';
+  const _isDriver = user?.role === 'DRIVER';
   const canShowAsDriver = user?.role === 'ADMIN' || user?.role === 'DISPATCHER';
-  const effectiveIsDriver = isDriver || (canShowAsDriver && (showAsDriverCtx?.showAsDriver ?? false));
+  const effectiveIsDriver = _isDriver || (canShowAsDriver && (showAsDriverCtx?.showAsDriver ?? false));
 
   const navForDisplay = effectiveIsDriver ? getAllowedNavItems('DRIVER') : nav;
   const activeSubItemsResolved = effectiveIsDriver ? navForDisplay : activeSubItems;
@@ -289,7 +288,7 @@ function DashboardLayoutInner({
             {user?.role ? t('roles.' + user.role.toLowerCase()) : ''}
           </span>
           <span className="user-info">
-            {[user?.nickname, user?.phone, user?.email].filter(Boolean).join(' • ') || ''}
+            {[user?.nickname, user?.phone, user?.email].filter((o): o is string => Boolean(o)).join(' • ') || ''}
           </span>
           {!effectiveIsDriver && (
             <button

@@ -1,17 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import type { Role } from '../../store/auth';
-import { PassengersMap } from '../passengers/PassengersMap';
-import type { PassengerRow } from '../../types';
-
-import '../passengers/Passengers.css';
 import './Roles.css';
-
-/** Special filter value: show Clients on map (passengers) instead of user table */
-const PASSENGER_VIEW = '__PASSENGER__';
 
 interface UserRow {
   id: string;
@@ -51,12 +43,8 @@ export default function Roles() {
   const [banReason, setBanReason] = useState('');
   const [banForever, setBanForever] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [passengersList, setPassengersList] = useState<PassengerRow[]>([]);
-  const [passengersLoading, setPassengersLoading] = useState(false);
 
-  const navigate = useNavigate();
   const isAdmin = currentUser?.role === 'ADMIN';
-  const isPassengerView = filterRole === PASSENGER_VIEW;
 
   function loadUsers() {
     setLoading(true);
@@ -73,15 +61,6 @@ export default function Roles() {
   useEffect(() => {
     loadUsers();
   }, []);
-
-  useEffect(() => {
-    if (!isPassengerView) return;
-    setPassengersLoading(true);
-    api.get<PassengerRow[]>('/clients')
-      .then((data) => setPassengersList(Array.isArray(data) ? data : []))
-      .catch(() => setPassengersList([]))
-      .finally(() => setPassengersLoading(false));
-  }, [isPassengerView]);
 
   const filteredUsers = users.filter((u) => {
     const search = (filterSearch || '').trim().toLowerCase();
@@ -241,7 +220,6 @@ export default function Roles() {
               <option value="ADMIN">{t('roles.admin')}</option>
               <option value="DISPATCHER">{t('roles.dispatcher')}</option>
               <option value="DRIVER">{t('roles.driver')}</option>
-              <option value={PASSENGER_VIEW}>{t('roles.passengerView')}</option>
             </select>
             <select
               className="rd-input"
@@ -255,23 +233,7 @@ export default function Roles() {
             </select>
           </div>
         )}
-        {isPassengerView ? (
-          <>
-            <section className="passengers-map-section roles-passengers-map-section" aria-label={t('passengers.clientsOnMap')}>
-              <h2 className="passengers-map-heading">{t('passengers.clientsOnMap')}</h2>
-              {passengersLoading ? (
-                <p className="rd-text-muted">{t('common.loading')}</p>
-              ) : (
-                <PassengersMap clients={passengersList} className="passengers-map" />
-              )}
-            </section>
-            <p className="rd-text-muted" style={{ marginTop: '0.75rem' }}>
-              <button type="button" className="rd-btn rd-btn-primary" onClick={() => navigate('/clients')}>
-                {t('passengers.title')} — {t('passengers.addClient')}
-              </button>
-            </p>
-          </>
-        ) : loading ? (
+        {loading ? (
           <p className="rd-text-muted">{t('common.loading')}</p>
         ) : filteredUsers.length === 0 ? (
           <p className="rd-text-muted">{users.length === 0 ? t('roles.noUsers') : t('roles.noUsers')}</p>

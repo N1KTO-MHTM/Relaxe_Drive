@@ -10,22 +10,13 @@ const Register = lazy(() => import('./pages/register/Register'));
 const ForgotPassword = lazy(() => import('./pages/forgot-password/ForgotPassword'));
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
 const Calendar = lazy(() => import('./pages/calendar/Calendar'));
-const Passengers = lazy(() => import('./pages/passengers/Passengers'));
 const Drivers = lazy(() => import('./pages/drivers/Drivers'));
 const Translation = lazy(() => import('./pages/translation/Translation'));
-const Analytics = lazy(() => import('./pages/analytics/Analytics'));
 const Roles = lazy(() => import('./pages/roles/Roles'));
 const Pendings = lazy(() => import('./pages/pendings/Pendings'));
-const SessionMonitor = lazy(() => import('./pages/session-monitor/SessionMonitor'));
-const CostControl = lazy(() => import('./pages/cost-control/CostControl'));
-const WhiteLabel = lazy(() => import('./pages/white-label/WhiteLabel'));
-const Audit = lazy(() => import('./pages/audit/Audit'));
-const Health = lazy(() => import('./pages/health/Health'));
 const About = lazy(() => import('./pages/about/About'));
 const MyProfile = lazy(() => import('./pages/my-profile/MyProfile'));
 const LiveWall = lazy(() => import('./pages/live-wall/LiveWall'));
-const PhoneBase = lazy(() => import('./pages/phone-base/PhoneBase'));
-const Addresses = lazy(() => import('./pages/addresses/Addresses'));
 const DriverReports = lazy(() => import('./pages/reports/DriverReports'));
 const Chat = lazy(() => import('./pages/chat/ChatPage'));
 
@@ -56,21 +47,12 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/wall" element={<LiveWall />} />
         <Route path="/calendar" element={<Calendar />} />
-        <Route path="/clients" element={<Passengers />} />
-        <Route path="/addresses" element={<Addresses />} />
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/translation" element={<Translation />} />
-        <Route path="/analytics" element={<Analytics />} />
         <Route path="/roles" element={<Roles />} />
         <Route path="/pendings" element={<Pendings />} />
-        <Route path="/sessions" element={<SessionMonitor />} />
-        <Route path="/cost-control" element={<CostControl />} />
-        <Route path="/white-label" element={<WhiteLabel />} />
-        <Route path="/audit" element={<Audit />} />
-        <Route path="/health" element={<Health />} />
         <Route path="/about" element={<About />} />
         <Route path="/my-profile" element={<MyProfile />} />
-        <Route path="/phone-base" element={<PhoneBase />} />
         <Route path="/driver-reports" element={<DriverReports />} />
         <Route path="/chat" element={<Chat />} />
       </Route>
