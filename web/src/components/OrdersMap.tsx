@@ -548,7 +548,7 @@ export default function OrdersMap({
           requestAnimationFrame(animate);
         }
       } else {
-        marker = L.marker([lat, lng], { icon }); // Use initial icon with rotation 0
+        const newMarker = L.marker([lat, lng], { icon }); // Use initial icon with rotation 0
         const name = driver.nickname || 'Driver';
 
         let contentHtml = `
@@ -645,14 +645,14 @@ export default function OrdersMap({
           </div>
         `;
 
-        marker.bindPopup(contentHtml, {
+        newMarker.bindPopup(contentHtml, {
           closeOnClick: false,
           autoClose: false,
           className: 'orders-map-dark-popup',
         });
         if (onShowDriverRoute) {
-          marker.on('popupopen', () => {
-            const content = marker.getPopup()?.getContent();
+          newMarker.on('popupopen', () => {
+            const content = newMarker.getPopup()?.getContent();
             if (content && typeof content !== 'string') {
               const btn = (content as HTMLElement).querySelector?.('[data-action="show-driver-route"]');
               if (btn) {
@@ -661,8 +661,8 @@ export default function OrdersMap({
             }
           });
         }
-        cluster.addLayer(marker);
-        driverMarkersByIdRef.current.set(driver.id, marker);
+        cluster.addLayer(newMarker);
+        driverMarkersByIdRef.current.set(driver.id, newMarker);
       }
     });
 
