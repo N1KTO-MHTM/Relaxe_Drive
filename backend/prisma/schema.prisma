@@ -1,11 +1,12 @@
-// RelaxDrive — Prisma schema for SQLite (Local Development)
+// RelaxDrive — Prisma schema for PostgreSQL (Render, production)
+// Use this on Render: copy to schema.prisma before build, or set in Render build command.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -13,14 +14,14 @@ model User {
   id               String    @id @default(cuid())
   nickname         String    @unique
   email            String?   @unique
-  online           Boolean   @default(false)
   phone            String?
   passwordHash     String    @map("password_hash")
   role             String
   tenantId         String?   @map("tenant_id")
   locale           String    @default("en")
-  lat              Float?
-  lng              Float?
+  lat              Float?    @db.DoublePrecision
+  lng              Float?    @db.DoublePrecision
+  online           Boolean   @default(false)
   available        Boolean   @default(true)
   blocked          Boolean   @default(false)
   bannedUntil      DateTime? @map("banned_until")
@@ -58,7 +59,7 @@ model Order {
   pickupAt                 DateTime  @map("pickup_at")
   pickupAddress            String    @map("pickup_address")
   middleAddress           String?   @map("middle_address")
-  waypoints               String?    @map("waypoints") // SQLite: JSON stringified
+  waypoints               String?    @map("waypoints") // Stored as JSON string
   dropoffAddress           String?   @map("dropoff_address")
   pickupType               String?   @map("pickup_type")
   dropoffType              String?   @map("dropoff_type")
@@ -81,8 +82,6 @@ model Order {
   waitChargeAtMiddleCents Int?       @map("wait_charge_at_middle_cents")
   manualWaitMinutes       Int?       @map("manual_wait_minutes")
   waitNotes               String?    @map("wait_notes")
-  manualWaitMiddleMinutes Int?       @map("manual_wait_middle_minutes")
-  waitMiddleNotes         String?    @map("wait_middle_notes")
   completedAt             DateTime? @map("completed_at")
   riskLevel               String?   @map("risk_level")
   suggestedDriverId       String?   @map("suggested_driver_id")
@@ -164,8 +163,7 @@ model DriverTripSummary {
 }
 
 model DriverStats {
-  id                String   @id @default(cuid()) @map("id") // Added ID for SQLite if needed, but mapped to driver_id might seek PK. Using driverId as PK.
-  driverId          String   @unique @map("driver_id")
+  driverId          String   @id @map("driver_id")
   totalEarningsCents Int      @default(0) @map("total_earnings_cents")
   totalMiles         Float    @default(0) @map("total_miles")
   idleAvg           Float?   @map("idle_avg")
@@ -205,7 +203,7 @@ model Zone {
   name        String
   description String?
   color       String   @default("#3b82f6")
-  points      String   // SQLite: JSON stringified
+  points      String   // Stored as JSON string
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -214,8 +212,8 @@ model Zone {
 
 model PhoneBase {
   id          String   @id @default(cuid())
-  originalPhone String @unique @map("original_phone") // Number that calls
-  targetPhone   String @map("target_phone")     // Actual user number
+  originalPhone String @unique @map("original_phone")
+  targetPhone   String @map("target_phone")
   description   String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

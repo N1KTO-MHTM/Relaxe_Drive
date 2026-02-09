@@ -329,7 +329,6 @@ export class UsersService {
       carModelAndYear: u.carModelAndYear,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
-      // @ts-ignore
       online: u.online,
     }));
   }
@@ -337,9 +336,8 @@ export class UsersService {
   async updateOnline(userId: string, online: boolean) {
     const result = await this.prisma.user.update({
       where: { id: userId },
-      // @ts-ignore
       data: { online },
-      select: { id: true, nickname: true }, // Removed online from select to avoid error if not in generated type
+      select: { id: true, nickname: true },
     });
     this.ws.broadcastDrivers(await this.findAll());
     return result;
