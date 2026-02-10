@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 import L from './leafletWithCluster';
@@ -35,8 +35,16 @@ interface OrdersMapProps {
   recenterLabel?: string;
   /** Risk level of the selected order: colors pickup marker green/yellow/red */
   orderRiskLevel?: string | null;
-  /** Tooltip for selected order pickup: ETA, on-time, driver */
-  selectedOrderTooltip?: { eta?: string; onTime?: boolean; driverName?: string };
+  /** Tooltip for selected order pickup: ETA, on-time, driver; after completion: wait notes */
+  selectedOrderTooltip?: {
+    eta?: string;
+    onTime?: boolean;
+    driverName?: string;
+    waitNotes?: string;
+    waitMiddleNotes?: string;
+    manualWaitMinutes?: number;
+    manualWaitMiddleMinutes?: number;
+  };
   /** Future orders for overlay: semi-transparent pickup markers (exclude selected) */
   futureOrderPickups?: { orderId: string; lat: number; lng: number; pickupAt: string }[];
   /** Problem zones for heatmap: late pickups and cancelled (from GET /planning/problem-zones) */
@@ -295,7 +303,7 @@ declare global {
 }
 
 const SMOOTH_MOVE_MS = 450;
-export default function OrdersMap({
+function OrdersMap({
   drivers = [],
   showDriverMarkers = false,
   routeData,
@@ -369,7 +377,13 @@ export default function OrdersMap({
         : DEFAULT_CENTER;
     const startZoom =
       typeof initialZoom === 'number' && Number.isFinite(initialZoom) ? initialZoom : DEFAULT_ZOOM;
-    const map = L.map(el, { zoomSnap: 0.5 }).setView(startCenter, startZoom);
+    const map = L.map(el, {
+      zoomSnap: 0.5,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      zoomControl: false,
+    }).setView(startCenter, startZoom);
+    L.control.zoom({ position: 'topleft' }).addTo(map);
     const initialLayers = getTileLayersForStyle('street');
     initialLayers.forEach((layer) => layer.addTo(map));
     baseLayersRef.current = initialLayers;
@@ -689,13 +703,21 @@ export default function OrdersMap({
           className: 'orders-map-dark-popup',
         });
         if (onShowDriverRoute) {
+          const driverForRoute = driver;
           newMarker.on('popupopen', () => {
             const popup = newMarker.getPopup();
-            const el = (popup as L.Popup & { getElement?: () => HTMLElement }).getElement?.();
-            if (el) {
-              const btn = el.querySelector('[data-action="show-driver-route"]');
-              if (btn) (btn as HTMLElement).onclick = () => onShowDriverRoute(driver);
-            }
+            // Leaflet Popup: content is in _contentNode or _container (no public getElement())
+            const p = popup as L.Popup & { _contentNode?: HTMLElement; _container?: HTMLElement };
+            const container = p._contentNode ?? p._container;
+            const attach = (root: HTMLElement | undefined) => {
+              const btn = root?.querySelector<HTMLElement>('[data-action="show-driver-route"]');
+              if (btn) {
+                btn.onclick = () => onShowDriverRoute(driverForRoute);
+                return true;
+              }
+              return false;
+            };
+            if (!attach(container)) requestAnimationFrame(() => attach(container));
           });
         }
         cluster.addLayer(newMarker);
@@ -1107,6 +1129,14 @@ export default function OrdersMap({
           popupRows.push(selectedOrderTooltip.onTime ? 'On time' : 'At risk / Late');
           if (selectedOrderTooltip.driverName)
             popupRows.push(`Driver: ${escapeHtml(selectedOrderTooltip.driverName)}`);
+          if (selectedOrderTooltip.manualWaitMinutes != null)
+            popupRows.push(`Wait at pickup: ${selectedOrderTooltip.manualWaitMinutes} min`);
+          if (selectedOrderTooltip.waitNotes)
+            popupRows.push(`Notes: ${escapeHtml(selectedOrderTooltip.waitNotes)}`);
+          if (selectedOrderTooltip.manualWaitMiddleMinutes != null)
+            popupRows.push(`Wait at stop: ${selectedOrderTooltip.manualWaitMiddleMinutes} min`);
+          if (selectedOrderTooltip.waitMiddleNotes)
+            popupRows.push(`Stop notes: ${escapeHtml(selectedOrderTooltip.waitMiddleNotes)}`);
         }
         m.bindPopup(popupRows.join('<br/>'), { closeOnClick: false });
         orderMarkersRef.current.push(m);
@@ -1438,3 +1468,5 @@ function escapeHtml(s: string): string {
   div.textContent = s;
   return div.innerHTML;
 }
+
+export default React.memo(OrdersMap);

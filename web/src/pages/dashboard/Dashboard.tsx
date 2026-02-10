@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../ws/useSocket';
@@ -114,6 +114,7 @@ export default function Dashboard() {
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [driverSpeedMph, setDriverSpeedMph] = useState<number | null>(null);
   const lastDriverLocationRef = useRef<{ lat: number; lng: number; ts: number } | null>(null);
+  const lastDriverHeadingUpdateRef = useRef<number | null>(null);
   const [driverHeadingDegrees, setDriverHeadingDegrees] = useState<number | null>(null);
   /** Smoothed heading for map arrow rotation (lerps toward driverHeadingDegrees). */
   const [driverHeadingSmooth, setDriverHeadingSmooth] = useState<number | null>(null);
@@ -273,14 +274,16 @@ export default function Dashboard() {
   const canCreateOrder =
     (isAdmin || isDispatcher || user?.role === 'CLIENT') && !effectiveIsDriver;
 
-  // Update "now" once per second when tab visible (for wait/ETA timers). Was 100ms and caused heavy lag.
+  // Update "now" when tab visible: every 1s if driver has active wait timer (needs live display), else every 5s to reduce re-renders.
+  const hasActiveWaitTimer = Object.keys(manualTimerStart).length > 0;
   useEffect(() => {
+    const intervalMs = hasActiveWaitTimer ? 1000 : 5000;
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible')
         setNow(Date.now());
-    }, 1000);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, []);
+  }, [hasActiveWaitTimer]);
 
   const handleStartTimer = (orderId: string, type: 'pickup' | 'middle' = 'pickup') => {
     const key = type === 'middle' ? `${orderId}_middle` : orderId;
@@ -297,16 +300,18 @@ export default function Dashboard() {
     const [orderId, type] = showTimerNoteModal.split(':') as [string, 'pickup' | 'middle'];
     const key = type === 'middle' ? `${orderId}_middle` : orderId;
     const start = manualTimerStart[key];
-    if (!start) return;
-    const minutes = Math.max(1, Math.ceil((Date.now() - start) / 60000));
+    const minutes = start ? Math.max(1, Math.ceil((Date.now() - start) / 60000)) : 0;
     try {
-      await api.patch(`/orders/${orderId}/wait-info`, { minutes, notes: timerNoteVal, type });
-      setManualTimerStart((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
+      await api.patch(`/orders/${orderId}/wait-info`, { minutes: minutes || undefined, notes: timerNoteVal, type });
+      if (start) {
+        setManualTimerStart((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
       setShowTimerNoteModal(null);
+      setTimerNoteVal('');
       toast.success(t('dashboard.waitTimerSaved') || 'Wait info saved');
     } catch (err) {
       console.error(err);
@@ -663,8 +668,20 @@ export default function Dashboard() {
       eta: etas ? `${etas.etaMinutesToPickup} min to pickup` : undefined,
       onTime: !ord?.riskLevel || ord.riskLevel === 'LOW',
       driverName: driver?.nickname ?? undefined,
+      waitNotes: ord?.waitNotes ?? undefined,
+      waitMiddleNotes: ord?.waitMiddleNotes ?? undefined,
+      manualWaitMinutes: ord?.manualWaitMinutes ?? undefined,
+      manualWaitMiddleMinutes: ord?.manualWaitMiddleMinutes ?? undefined,
     };
   }, [selectedOrderId, routeData, orders, driverEtas, drivers]);
+
+  /** Memoized for OrdersMap to avoid re-renders when parent re-renders. */
+  const futureOrderPickupsForMap = useMemo(() => {
+    if (!canAssign) return [];
+    return futureOrderCoords
+      .filter((f) => f.orderId !== selectedOrderId && (orderQuickFilter === 'all' || filteredOrders.some((o) => o.id === f.orderId)))
+      .map((f) => ({ orderId: f.orderId, lat: f.pickupLat, lng: f.pickupLng, pickupAt: f.pickupAt }));
+  }, [canAssign, futureOrderCoords, selectedOrderId, orderQuickFilter, filteredOrders]);
 
   /** Per-dispatcher saved map view (center + zoom). Restored on load, saved on move/zoom. */
   const savedMapView = useMemo(() => {
@@ -705,7 +722,11 @@ export default function Dashboard() {
   }
 
 
-  function loadOrders() {
+  const lastLoadOrdersTsRef = useRef<number>(0);
+  const LOAD_ORDERS_THROTTLE_MS = 3000;
+  function loadOrders(force?: boolean) {
+    if (!force && lastLoadOrdersTsRef.current && Date.now() - lastLoadOrdersTsRef.current < LOAD_ORDERS_THROTTLE_MS) return;
+    lastLoadOrdersTsRef.current = Date.now();
     setLoading(true);
     api
       .get<Order[]>('/orders')
@@ -724,9 +745,9 @@ export default function Dashboard() {
       });
   }
 
-  /** Refresh all data: orders, drivers, reports, route, and completed list if on that tab. */
-  function refreshAll() {
-    loadOrders();
+  /** Refresh all data: orders, drivers, reports, route, and completed list if on that tab. force=true skips loadOrders throttle (e.g. user clicked Refresh). */
+  function refreshAll(force?: boolean) {
+    loadOrders(force ?? false);
     if (effectiveIsDriver && user?.id) {
       api.get<{ id: string; nickname: string; role: string; available?: boolean; locale?: string }>('/users/me').then((data) => {
         if (data) setUser({ ...user, ...data, role: data.role as Role });
@@ -787,19 +808,29 @@ export default function Dashboard() {
     }
   }, [user?.id]);
 
+  // Debounce refresh when tab becomes visible to avoid hammering on quick tab switches.
+  const visibilityRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refreshAllRef.current();
+      if (document.visibilityState !== 'visible') return;
+      if (visibilityRefreshTimeoutRef.current) clearTimeout(visibilityRefreshTimeoutRef.current);
+      visibilityRefreshTimeoutRef.current = setTimeout(() => {
+        visibilityRefreshTimeoutRef.current = null;
+        refreshAllRef.current();
+      }, 400);
     };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      if (visibilityRefreshTimeoutRef.current) clearTimeout(visibilityRefreshTimeoutRef.current);
+    };
   }, []);
 
-  // Driver: fallback poll orders when tab visible (8s). Dispatcher drivers poll is below (with driversRefreshTrigger).
+  // Driver: fallback poll orders when tab visible (12s to reduce lag).
   useEffect(() => {
     if (!effectiveIsDriver || !user?.id || typeof document === 'undefined') return;
-    const FALLBACK_POLL_MS = 8000;
+    const FALLBACK_POLL_MS = 12000;
     const t = setInterval(() => {
       if (document.visibilityState === 'visible') refreshAllRef.current();
     }, FALLBACK_POLL_MS);
@@ -842,7 +873,12 @@ export default function Dashboard() {
       } else {
         if (dtH > 0) setDriverSpeedMph(Math.round((distM / 1609.34 / dtH) * 10) / 10);
         setStandingStartedAt(null);
-        setDriverHeadingDegrees(bearingDegrees(prev.lat, prev.lng, lat, lng));
+        // Throttle heading from GPS: only update if last heading update was >600ms ago to reduce lag
+        const lastH = lastDriverHeadingUpdateRef.current;
+        if (lastH == null || now - lastH >= 600) {
+          lastDriverHeadingUpdateRef.current = now;
+          setDriverHeadingDegrees(bearingDegrees(prev.lat, prev.lng, lat, lng));
+        }
       }
     }
     lastDriverLocationRef.current = { lat, lng, ts: now };
@@ -1286,7 +1322,7 @@ export default function Dashboard() {
         .catch(() => setDrivers([]));
     };
     load();
-    const interval = setInterval(load, 8000); // Uber-style fallback poll (8s) when visible
+    const interval = setInterval(load, 12000); // Fallback poll (12s) to reduce lag
     return () => clearInterval(interval);
   }, [canAssign]);
 
@@ -1601,7 +1637,7 @@ export default function Dashboard() {
         .catch(() => setDrivers([]));
     };
     load();
-    const interval = setInterval(load, 8000); // Uber-style fallback poll (8s)
+    const interval = setInterval(load, 12000); // Fallback poll (12s) to reduce lag
     return () => clearInterval(interval);
   }, [canAssign, driversRefreshTrigger]);
 
@@ -1712,10 +1748,14 @@ export default function Dashboard() {
     const onPosition = (pos: GeolocationPosition) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      // Use device heading (compass) when available so arrow rotates when phone rotates
+      // Use device heading (compass) when available; throttle to ~every 150ms to reduce lag
       const heading = (pos.coords as GeolocationCoordinates & { heading?: number | null }).heading;
       if (typeof heading === 'number' && !Number.isNaN(heading)) {
-        setDriverHeadingDegrees(heading);
+        const t = Date.now();
+        if (lastDriverHeadingUpdateRef.current == null || t - lastDriverHeadingUpdateRef.current >= 150) {
+          lastDriverHeadingUpdateRef.current = t;
+          setDriverHeadingDegrees(heading);
+        }
       }
       updateDriverLocation(lat, lng);
       const now = Date.now();
@@ -1753,25 +1793,27 @@ export default function Dashboard() {
     };
   }, [user?.id, user?.role, user?.available, hasDriverActiveOrder]);
 
-  // Compass/device orientation: rotate driver arrow when phone rotates (e.g. when stationary)
+  // Compass/device orientation: rotate driver arrow when phone rotates. Throttle to ~8/sec to reduce lag.
   useEffect(() => {
     if (user?.role !== 'DRIVER') return;
     const onOrientation = (e: DeviceOrientationEvent) => {
-      if (e.alpha != null && !Number.isNaN(e.alpha)) {
-        // alpha: 0-360, 0 = North. Match map convention (0 = up/north).
-        setDriverHeadingDegrees(e.alpha);
-      }
+      if (e.alpha == null || Number.isNaN(e.alpha)) return;
+      const t = Date.now();
+      if (lastDriverHeadingUpdateRef.current != null && t - lastDriverHeadingUpdateRef.current < 120) return;
+      lastDriverHeadingUpdateRef.current = t;
+      setDriverHeadingDegrees(e.alpha);
     };
     window.addEventListener('deviceorientation', onOrientation);
     return () => window.removeEventListener('deviceorientation', onOrientation);
   }, [user?.role]);
 
-  // Smooth driver arrow rotation: lerp display heading toward raw heading (0–360)
+  // Smooth driver arrow rotation: lerp display heading toward raw heading (0–360). 100ms interval and only when tab visible to reduce lag.
   useEffect(() => {
     if (user?.role !== 'DRIVER') return;
     const SMOOTH_FACTOR = 0.14;
     const MIN_DELTA = 0.2;
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
       const target = driverHeadingDegrees;
       if (target == null || !Number.isFinite(target)) {
         if (driverHeadingSmoothRef.current != null) {
@@ -1801,7 +1843,7 @@ export default function Dashboard() {
         driverHeadingLastRenderedRef.current = next;
         setDriverHeadingSmooth(next);
       }
-    }, 40);
+    }, 100);
     return () => clearInterval(interval);
   }, [user?.role, driverHeadingDegrees]);
 
@@ -2316,6 +2358,24 @@ export default function Dashboard() {
     setAddressFromCoords(lat, lng, which);
   }
 
+  const onMapClickForMap = useCallback(
+    (lat: number, lng: number) => {
+      if (pickMode) handleMapClick(lat, lng, pickMode);
+    },
+    [pickMode],
+  );
+  const onMyLocationForMap = useCallback(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setMyLocationCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setMapCenterTrigger((t) => t + 1);
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
+
   function _handleUseMyLocation(which: 'pickup' | 'dropoff') {
     if (!navigator.geolocation) return;
     setReverseGeocodeLoading(true);
@@ -2470,34 +2530,6 @@ export default function Dashboard() {
         {!effectiveIsDriver && <h1>{t('dashboard.title')}</h1>}
         {effectiveIsDriver ? (
           <>
-          <div className="dashboard-driver-status-top-center">
-            <span className="dashboard-my-orders-panel__status-label">{t('dashboard.status')}</span>
-            <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}>
-              <span className="rd-ws-dot" />
-              {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
-            </span>
-            <button
-              type="button"
-              className={`rd-btn dashboard-status-btn rd-btn--small ${user?.available !== false ? 'dashboard-status-btn--offline' : 'dashboard-status-btn--online'}`}
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.875rem' }}
-              onClick={handleToggleAvailability}
-              disabled={availabilityUpdating}
-              aria-busy={availabilityUpdating}
-            >
-              <span className="dashboard-status-btn__icon" aria-hidden style={{ width: 18, height: 18 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
-                  <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
-                  <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" /><line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
-                  <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" /><line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
-                </svg>
-              </span>
-              <span className="dashboard-status-btn__label">
-                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
-              </span>
-            </button>
-          </div>
           {currentDriverOrder && (
             <div className="driver-docked-actions driver-docked-actions--below-status">
           <div className="driver-docked-actions__header">
@@ -2515,20 +2547,36 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            {routeData &&
-              (routeData.driverToPickupMinutes != null || routeData.durationMinutes != null) && (
-                <div
-                  style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--rd-accent-neon)' }}
-                >
-                  ~
-                  {Math.round(
-                    currentDriverOrder.status === 'ASSIGNED'
-                      ? (routeData.driverToPickupMinutes ?? 0)
-                      : (routeData.durationMinutes ?? 0),
-                  )}{' '}
-                  min
-                </div>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+              {routeData &&
+                (routeData.driverToPickupMinutes != null || routeData.durationMinutes != null) && (
+                  <div
+                    style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--rd-accent-neon)' }}
+                  >
+                    ~
+                    {Math.round(
+                      currentDriverOrder.status === 'ASSIGNED'
+                        ? (routeData.driverToPickupMinutes ?? 0)
+                        : (routeData.durationMinutes ?? 0),
+                    )}{' '}
+                    min
+                  </div>
+                )}
+              <div
+                style={{
+                  padding: '0.35rem 0.5rem',
+                  borderRadius: 6,
+                  background: 'rgba(239,68,68,0.25)',
+                  border: '1px solid rgba(239,68,68,0.5)',
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  color: '#fca5a5',
+                }}
+                aria-label={t('dashboard.currentTime')}
+              >
+                {new Date(now).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.9rem', color: 'white' }}>
@@ -2558,7 +2606,7 @@ export default function Dashboard() {
                 ) : manualTimerStart[currentDriverOrder.id] ? (
                   <div className="wait-timer-badge">
                     ⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s
-                    <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => setShowTimerNoteModal(currentDriverOrder.id)}>Stop</button>
+                    <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}>Stop</button>
                   </div>
                 ) : (
                   <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%', fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
@@ -2580,7 +2628,7 @@ export default function Dashboard() {
             </button>
           </div>
           {currentDriverOrder.status === 'ASSIGNED' && (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }}>
               <button
                 type="button"
                 className="driver-docked-actions__btn"
@@ -2599,6 +2647,37 @@ export default function Dashboard() {
                 }}
               >
                 {driverEtaSendingId === currentDriverOrder.id ? '…' : t('dashboard.im5Min')}
+              </button>
+              {(currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt) && (
+                <button
+                  type="button"
+                  className="driver-docked-actions__btn"
+                  style={{ background: 'rgba(255,255,255,0.12)', fontSize: '0.9rem' }}
+                  onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}
+                  title={t('dashboard.addNoteWait')}
+                >
+                  {t('dashboard.addNote')}
+                </button>
+              )}
+              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', marginLeft: 'auto' }}>
+                <span className="rd-ws-dot" />
+                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
+              </span>
+              <button
+                type="button"
+                className={`rd-btn rd-btn--small ${user?.available !== false ? 'driver-docked-actions__btn' : ''}`}
+                style={{
+                  fontSize: '0.8rem',
+                  padding: '0.35rem 0.5rem',
+                  background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
+                  border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
+                  color: user?.available === false ? '#0f172a' : '#fca5a5',
+                }}
+                onClick={handleToggleAvailability}
+                disabled={availabilityUpdating}
+                aria-busy={availabilityUpdating}
+              >
+                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
               </button>
             </div>
           )}
@@ -2658,6 +2737,28 @@ export default function Dashboard() {
               {t('dashboard.showList')}
             </button>
           )}
+            </div>
+          )}
+          {effectiveIsDriver && !currentDriverOrder && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--rd-bg-panel)', borderRadius: 8 }}>
+              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem' }}>
+                <span className="rd-ws-dot" />
+                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
+              </span>
+              <button
+                type="button"
+                className={`rd-btn rd-btn--small ${user?.available === false ? '' : ''}`}
+                style={{
+                  fontSize: '0.85rem',
+                  background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
+                  border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
+                  color: user?.available === false ? '#0f172a' : '#fca5a5',
+                }}
+                onClick={handleToggleAvailability}
+                disabled={availabilityUpdating}
+              >
+                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+              </button>
             </div>
           )}
         </>
@@ -3357,13 +3458,19 @@ export default function Dashboard() {
             );
           })()}
           <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {/* Map style selector: for everyone, live per user (bottom right; driver: above report button) */}
+            {/* Map style + Report: top-right so visible on mobile (not cut off at bottom) */}
             <div
+              className="dashboard-map-controls"
               style={{
                 position: 'absolute',
-                bottom: effectiveIsDriver ? 68 : 12,
-                right: 12,
-                zIndex: 10,
+                top: 8,
+                right: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: 8,
+                zIndex: 1000,
+                pointerEvents: 'auto',
               }}
             >
               <select
@@ -3394,41 +3501,37 @@ export default function Dashboard() {
                 <option value="terrain">{t('dashboard.mapStyleTerrain')}</option>
                 <option value="dark">{t('dashboard.mapStyleDark')}</option>
               </select>
+              {effectiveIsDriver && (
+                <button
+                  type="button"
+                  onClick={() => setShowReportModal(true)}
+                  disabled={!driverLocation}
+                  aria-label={t('dashboard.addReport')}
+                  title={t('dashboard.addReport')}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 8,
+                    background: 'white',
+                    color: '#1e293b',
+                    border: 'none',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
+                    cursor: driverLocation ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 20,
+                    opacity: driverLocation ? 1 : 0.6,
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                </button>
+              )}
             </div>
-            {effectiveIsDriver && (
-              <button
-                type="button"
-                onClick={() => setShowReportModal(true)}
-                disabled={!driverLocation}
-                aria-label={t('dashboard.addReport')}
-                title={t('dashboard.addReport')}
-                style={{
-                  position: 'absolute',
-                  bottom: 12,
-                  right: 12,
-                  zIndex: 10,
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: 'white',
-                  color: '#1e293b',
-                  border: 'none',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
-                  cursor: driverLocation ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 22,
-                  opacity: driverLocation ? 1 : 0.6,
-                }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-              </button>
-            )}
             <OrdersMap
               drivers={isDriver ? [] : driversForMap}
               showDriverMarkers={canAssign}
@@ -3454,11 +3557,7 @@ export default function Dashboard() {
               driverView={effectiveIsDriver}
               onToggleFullscreen={undefined}
               mapExpanded={undefined}
-              onMapClick={
-                canCreateOrder && showForm && pickMode
-                  ? (lat, lng) => handleMapClick(lat, lng, pickMode)
-                  : undefined
-              }
+              onMapClick={canCreateOrder && showForm && pickMode ? onMapClickForMap : undefined}
               pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
               pickPointLabel={canCreateOrder && showForm && pickPoint ? pickPointAddress : undefined}
               navMode={isDriver && !!routeData && !!driverLocation}
@@ -3471,18 +3570,7 @@ export default function Dashboard() {
                   : null
               }
               selectedOrderTooltip={selectedOrderTooltip}
-              futureOrderPickups={
-                canAssign
-                  ? futureOrderCoords
-                      .filter((f) => f.orderId !== selectedOrderId && (orderQuickFilter === 'all' || filteredOrders.some((o) => o.id === f.orderId)))
-                      .map((f) => ({
-                        orderId: f.orderId,
-                        lat: f.pickupLat,
-                        lng: f.pickupLng,
-                        pickupAt: f.pickupAt,
-                      }))
-                  : []
-              }
+              futureOrderPickups={futureOrderPickupsForMap}
               problemZones={
                 canAssign && showProblemZones && problemZones ? problemZones : undefined
               }
@@ -3495,23 +3583,7 @@ export default function Dashboard() {
               onMapViewChange={handleMapViewChange}
               myLocationLabel={isDriver ? t('dashboard.myLocation') : undefined}
               mapStyle={mapStyle}
-              onMyLocation={
-                isDriver
-                  ? () => {
-                      if (!navigator.geolocation) return;
-                      navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                          const lat = pos.coords.latitude;
-                          const lng = pos.coords.longitude;
-                          setMyLocationCenter({ lat, lng });
-                          setMapCenterTrigger((t) => t + 1);
-                        },
-                        () => {},
-                        { enableHighAccuracy: true, timeout: 10000 },
-                      );
-                    }
-                  : undefined
-              }
+              onMyLocation={isDriver ? onMyLocationForMap : undefined}
             />
             {/* Speedometer removed from map to avoid clutter. */}
             {/* Driver Trip Card moved to bottom panel */}
@@ -3865,7 +3937,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 className="rd-btn rd-btn-secondary"
-                onClick={refreshAll}
+                onClick={() => refreshAll(true)}
                 disabled={loading || (orderTab === 'completed' && completedLoading)}
                 title={t('dashboard.refreshAllTitle')}
               >
@@ -4495,24 +4567,24 @@ export default function Dashboard() {
           }}
         >
           <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }}>
-            <h3 style={{ marginBottom: '1rem' }}>Stop Timer & Add Note</h3>
+            <h3 style={{ marginBottom: '1rem' }}>{t('dashboard.timerNoteModalTitle')}</h3>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Wait Notes (Optional)
+              {t('dashboard.timerNoteModalLabel')}
             </label>
             <input
               type="text"
               className="rd-input"
               value={timerNoteVal}
               onChange={(e) => setTimerNoteVal(e.target.value)}
-              placeholder="e.g. Passenger was late"
+              placeholder={t('dashboard.timerNoteModalPlaceholder')}
               style={{ width: '100%', marginBottom: '1rem' }}
             />
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" className="rd-btn rd-btn-primary" onClick={submitWaitInfo}>
-                Save & Stop
+                {t('dashboard.timerNoteModalSave')}
               </button>
               <button type="button" className="rd-btn" onClick={() => setShowTimerNoteModal(null)}>
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>

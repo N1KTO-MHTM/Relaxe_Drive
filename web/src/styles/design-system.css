@@ -214,11 +214,17 @@ a:hover {
   border-radius: var(--rd-radius-lg);
   border: 1px solid var(--rd-border);
   overflow: hidden;
+  touch-action: none; /* allow Leaflet to handle pinch-zoom */
 }
 
 .rd-map-container .leaflet-container {
   height: 100%;
   min-height: 480px;
+  touch-action: none;
+  cursor: grab;
+}
+.rd-map-container .leaflet-container:active {
+  cursor: grabbing;
 }
 
 /* Nav bar — turn-by-turn strip */

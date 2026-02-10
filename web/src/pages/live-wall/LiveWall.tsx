@@ -91,9 +91,28 @@ export default function LiveWall() {
       (o) => o.driverId === driver.id && ['ASSIGNED', 'IN_PROGRESS'].includes(o.status),
     );
     if (order) {
+      const lat = driver.lat != null && Number.isFinite(driver.lat) ? driver.lat : undefined;
+      const lng = driver.lng != null && Number.isFinite(driver.lng) ? driver.lng : undefined;
+      const params = new URLSearchParams();
+      if (lat != null && lng != null) {
+        params.set('fromLat', String(lat));
+        params.set('fromLng', String(lng));
+      }
+      const query = params.toString();
+      const url = `/orders/${order.id}/route${query ? `?${query}` : ''}`;
       api
-        .get<OrderRouteData>(`/orders/${order.id}/route`)
-        .then((data) => setDriverRouteData(data))
+        .get<OrderRouteData>(url)
+        .then((data) => {
+          setDriverRouteData(data);
+          // Center map on route: driver + pickup + dropoff
+          if (driver.lat != null && driver.lng != null && data.pickupCoords && data.dropoffCoords) {
+            setFocusCenter({
+              lat: (driver.lat + data.pickupCoords.lat + data.dropoffCoords.lat) / 3,
+              lng: (driver.lng + data.pickupCoords.lng + data.dropoffCoords.lng) / 3,
+            });
+            setCenterTrigger((c) => c + 1);
+          }
+        })
         .catch(() => setDriverRouteData(null));
     } else {
       setDriverRouteData(null);
