@@ -85,6 +85,10 @@ interface OrdersMapProps {
   onShowDriverRoute?: (driver: DriverForMap) => void;
   /** When creating new order: geocoded pickup/dropoff preview (markers + line). Takes precedence over routeData when set. */
   formPreviewRouteData?: OrderRouteData | null;
+  /** Address text for pickup marker popup (when route is shown). Shown instead of just "Pickup". */
+  routePickupAddress?: string | null;
+  /** Address text for dropoff marker popup (when route is shown). Shown instead of just "Dropoff". */
+  routeDropoffAddress?: string | null;
 }
 
 /** Map style tile layer configs. Each style can have one or more layers (base + overlay). */
@@ -326,6 +330,8 @@ export default function OrdersMap({
   mapStyle = 'street',
   onShowDriverRoute,
   formPreviewRouteData,
+  routePickupAddress,
+  routeDropoffAddress,
 }: OrdersMapProps) {
   const effectiveRouteData = formPreviewRouteData ?? routeData;
   const { t } = useTranslation();
@@ -1089,6 +1095,8 @@ export default function OrdersMap({
           icon: orderPickupIcon(orderRiskLevel),
         }).addTo(map);
         const popupRows: string[] = ['<strong>Pickup</strong>'];
+        const addr = (routePickupAddress ?? '').trim();
+        if (addr) popupRows.push(escapeHtml(addr));
         if (selectedOrderTooltip) {
           if (selectedOrderTooltip.eta)
             popupRows.push(`ETA: ${escapeHtml(selectedOrderTooltip.eta)}`);
@@ -1102,7 +1110,9 @@ export default function OrdersMap({
       }
       if (dropoffCoords) {
         const m = L.marker([dropoffCoords.lat, dropoffCoords.lng]).addTo(map);
-        m.bindPopup('Dropoff', { closeOnClick: false });
+        const dropoffAddr = (routeDropoffAddress ?? '').trim();
+        const dropoffPopup = dropoffAddr ? `<strong>Dropoff</strong><br/>${escapeHtml(dropoffAddr)}` : 'Dropoff';
+        m.bindPopup(dropoffPopup, { closeOnClick: false });
         orderMarkersRef.current.push(m);
         allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
       }
@@ -1212,6 +1222,8 @@ export default function OrdersMap({
     orderRiskLevel,
     selectedOrderTooltip,
     driverView,
+    routePickupAddress,
+    routeDropoffAddress,
   ]);
 
   useEffect(() => {

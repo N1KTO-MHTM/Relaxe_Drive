@@ -150,6 +150,7 @@ export default function Dashboard() {
   const [isAutoOrder, setIsAutoOrder] = useState(false);
   const [dropoffImageUrl, setDropoffImageUrl] = useState('');
   const [orderOffer, setOrderOffer] = useState<Order | null>(null);
+  const orderOfferRef = useRef<Order | null>(null);
   const [offerRouteData, setOfferRouteData] = useState<{
     driverToPickupMinutes: number;
     durationMinutes: number;
@@ -167,6 +168,9 @@ export default function Dashboard() {
   >([]);
   /** Saved addresses from /addresses (dispatcher/admin) for address field suggestions. */
   const [savedAddressesList, setSavedAddressesList] = useState<Array<{ id: string; address: string }>>([]);
+  /** Up to 5 addresses from past orders for the entered phone (for "Use as pickup/dropoff"). */
+  const [locationsFromPhoneOrders, setLocationsFromPhoneOrders] = useState<string[]>([]);
+  const [locationsFromPhoneLoading, setLocationsFromPhoneLoading] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -911,10 +915,25 @@ export default function Dashboard() {
   }, [showForm, pickupAddress, dropoffAddress]);
 
   useEffect(() => {
+    orderOfferRef.current = orderOffer;
+  }, [orderOffer]);
+
+  useEffect(() => {
     if (!socket || !user) return;
     const onOrders = (data: unknown) => {
       const list = Array.isArray(data) ? (data as Order[]) : [];
       const filtered = user.role === 'DRIVER' ? list.filter((o) => o.driverId === user.id) : list;
+      // When an order we had as "offer" is assigned (by us or another driver), clear offer so it no longer shows for others
+      if (user.role === 'DRIVER') {
+        const offer = orderOfferRef.current;
+        if (offer) {
+          const assigned = list.find((o) => o.id === offer.id);
+          if (assigned?.driverId) {
+            setOrderOffer(null);
+            setOfferRouteData(null);
+          }
+        }
+      }
       setOrders(filtered);
     };
     socket.on('orders', onOrders);
@@ -998,9 +1017,16 @@ export default function Dashboard() {
 
   async function handleAcceptOffer(orderId: string) {
     try {
-      await api.patch(`/orders/${orderId}/accept`, {});
+      const updated = await api.patch<Order>(`/orders/${orderId}/accept`, {});
       setOrderOffer(null);
       setOfferRouteData(null);
+      if (updated && user?.id) {
+        setOrders((prev) => {
+          const has = prev.some((o) => o.id === updated.id);
+          if (has) return prev.map((o) => (o.id === updated.id ? updated : o));
+          return [updated, ...prev];
+        });
+      }
       toast.success(t('dashboard.orderAccepted'));
     } catch (err) {
       toast.error('Failed to accept order (maybe taken?)');
@@ -1268,6 +1294,43 @@ export default function Dashboard() {
       .then((data) => setPassengerAddressHistory(Array.isArray(data) ? data : []))
       .catch(() => setPassengerAddressHistory([]));
   }, [orderPhone, manualEntry, passengersSuggestions]);
+
+  // When dispatcher enters phone: fetch last orders by phone and show up to 5 addresses for "Use as pickup/dropoff"
+  useEffect(() => {
+    if (!canCreateOrder || !showForm) return;
+    const phone = orderPhone.trim().replace(/\s/g, '');
+    if (phone.length < 4) {
+      setLocationsFromPhoneOrders([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      setLocationsFromPhoneLoading(true);
+      api
+        .get<Array<{ pickupAddress?: string | null; dropoffAddress?: string | null }>>(
+          `/orders/by-phone/${encodeURIComponent(phone)}`,
+        )
+        .then((orders) => {
+          const seen = new Set<string>();
+          const out: string[] = [];
+          for (const o of orders ?? []) {
+            for (const addr of [o.pickupAddress, o.dropoffAddress]) {
+              const a = (addr ?? '').trim();
+              if (!a) continue;
+              const key = a.toLowerCase();
+              if (seen.has(key)) continue;
+              seen.add(key);
+              out.push(a);
+              if (out.length >= 5) break;
+            }
+            if (out.length >= 5) break;
+          }
+          setLocationsFromPhoneOrders(out);
+        })
+        .catch(() => setLocationsFromPhoneOrders([]))
+        .finally(() => setLocationsFromPhoneLoading(false));
+    }, 500);
+    return () => clearTimeout(t);
+  }, [canCreateOrder, showForm, orderPhone]);
 
   // Preload driver ETAs when an order is selected (dispatcher) so dropdown shows ETA without extra click
   useEffect(() => {
@@ -2390,7 +2453,7 @@ export default function Dashboard() {
                 )}
               </div>
             )}
-          <div className="driver-docked-actions__grid">
+          <div className="driver-docked-actions__nav-row" role="group" aria-label={t('dashboard.navigate')}>
             <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
               <span style={{ fontSize: '1.25rem' }}>🗺️</span>
               {t('dashboard.navigationOnGoogle')}
@@ -2403,6 +2466,8 @@ export default function Dashboard() {
               <span style={{ fontSize: '1.25rem' }}>🍎</span>
               {t('dashboard.navigationOnApple')}
             </button>
+          </div>
+          <div className="driver-docked-actions__grid">
             {currentDriverOrder.status === 'ASSIGNED' &&
               (currentDriverOrder.arrivedAtPickupAt ? (
                 <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--primary" disabled={!!statusUpdatingId} onClick={() => handleStatusChange(currentDriverOrder.id, 'IN_PROGRESS')}>
@@ -3053,6 +3118,16 @@ export default function Dashboard() {
               showDriverMarkers={canAssign}
               routeData={routeData}
               formPreviewRouteData={canCreateOrder && showForm ? formPreviewRouteData : undefined}
+              routePickupAddress={
+                canCreateOrder && showForm && formPreviewRouteData
+                  ? pickupAddress
+                  : orders.find((o) => o.id === selectedOrderId)?.pickupAddress ?? undefined
+              }
+              routeDropoffAddress={
+                canCreateOrder && showForm && formPreviewRouteData
+                  ? dropoffAddress
+                  : orders.find((o) => o.id === selectedOrderId)?.dropoffAddress ?? undefined
+              }
               currentUserLocation={isDriver ? driverLocation : undefined}
               driverMarkerStyle={undefined}
               currentUserSpeedMph={isDriver ? driverSpeedMph : undefined}
@@ -3282,6 +3357,51 @@ export default function Dashboard() {
                     <h3 className="rd-section-title" style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '1rem' }}>
                       {t('dashboard.addressCategoryPickupDropoff')}
                     </h3>
+                    {locationsFromPhoneLoading && (
+                      <p className="rd-text-muted" style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>{t('common.loading')}…</p>
+                    )}
+                    {!locationsFromPhoneLoading && locationsFromPhoneOrders.length > 0 && (
+                      <div className="dashboard-form-section" style={{ marginBottom: '0.75rem' }}>
+                        <label className="rd-text-muted" style={{ fontSize: '0.85rem' }}>{t('dashboard.recentAddressesForPhone')}</label>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: '0.35rem 0 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          {locationsFromPhoneOrders.map((addr) => (
+                            <li
+                              key={addr}
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                padding: '0.35rem 0.5rem',
+                                background: 'var(--rd-bg-panel)',
+                                borderRadius: 6,
+                                border: '1px solid var(--rd-border)',
+                              }}
+                            >
+                              <span style={{ flex: '1 1 180px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.875rem' }} title={addr}>
+                                {addr}
+                              </span>
+                              <span style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                                <button
+                                  type="button"
+                                  className="rd-btn rd-btn--small"
+                                  onClick={() => setPickupAddress(addr)}
+                                >
+                                  {t('dashboard.useAsPickup')}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rd-btn rd-btn--small"
+                                  onClick={() => setDropoffAddress(addr)}
+                                >
+                                  {t('dashboard.useAsDropoff')}
+                                </button>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     <div className="dashboard-form-section">
                       <label>{tripTypeForm === 'ROUNDTRIP' ? t('dashboard.firstLocation') : t('dashboard.pickupAddress')}</label>
                       <div className="dashboard-address-row">

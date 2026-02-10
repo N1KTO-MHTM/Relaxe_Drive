@@ -1415,6 +1415,16 @@
   color: white;
 }
 
+.driver-docked-actions__nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.driver-docked-actions__nav-row .driver-docked-actions__btn {
+  flex: 1;
+  min-width: 0;
+}
 .driver-docked-actions__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

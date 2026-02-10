@@ -48,7 +48,13 @@ export default function Translation() {
   const [sourceText, setSourceText] = useState('');
   const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('en');
-  const [result, setResult] = useState<{ sourceText: string; targetText: string; sourceLang: string; targetLang: string } | null>(null);
+  const [result, setResult] = useState<{
+    sourceText: string;
+    targetText: string;
+    sourceLang: string;
+    targetLang: string;
+    detectedLanguage?: { code: string; confidence?: number };
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<TranslationRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -58,6 +64,7 @@ export default function Translation() {
   const [liveVoiceToVoice, setLiveVoiceToVoice] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const liveTranslateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveTranslateRequestIdRef = useRef(0);
   const liveVoiceToVoiceRef = useRef(liveVoiceToVoice);
   const sourceLangRef = useRef(sourceLang);
   const targetLangRef = useRef(targetLang);
@@ -66,19 +73,36 @@ export default function Translation() {
   sourceLangRef.current = sourceLang;
   targetLangRef.current = targetLang;
 
-  const runTranslate = (text: string) => {
-    if (!text.trim() || sourceLang === targetLang) return;
+  const runTranslate = (text: string, isLiveRequest = false) => {
+    const trimmed = text.trim();
+    if (!trimmed || sourceLang === targetLang) return;
+    if (isLiveRequest) liveTranslateRequestIdRef.current += 1;
+    const requestId = liveTranslateRequestIdRef.current;
     setLoading(true);
-    setResult(null);
+    if (!isLiveRequest) setResult(null);
     api
-      .post<{ sourceText: string; targetText: string; sourceLang: string; targetLang: string }>('/translation/translate', {
-        sourceText: text,
+      .post<{
+        sourceText: string;
+        targetText: string;
+        sourceLang: string;
+        targetLang: string;
+        detectedLanguage?: { code: string; confidence?: number };
+      }>('/translation/translate', {
+        sourceText: trimmed,
         sourceLang,
         targetLang,
       })
-      .then((data) => setResult(data ?? null))
-      .catch(() => toast.error(t('translation.errorTranslate')))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (isLiveRequest && requestId !== liveTranslateRequestIdRef.current) return;
+        setResult(data ?? null);
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : t('translation.errorTranslate');
+        toast.error(msg);
+      })
+      .finally(() => {
+        if (!isLiveRequest || requestId === liveTranslateRequestIdRef.current) setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -88,7 +112,7 @@ export default function Translation() {
       return;
     }
     if (liveTranslateTimeoutRef.current) clearTimeout(liveTranslateTimeoutRef.current);
-    liveTranslateTimeoutRef.current = setTimeout(() => runTranslate(sourceText), 700);
+    liveTranslateTimeoutRef.current = setTimeout(() => runTranslate(sourceText, true), 700);
     return () => {
       if (liveTranslateTimeoutRef.current) clearTimeout(liveTranslateTimeoutRef.current);
       liveTranslateTimeoutRef.current = null;
@@ -207,7 +231,13 @@ export default function Translation() {
         setSourceText((prev) => (prev ? `${prev} ${transcript}` : transcript).trim());
         if (liveVoiceToVoiceRef.current && sourceLangRef.current !== targetLangRef.current) {
           api
-            .post<{ sourceText: string; targetText: string; sourceLang: string; targetLang: string }>('/translation/translate', {
+            .post<{
+              sourceText: string;
+              targetText: string;
+              sourceLang: string;
+              targetLang: string;
+              detectedLanguage?: { code: string; confidence?: number };
+            }>('/translation/translate', {
               sourceText: transcript,
               sourceLang: sourceLangRef.current,
               targetLang: targetLangRef.current,
@@ -218,7 +248,7 @@ export default function Translation() {
                 speakText(data.targetText.trim(), targetLangRef.current);
               }
             })
-            .catch(() => toast.error(t('translation.errorTranslate')));
+            .catch((err) => toast.error(err instanceof Error ? err.message : t('translation.errorTranslate')));
         }
       }
     };
@@ -341,6 +371,11 @@ export default function Translation() {
             <div className="translation-page__result">
               <div className="translation-page__result-header">
                 <h3 className="translation-page__result-title">{t('translation.result')}</h3>
+                {result.detectedLanguage && (
+                  <span className="rd-text-muted" style={{ fontSize: '0.85rem', marginRight: '0.5rem' }}>
+                    {t('translation.detected')}: {result.detectedLanguage.code}
+                  </span>
+                )}
                 {typeof window !== 'undefined' && window.speechSynthesis && (result.targetText || result.sourceText)?.trim() && (
                   <button
                     type="button"
