@@ -27,7 +27,7 @@ export class UsersController {
       email: user.email ?? undefined,
       phone: user.phone ?? undefined,
       ...(user.role === 'DRIVER' && {
-        available: user.available ?? true,
+        available: user.available ?? false,
         driverId: user.driverId ?? undefined,
         carId: user.carId ?? undefined,
         carType: user.carType ?? undefined,

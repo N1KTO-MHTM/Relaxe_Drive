@@ -230,6 +230,13 @@
   grid-area: map-area;
   min-height: 40vh;
   max-height: 50vh;
+  transition: min-height 0.35s ease, max-height 0.35s ease;
+}
+
+/* Driver with accepted order + route: map ~20% bigger (no full-screen) */
+.dashboard-page--driver.dashboard-page--driver-has-route .dashboard-page__map {
+  min-height: 48vh;
+  max-height: 60vh;
 }
 
 /* Mobile: driver view — stack map above sidebar, readable stat rows */
@@ -247,6 +254,11 @@
     max-height: 50vh;
   }
 
+  .dashboard-page--driver.dashboard-page--driver-has-route .dashboard-page__map {
+    min-height: 336px;
+    max-height: 60vh;
+  }
+
   .dashboard-page--driver .dashboard-page__sidebar {
     min-width: 0;
     overflow: visible;
@@ -257,6 +269,11 @@
   .dashboard-page--driver .dashboard-page__map {
     min-height: 240px;
     max-height: 45vh;
+  }
+
+  .dashboard-page--driver.dashboard-page--driver-has-route .dashboard-page__map {
+    min-height: 288px;
+    max-height: 54vh;
   }
 }
 
@@ -1165,6 +1182,86 @@
   font-size: 0.95rem;
   opacity: 0.95;
   margin-top: 0.2rem;
+}
+
+/* My orders strip below map (driver full-screen) */
+.dashboard-my-orders-below-map {
+  flex-shrink: 0;
+  background: var(--rd-bg-panel, rgba(15, 23, 42, 0.95));
+  border-top: 1px solid var(--rd-border);
+  padding: 0.5rem 0.75rem;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.dashboard-my-orders-below-map__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--rd-text-muted);
+  margin-bottom: 0.35rem;
+}
+.dashboard-my-orders-below-map__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.dashboard-my-orders-below-map__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+}
+.dashboard-my-orders-below-map__item:hover,
+.dashboard-my-orders-below-map__item--selected {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+.dashboard-my-orders-below-map__route {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.dashboard-my-orders-below-map__status {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--rd-accent-neon);
+}
+
+/* Route bottom bar (ETA, mi, arrival, destination) like Google Maps */
+.dashboard-route-bottom-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  margin-top: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+.dashboard-route-bottom-bar__eta {
+  font-weight: 700;
+  color: #22c55e;
+  font-size: 1.1rem;
+}
+.dashboard-route-bottom-bar__distance {
+  color: var(--rd-text-muted);
+}
+.dashboard-route-bottom-bar__address {
+  width: 100%;
+  font-weight: 600;
+  color: var(--rd-accent);
 }
 
 .dashboard-route-instructions {

@@ -286,7 +286,7 @@ declare global {
   }
 }
 
-const SMOOTH_MOVE_MS = 1000;
+const SMOOTH_MOVE_MS = 450;
 export default function OrdersMap({
   drivers = [],
   showDriverMarkers = false,
@@ -1262,7 +1262,7 @@ export default function OrdersMap({
       map.setView([currentUserLocation.lat, currentUserLocation.lng], NAV_ZOOM);
     };
     followDriver();
-    const t = setInterval(followDriver, 1000);
+    const t = setInterval(followDriver, 500); // live map follow (2×/s)
     return () => clearInterval(t);
   }, [navMode, currentUserLocation?.lat, currentUserLocation?.lng]);
 
@@ -1364,7 +1364,7 @@ export default function OrdersMap({
           ⛶
         </button>
       )}
-      {(!navMode || driverView) && (!driverView || routeData) && (
+      {!driverView && (
         <div
           className="orders-map-overlay rd-text-muted"
           style={{
@@ -1380,13 +1380,11 @@ export default function OrdersMap({
             pointerEvents: onMapClick ? 'none' : undefined,
           }}
         >
-          {driverView
-            ? t('dashboard.mapHintDriverView')
-            : onMapClick
-              ? t('dashboard.mapHintClick')
-              : showDriverMarkers
-                ? t('dashboard.mapHintDriver')
-                : t('dashboard.mapHintOrders')}
+          {onMapClick
+            ? t('dashboard.mapHintClick')
+            : showDriverMarkers
+              ? t('dashboard.mapHintDriver')
+              : t('dashboard.mapHintOrders')}
         </div>
       )}
     </div>

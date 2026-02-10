@@ -95,7 +95,7 @@ export default function Dashboard() {
   } | null>(null);
   const [showProblemZones] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
-  const [stopUnderwayId, setStopUnderwayId] = useState<string | null>(null);
+  const [_stopUnderwayId, setStopUnderwayId] = useState<string | null>(null);
   const [confirmEndTripOrderId, setConfirmEndTripOrderId] = useState<string | null>(null);
   const [confirmEndTripSecondsLeft, setConfirmEndTripSecondsLeft] = useState(60);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -227,7 +227,6 @@ export default function Dashboard() {
   const [driverSetDestinationAddress, setDriverSetDestinationAddress] = useState('');
   const [driverSetDestinationLoading, setDriverSetDestinationLoading] = useState(false);
   const autoStopSentForOrderIdRef = useRef<string | null>(null);
-  const [driverMapFullScreen, setDriverMapFullScreen] = useState(false);
   const [mapStyle, setMapStyle] = useState<'street' | 'satellite' | 'terrain' | 'dark'>(() => {
     try {
       const s = localStorage.getItem('rd_map_style');
@@ -263,7 +262,7 @@ export default function Dashboard() {
     (isAdmin || isDispatcher || user?.role === 'CLIENT') && !effectiveIsDriver;
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
+    const interval = setInterval(() => setNow(Date.now()), 100); // live clock (10×/s for smooth timers)
     return () => clearInterval(interval);
   }, []);
 
@@ -698,10 +697,10 @@ export default function Dashboard() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
-  // Dispatcher: poll drivers only when tab visible (saves memory and network when in background)
+  // Dispatcher: Uber-style — push via WebSocket (drivers); poll as fallback when tab visible (8s)
   useEffect(() => {
     if (!canAssign || typeof document === 'undefined') return;
-    const DRIVER_POLL_MS = 12000;
+    const FALLBACK_POLL_MS = 8000;
     const t = setInterval(() => {
       if (document.visibilityState === 'visible') {
         api
@@ -711,17 +710,17 @@ export default function Dashboard() {
           })
           .catch(() => {});
       }
-    }, DRIVER_POLL_MS);
+    }, FALLBACK_POLL_MS);
     return () => clearInterval(t);
   }, [canAssign]);
 
-  // Driver: poll orders + user when tab visible so mobile gets updates even if WebSocket drops
+  // Driver: Uber-style — push via WebSocket (orders, user.updated); poll as fallback when tab visible (8s)
   useEffect(() => {
     if (!effectiveIsDriver || !user?.id || typeof document === 'undefined') return;
-    const DRIVER_UPDATE_POLL_MS = 15000;
+    const FALLBACK_POLL_MS = 8000;
     const t = setInterval(() => {
       if (document.visibilityState === 'visible') refreshAllRef.current();
-    }, DRIVER_UPDATE_POLL_MS);
+    }, FALLBACK_POLL_MS);
     return () => clearInterval(t);
   }, [effectiveIsDriver, user?.id]);
 
@@ -1100,7 +1099,7 @@ export default function Dashboard() {
         .catch(() => setDrivers([]));
     };
     load();
-    const interval = setInterval(load, 8000); // 8s when visible; when hidden we skip (visibilitychange refetches on focus)
+    const interval = setInterval(load, 8000); // Uber-style fallback poll (8s) when visible
     return () => clearInterval(interval);
   }, [canAssign]);
 
@@ -1394,7 +1393,7 @@ export default function Dashboard() {
         .catch(() => setDrivers([]));
     };
     load();
-    const interval = setInterval(load, 8000);
+    const interval = setInterval(load, 8000); // Uber-style fallback poll (8s)
     return () => clearInterval(interval);
   }, [canAssign, driversRefreshTrigger]);
   useEffect(() => {
@@ -1497,7 +1496,7 @@ export default function Dashboard() {
     const hasActiveOrder = orders.some(
       (o) => o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS',
     );
-    const sendIntervalMs = hasActiveOrder ? 5000 : 10000; // throttle API: 5s on trip, 10s when free
+    const sendIntervalMs = hasActiveOrder ? 4000 : 10000; // Uber-style: ~4s on trip, 10s when free
     let lastSentTs = 0;
     const geoOptions: PositionOptions = {
       enableHighAccuracy: true,
@@ -2004,6 +2003,9 @@ export default function Dashboard() {
     api
       .patch('/users/me/available', { available: next })
       .then(() => {
+        api.get<{ id: string; nickname: string; role: string; available?: boolean; online?: boolean; locale?: string }>('/users/me').then((data) => {
+          if (data && user) setUser({ ...user, ...data, role: (data as any).role });
+        }).catch(() => {});
         setUser(user ? { ...user, available: next } : null);
         if (next && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
@@ -2235,7 +2237,7 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`dashboard-page ${effectiveIsDriver ? 'dashboard-page--driver' : ''} ${effectiveIsDriver && driverMapFullScreen ? 'dashboard-page--full-map' : ''}`}
+      className={`dashboard-page ${effectiveIsDriver ? 'dashboard-page--driver' : ''} ${effectiveIsDriver && currentDriverOrder && routeData ? 'dashboard-page--driver-has-route' : ''}`}
     >
       {assignedOrder && (
         <div
@@ -2492,17 +2494,17 @@ export default function Dashboard() {
                     {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.complete')}
                   </button>
                 )}
-                <button type="button" className="driver-docked-actions__btn driver-docked-actions__btn--ruby" style={{ gridColumn: currentDriverOrder.tripType === 'ROUNDTRIP' && !currentDriverOrder.leftMiddleAt ? 'span 2' : 'auto' }} disabled={!!stopUnderwayId || !!statusUpdatingId} onClick={() => handleStopUnderway(currentDriverOrder.id)}>
-                  {t('dashboard.stopUnderway')}
+                <button type="button" className="driver-docked-actions__btn" disabled={_stopUnderwayId !== null} onClick={() => handleStopUnderway(currentDriverOrder.id)} title={t('dashboard.addStopUnderway')}>
+                  {_stopUnderwayId === currentDriverOrder.id ? '…' : (t('dashboard.addStopUnderway') || 'Add stop')}
                 </button>
-                <button type="button" className="driver-docked-actions__btn" onClick={() => setDriverMapFullScreen(false)}>
+                <button type="button" className="driver-docked-actions__btn" onClick={() => {}}>
                   {t('dashboard.showList')}
                 </button>
               </>
             )}
           </div>
           {currentDriverOrder.status !== 'IN_PROGRESS' && (
-            <button type="button" className="rd-btn" style={{ width: '100%', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', marginTop: '0.5rem' }} onClick={() => setDriverMapFullScreen(false)}>
+            <button type="button" className="rd-btn" style={{ width: '100%', background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', marginTop: '0.5rem' }} onClick={() => {}}>
               {t('dashboard.showList')}
             </button>
           )}
@@ -2558,6 +2560,10 @@ export default function Dashboard() {
           const firstInstr = firstStep?.instruction || (firstStep?.type === 11 ? t('dashboard.navHeadToDestination') : firstStep?.type === 10 ? t('dashboard.navArrive') : t('dashboard.navContinue'));
           const firstDistHint = firstStep ? formatDistanceHint(firstStep.distanceM) : '';
           const firstIcon = firstStep ? (STEP_TYPE_ICON[firstStep.type] ?? '↑') : '↑';
+          const selectedOrder = orders.find((o) => o.id === selectedOrderId);
+          const destAddress = toPickup ? selectedOrder?.pickupAddress : selectedOrder?.dropoffAddress;
+          const currentDistanceKm = selectedRouteIndex === 0 || !altRoutes[selectedRouteIndex - 1] ? mainDist : (altRoutes[selectedRouteIndex - 1]?.distanceKm ?? mainDist);
+          const distanceMi = (currentDistanceKm / 1.60934).toFixed(1);
           return (
             <div style={{ marginBottom: '0.5rem' }}>
               {steps.length > 0 && (
@@ -2565,10 +2571,15 @@ export default function Dashboard() {
                   <span className="dashboard-nav-banner__arrow" aria-hidden>{firstIcon}</span>
                   <div className="dashboard-nav-banner__content">
                     <div className="dashboard-nav-banner__instruction">{firstInstr}</div>
-                    <div className="dashboard-nav-banner__detail">{firstDistHint}</div>
+                    <div className="dashboard-nav-banner__detail">{firstDistHint}{firstDistHint && firstInstr ? ` · ${firstInstr}` : ''}</div>
                   </div>
                 </div>
               )}
+              <div className="dashboard-route-bottom-bar">
+                <span className="dashboard-route-bottom-bar__eta">~{Math.round(durationMin)} min</span>
+                <span className="dashboard-route-bottom-bar__distance">{distanceMi} mi · {eta}</span>
+                {destAddress && <span className="dashboard-route-bottom-bar__address">{shortAddress(destAddress, 40)}</span>}
+              </div>
               <NavBar
                 steps={steps}
                 durationMinutes={durationMin}
@@ -3079,8 +3090,8 @@ export default function Dashboard() {
               currentUserHeadingTo={isDriver ? (driverHeadingTo ?? undefined) : undefined}
               currentUserHeadingDegrees={isDriver ? (driverHeadingSmooth ?? driverHeadingDegrees) : undefined}
               driverView={effectiveIsDriver}
-              onToggleFullscreen={effectiveIsDriver ? () => setDriverMapFullScreen((v) => !v) : undefined}
-              mapExpanded={effectiveIsDriver ? driverMapFullScreen : undefined}
+              onToggleFullscreen={undefined}
+              mapExpanded={undefined}
               onMapClick={canCreateOrder && showForm && pickMode ? handleMapClick : undefined}
               pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
               navMode={isDriver && !!routeData && !!driverLocation}
@@ -3138,7 +3149,7 @@ export default function Dashboard() {
             {/* Speedometer removed from map to avoid clutter. */}
             {/* Driver Trip Card moved to bottom panel */}
           </div>
-          {effectiveIsDriver && currentDriverOrder && (
+          {effectiveIsDriver && currentDriverOrder && alerts.length > 0 && (
             <div
               className="dashboard-driver-status-bar"
               style={{
@@ -3152,18 +3163,9 @@ export default function Dashboard() {
                 flexWrap: 'wrap',
               }}
             >
-              <button
-                type="button"
-                className={`rd-btn rd-btn--small ${driverMapFullScreen ? 'rd-btn-primary' : ''}`}
-                onClick={() => setDriverMapFullScreen((v) => !v)}
-              >
-                {driverMapFullScreen ? t('dashboard.showList') : t('dashboard.fullMap')}
-              </button>
-              {alerts.length > 0 && (
-                <div style={{ fontSize: '0.8rem', color: 'var(--rd-text-muted)' }} role="status">
-                  {t('dashboard.updatesCount', { count: alerts.length })}
-                </div>
-              )}
+              <div style={{ fontSize: '0.8rem', color: 'var(--rd-text-muted)' }} role="status">
+                {t('dashboard.updatesCount', { count: alerts.length })}
+              </div>
             </div>
           )}
         </div>
@@ -3325,7 +3327,7 @@ export default function Dashboard() {
             )}
           </aside>
         )}
-        {effectiveIsDriver && !driverMapFullScreen && (
+        {effectiveIsDriver && (
           <aside
             className="dashboard-page__sidebar dashboard-my-orders-panel rd-premium-panel"
             aria-label={t('dashboard.myOrders')}
