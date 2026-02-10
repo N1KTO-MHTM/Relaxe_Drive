@@ -19,7 +19,7 @@
   },
   "auth": {
     "login": "Sign in",
-    "staffOnly": "Staff only — drivers, dispatchers, administrators.",
+    "staffOnly": "Staff only — drivers, control staff, administrators.",
     "register": "Register",
     "noAccount": "Don't have an account?",
     "nickname": "Nickname",
@@ -69,28 +69,28 @@
     "title": "About",
     "categoriesTitle": "System Categories",
     "roleAdmin": "Administrator",
-    "roleDispatcher": "Dispatcher",
+    "roleDispatcher": "Control",
     "roleDriver": "Driver",
     "infoBoxTitle": "Operational Guide",
     "app": "Application",
     "version": "Version",
     "creator": "Creator",
-    "description": "RelaxDrive — dispatch control platform. Web, Desktop Control Center, real-time orders and drivers.",
+    "description": "RelaxDrive — control platform. Web, Desktop Control Center, real-time orders and drivers.",
     "learnMore": "Learn more",
-    "staffOnly": "This web app is for staff only: drivers, dispatchers, and administrators. Clients (passengers) do not have access — they are managed in the Clients section by dispatchers.",
+    "staffOnly": "This web app is for staff only: drivers, control staff, and administrators. Clients (passengers) do not have access — they are managed in the Clients section by control staff.",
     "yourAccess": "Your access",
     "driverAccess": "As a driver you have access to: My trips, Map, Translation.",
-    "driverDetail": "My trips: view only orders assigned to you; accept or reject new assignments; start trip, mark arrived at pickup (and at middle stop for roundtrips), complete trip. Wait timer with billing (first 5 min free). Map shows your location and route; share location so the dispatcher sees you in real time. Translation: voice-to-text and history for multilingual support. You see your today and total ride stats. In short: you receive trips, report status, and get navigation and translation tools.",
-    "dispatcherAccess": "As a dispatcher you have access to: Dashboard, Calendar, Clients, Translation, Analytics, Session monitor.",
+    "driverDetail": "My trips: view only orders assigned to you; accept or reject new assignments; start trip, mark arrived at pickup (and at middle stop for roundtrips), complete trip. Wait timer with billing (first 5 min free). Map shows your location and route; share location so control sees you in real time. Translation: voice-to-text and history for multilingual support. You see your today and total ride stats. In short: you receive trips, report status, and get navigation and translation tools.",
+    "dispatcherAccess": "As control staff you have access to: Dashboard, Calendar, Clients, Translation, Analytics, Session monitor.",
     "dispatcherDetail": "Dashboard: create orders (pickup/dropoff, time, client); see all active and scheduled orders on the map; assign drivers to orders; view driver locations and ETAs; receive alerts (new order, assignment, rejection, completion). Calendar: plan orders by day/week, see conflicts. Clients: add and search clients by phone/name, export CSV, create a new order from a client with one click. Translation and Analytics for operational support. Session monitor: see who is online (device, IP, last active). You control the full order and driver workflow.",
-    "adminAccess": "As an administrator you have full access: all dispatcher features plus Roles, Cost control, White label, Audit logs, System health.",
+    "adminAccess": "As an administrator you have full access: all control features plus Roles, Cost control, White label, Audit logs, System health.",
     "locationGuideTitle": "How to appear on the map",
-    "locationGuideIntro": "Drivers need to allow location access and go online so dispatchers see you on the dashboard map.",
+    "locationGuideIntro": "Drivers need to allow location access and go online so control sees you on the dashboard map.",
     "locationGuideStep1": "When the browser asks for location permission, choose Allow.",
     "locationGuideStep2": "On the Dashboard, tap «Go online». Your position is then sent and you appear on the map.",
     "locationGuideStep3": "If you previously blocked location: open this site in the browser → tap the lock or info icon in the address bar → Site settings / Permissions → set Location to Allow.",
     "locationGuideStep4": "On phones: see steps below.",
-    "locationGuideSuccess": "When it works you’ll see «You’re on the map». Dispatchers see your position within a few seconds.",
+    "locationGuideSuccess": "When it works you’ll see «You’re on the map». Control sees your position within a few seconds.",
     "locationGuidePhoneTitle": "On phone",
     "locationGuidePhone1": "Turn on device Location: Settings → Location (or Privacy → Location Services).",
     "locationGuidePhone2": "Allow this site to use location: Chrome — tap ⋮ → Settings → Site settings → Location → set to Allow for this site; Safari — Settings → Safari → Location → allow for this website.",
@@ -98,17 +98,17 @@
     "instructionsTitle": "Instructions — how it works",
     "instructionsIntro": "Short guide by role: what the system does and how to use it.",
     "instructionsGeneralTitle": "In general",
-    "instructionsGeneral": "RelaxDrive is a comprehensive dispatch platform with real-time GPS tracking, intelligent route planning, and automated driver assignment. Key features: Live map with driver locations and routes; Zones (geofencing) for service areas; Phone database for number transfers; Address history with categorization (Home, Synagogue, School, Hospital, Store, Office); Driver reports (Police, Traffic, Work Zone, Crash) with 1-minute auto-expiry; Speedometer and standing timer for drivers; Alternative routes with traffic info; Sequential Driver IDs (1, 2, 3...) and Car IDs (Minivan1, Sedan1); Multi-language support with voice translation; Planning algorithm runs every 5 minutes to compute risk levels and suggest optimal driver assignments.",
-    "instructionsDispatcherTitle": "Dispatcher",
+    "instructionsGeneral": "RelaxDrive is a comprehensive control platform with real-time GPS tracking, intelligent route planning, and automated driver assignment. Key features: Live map with driver locations and routes; Zones (geofencing) for service areas; Phone database for number transfers; Address history with categorization (Home, Synagogue, School, Hospital, Store, Office); Driver reports (Police, Traffic, Work Zone, Crash) with 1-minute auto-expiry; Speedometer and standing timer for drivers; Alternative routes with traffic info; Sequential Driver IDs (1, 2, 3...) and Car IDs (Minivan1, Sedan1); Multi-language support with voice translation; Planning algorithm runs every 5 minutes to compute risk levels and suggest optimal driver assignments.",
+    "instructionsDispatcherTitle": "Control",
     "instructionsDispatcher": "Dashboard: Create orders with pickup/dropoff addresses (manual entry or pick on map), optional middle stops for roundtrips, pickup time, passenger info, and place types (Home, Synagogue, School, etc.). View all active and scheduled orders on the interactive map with zones overlay. Assign drivers manually or use 'Assign suggested' for AI-powered assignment. Monitor 'Unassigned: N' and 'At risk: M' counters. Delay orders (+5/+10 min), mark manual assignments, delete trips. Drivers List: View all drivers with sequential IDs, filter by car type (Sedan/Minivan/SUV), location status (on map/offline), edit Driver ID and Car ID, delete drivers with confirmation. Calendar: Plan orders by day/week, view conflicts, see driver schedules. Clients: Add clients with phone/name, view address history with categories, create orders from client profiles. Phone Database: Manage transferred numbers (old → new mappings). Pending Drivers: Approve or reject new driver registrations. Zones: View service area polygons on map (interactive, clickable). Session monitor: see who's online (device, IP, last active). Analytics: Export data, view statistics.",
     "instructionsDriverTitle": "Driver",
-    "instructionsDriver": "Dashboard: 'Today's rides: N' shows your assigned trips. For each order: Accept (or Reject), then Arrived at pickup → Start ride → Complete. For roundtrips: Arrive at middle stop → wait timer (first 5 min free, billing after) → Start to final → Complete. GPS Tracking: Share location ('Go online') so dispatchers see you in real time with smooth marker animation (1s smoothing). Your marker shows car icon or arrow (rotates with heading), displays speed in mph, standing timer ('here for X min'), and heading direction ('To pickup', 'To dropoff'). Navigation: View route on map with turn-by-turn instructions, alternative routes with traffic info, distance and ETA. Use Google Maps/Waze for external navigation. Reports: Post real-time reports on map (Police, Traffic, Work Zone, Car Crash) - auto-expire after 1 minute. Translation: Voice-to-text and history for multilingual support. Stats: View today's rides and total earnings/miles.",
+    "instructionsDriver": "Dashboard: 'Today's rides: N' shows your assigned trips. For each order: Accept (or Reject), then Arrived at pickup → Start ride → Complete. For roundtrips: Arrive at middle stop → wait timer (first 5 min free, billing after) → Start to final → Complete. GPS Tracking: Share location ('Go online') so control sees you in real time with smooth marker animation (1s smoothing). Your marker shows car icon or arrow (rotates with heading), displays speed in mph, standing timer ('here for X min'), and heading direction ('To pickup', 'To dropoff'). Navigation: View route on map with turn-by-turn instructions, alternative routes with traffic info, distance and ETA. Use Google Maps/Waze for external navigation. Reports: Post real-time reports on map (Police, Traffic, Work Zone, Car Crash) - auto-expire after 1 minute. Translation: Voice-to-text and history for multilingual support. Stats: View today's rides and total earnings/miles.",
     "instructionsAdminTitle": "Admin",
-    "instructionsAdmin": "All dispatcher features plus: Drivers Management: Edit Driver IDs (sequential: 1, 2, 3...) and Car IDs (type-based: Minivan1, Sedan1, SUV1), delete drivers with confirmation modal, view driver details (trip history, earnings, stats). Roles: Change user roles (Driver/Dispatcher/Admin), block/ban users with reason and expiry, reset passwords. Phone Database: Manage transferred phone numbers (old → new mappings) for seamless client transitions. Zones: Create and manage service area polygons (geofencing) with custom colors, view on map. Pending Drivers: Approve or reject new driver registrations. Cost Control: View API usage and limits (maps, translation, AI, TTS), receive alerts when limits are exceeded. White Label: Customize logo, colors, domains for branding. Audit Logs: Filter by user/action/resource, track all system changes. System Health: Monitor service status, view error logs. Session Monitor: See all online users with device, IP, last active time. Analytics: Export comprehensive data, view system-wide statistics.",
+    "instructionsAdmin": "All control features plus: Drivers Management: Edit Driver IDs (sequential: 1, 2, 3...) and Car IDs (type-based: Minivan1, Sedan1, SUV1), delete drivers with confirmation modal, view driver details (trip history, earnings, stats). Roles: Change user roles (Driver/Control/Admin), block/ban users with reason and expiry, reset passwords. Phone Database: Manage transferred phone numbers (old → new mappings) for seamless client transitions. Zones: Create and manage service area polygons (geofencing) with custom colors, view on map. Pending Drivers: Approve or reject new driver registrations. Cost Control: View API usage and limits (maps, translation, AI, TTS), receive alerts when limits are exceeded. White Label: Customize logo, colors, domains for branding. Audit Logs: Filter by user/action/resource, track all system changes. System Health: Monitor service status, view error logs. Session Monitor: See all online users with device, IP, last active time. Analytics: Export comprehensive data, view system-wide statistics.",
     "roleExplanations": {
       "admin": {
         "title": "Administrator Role",
-        "description": "Full system access with all dispatcher capabilities plus administrative controls",
+        "description": "Full system access with all control capabilities plus administrative controls",
         "keyFeatures": [
           "User Management: Create, edit, delete users; change roles; block/ban with expiry dates",
           "System Configuration: White label branding, cost control limits, service area zones",
@@ -123,7 +123,7 @@
         ]
       },
       "dispatcher": {
-        "title": "Dispatcher Role",
+        "title": "Control Role",
         "description": "Operational control for order management and driver coordination",
         "keyFeatures": [
           "Order Creation: Manual entry or map-based pickup/dropoff selection with scheduling",
@@ -151,7 +151,7 @@
         "workflows": [
           "Standard Trip: Receive assignment → Accept → Navigate to pickup → Arrive → Start ride → Navigate to dropoff → Complete",
           "Roundtrip: Arrive at pickup → Start → Arrive at middle stop → Wait (billing after 5 min) → Start to final → Complete",
-          "Passenger Stop: During trip → Passenger requests stop → Dispatcher adds waypoint → Continue to final destination"
+          "Passenger Stop: During trip → Passenger requests stop → Control adds waypoint → Continue to final destination"
         ]
       }
     }
@@ -182,13 +182,13 @@
     "chat": "Support",
     "myProfile": "My Profile",
     "showAsDriver": "Show as driver",
-    "backToDispatcher": "Back to dispatcher",
+    "backToDispatcher": "Back to control",
     "language": "Language",
     "themeLight": "Light theme",
     "themeDark": "Dark theme",
     "group": {
-      "operations": "Dispatcher",
-      "dispatch": "Dispatch",
+      "operations": "Control",
+      "dispatch": "Control",
       "information": "Information",
       "driverSupport": "Support",
       "bi": "BI",
@@ -198,7 +198,7 @@
     "support": "Support"
   },
   "dashboard": {
-    "title": "Dispatcher Dashboard",
+    "title": "Control Dashboard",
     "myOrders": "My orders",
     "map": "Live Map",
     "orders": "Orders",
@@ -286,7 +286,7 @@
     "myStatus": "My status",
     "status": "Status",
     "noMyOrders": "No orders assigned to you yet",
-    "noMyOrdersHint": "When a dispatcher assigns you a trip, it will appear here. Turn on Share location so you appear on the map.",
+    "noMyOrdersHint": "When control assigns you a trip, it will appear here. Turn on Share location so you appear on the map.",
     "assignedToYou": "Assigned to you",
     "taken": "Taken",
     "shareLocation": "Share my location",
@@ -309,6 +309,7 @@
     "mapIconCar": "Car",
     "mapIconArrow": "Arrow",
     "navigate": "Navigate",
+    "navigationOnGoogle": "Navigation on Google",
     "fullMap": "Full map",
     "showList": "Show list",
     "updatesCount": "{{count}} update(s)",
@@ -566,7 +567,12 @@
     "deleteConfirmWarning": "This action cannot be undone. All associated data will be removed.",
     "deleteFailed": "Failed to delete driver",
     "editDriver": "Edit {{name}}",
-    "saveFailed": "Failed to save changes"
+    "saveFailed": "Failed to save changes",
+    "deleteTripConfirmTitle": "Delete trip?",
+    "deleteTripConfirmMessage": "This trip will be removed from history. Driver stats will be updated. This cannot be undone.",
+    "editTripTitle": "Edit trip",
+    "tripStartedAt": "Started at",
+    "tripCompletedAt": "Completed at"
   },
   "calendar": {
     "title": "Calendar",
@@ -667,7 +673,7 @@
   },
   "phoneBase": {
     "title": "Phone Base",
-    "subtitle": "Number mappings (original → target). Dispatchers and admins only.",
+    "subtitle": "Number mappings (original → target). Control and admins only.",
     "originalPhone": "Original number",
     "targetPhone": "Target number",
     "description": "Description",
@@ -723,7 +729,7 @@
   "roles": {
     "title": "Roles & Permissions",
     "admin": "Admin",
-    "dispatcher": "Dispatcher",
+    "dispatcher": "Control",
     "driver": "Driver",
     "usersList": "Users and roles. Admins can change role, block, ban, delete.",
     "changeRole": "Change role",

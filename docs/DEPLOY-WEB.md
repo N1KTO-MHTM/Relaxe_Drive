@@ -30,3 +30,19 @@ So the built JS has the production API and WebSocket URLs baked in. No server-si
 
 - Uses **PostgreSQL** on Render (`schema.postgres.prisma` is copied over `schema.prisma` before build).
 - Local dev uses SQLite; production is unchanged.
+
+## Create first admin on production ("Invalid credentials" fix)
+
+Production has a **separate** database; it starts with no users. To create the admin (admin / admin):
+
+1. **Render Dashboard** → open the **relaxdrive-api** service → **Environment**.
+2. Add (or set) an env var: **`ALLOW_BOOTSTRAP`** = **`true`**. Save. Wait for the service to redeploy if it does.
+3. Call the bootstrap endpoint once (PowerShell, or any HTTP client):
+   ```powershell
+   Invoke-RestMethod -Uri "https://relaxdrive-api.onrender.com/auth/bootstrap" -Method POST -ContentType "application/json" -Body '{"nickname":"admin","password":"admin"}'
+   ```
+   Or with curl: `curl -X POST https://relaxdrive-api.onrender.com/auth/bootstrap -H "Content-Type: application/json" -d "{\"nickname\":\"admin\",\"password\":\"admin\"}"`
+4. Log in at the **web** URL with **admin** / **admin**.
+5. **(Recommended)** In Render, set **`ALLOW_BOOTSTRAP`** back to **`false`** or remove it, so the bootstrap endpoint is disabled.
+
+Optional: set **`BOOTSTRAP_SECRET`** to a random string and send it as header **`X-Bootstrap-Secret`** when calling bootstrap; then only someone with that secret can create/reset the admin.

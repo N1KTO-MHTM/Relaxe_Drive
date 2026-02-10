@@ -122,6 +122,44 @@ export class UsersController {
     return this.usersService.getTripHistory(id, from, to);
   }
 
+  @Delete(':id/trip-history/:tripId')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async deleteDriverTrip(
+    @Param('id') id: string,
+    @Param('tripId') tripId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    const user = await this.usersService.findById(id);
+    if (!user || user.role !== 'DRIVER') throw new ForbiddenException('Not a driver');
+    await this.usersService.deleteTripSummary(id, tripId);
+    await this.audit.log(req.user.id, 'driver_trip.delete', 'driver_trip_summary', { driverId: id, tripId });
+  }
+
+  @Patch(':id/trip-history/:tripId')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'DISPATCHER')
+  async updateDriverTrip(
+    @Param('id') id: string,
+    @Param('tripId') tripId: string,
+    @Body()
+    body: {
+      pickupAddress?: string;
+      dropoffAddress?: string;
+      distanceKm?: number;
+      earningsCents?: number;
+      startedAt?: string;
+      completedAt?: string;
+    },
+    @Request() req: { user: { id: string } },
+  ) {
+    const user = await this.usersService.findById(id);
+    if (!user || user.role !== 'DRIVER') throw new ForbiddenException('Not a driver');
+    const updated = await this.usersService.updateTripSummary(id, tripId, body);
+    await this.audit.log(req.user.id, 'driver_trip.update', 'driver_trip_summary', { driverId: id, tripId });
+    return updated;
+  }
+
   @Patch('me/location')
   @UseGuards(RolesGuard)
   @Roles('DRIVER')

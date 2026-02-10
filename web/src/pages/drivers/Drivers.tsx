@@ -51,6 +51,111 @@ interface TripSummary {
   distanceKm: number;
   earningsCents: number;
   polyline?: string | null;
+  routePolyline?: string | null;
+}
+
+function shortTripAddress(addr: string | null | undefined, maxLen = 42): string {
+  if (!addr) return '';
+  const parts = addr.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return addr.length <= maxLen ? addr : addr.slice(0, maxLen).trim() + '…';
+  const short = [parts[0], parts[1]].join(', ');
+  return short.length <= maxLen ? short : short.slice(0, maxLen).trim() + '…';
+}
+
+function toDatetimeLocal(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${h}:${min}`;
+  } catch {
+    return '';
+  }
+}
+
+interface EditTripModalProps {
+  trip: TripSummary;
+  onClose: () => void;
+  onSave: (payload: Partial<TripSummary> & { startedAt?: string; completedAt?: string }) => void;
+  saving: boolean;
+  t: (key: string) => string;
+}
+
+function EditTripModal({ trip, onClose, onSave, saving, t }: EditTripModalProps) {
+  const [pickupAddress, setPickupAddress] = useState(trip.pickupAddress);
+  const [dropoffAddress, setDropoffAddress] = useState(trip.dropoffAddress);
+  const [distanceKm, setDistanceKm] = useState(String(trip.distanceKm ?? ''));
+  const [earningsCents, setEarningsCents] = useState(String(Math.round((trip.earningsCents ?? 0) / 100)));
+  const [startedAt, setStartedAt] = useState(toDatetimeLocal(trip.startedAt));
+  const [completedAt, setCompletedAt] = useState(toDatetimeLocal(trip.completedAt));
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const started = startedAt ? new Date(startedAt).toISOString() : undefined;
+    const completed = completedAt ? new Date(completedAt).toISOString() : undefined;
+    onSave({
+      pickupAddress: pickupAddress.trim() || undefined,
+      dropoffAddress: dropoffAddress.trim() || undefined,
+      distanceKm: distanceKm === '' ? undefined : parseFloat(distanceKm),
+      earningsCents: earningsCents === '' ? undefined : Math.round(parseFloat(earningsCents) * 100),
+      startedAt: started,
+      completedAt: completed,
+    });
+  }
+
+  return (
+    <div className="rd-modal-overlay" onClick={() => !saving && onClose()}>
+      <div className="rd-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <div className="rd-modal-header">
+          <h2>{t('drivers.editTripTitle')}</h2>
+          <button type="button" className="rd-btn" onClick={onClose} disabled={saving}>×</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="rd-modal-body">
+            <div className="rd-form-group">
+              <label htmlFor="edit-trip-pickup">{t('dashboard.pickup')}</label>
+              <input id="edit-trip-pickup" type="text" className="rd-input" value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} />
+            </div>
+            <div className="rd-form-group">
+              <label htmlFor="edit-trip-dropoff">{t('dashboard.dropoff')}</label>
+              <input id="edit-trip-dropoff" type="text" className="rd-input" value={dropoffAddress} onChange={(e) => setDropoffAddress(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div className="rd-form-group" style={{ flex: '1 1 120px' }}>
+                <label htmlFor="edit-trip-distance">{t('dashboard.distance')} (km)</label>
+                <input id="edit-trip-distance" type="number" step="0.1" min="0" className="rd-input" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} />
+              </div>
+              <div className="rd-form-group" style={{ flex: '1 1 100px' }}>
+                <label htmlFor="edit-trip-earnings">{t('dashboard.earnings')} ($)</label>
+                <input id="edit-trip-earnings" type="number" step="0.01" min="0" className="rd-input" value={earningsCents} onChange={(e) => setEarningsCents(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div className="rd-form-group" style={{ flex: '1 1 180px' }}>
+                <label htmlFor="edit-trip-started">{t('drivers.tripStartedAt')}</label>
+                <input id="edit-trip-started" type="datetime-local" className="rd-input" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} />
+              </div>
+              <div className="rd-form-group" style={{ flex: '1 1 180px' }}>
+                <label htmlFor="edit-trip-completed">{t('drivers.tripCompletedAt')}</label>
+                <input id="edit-trip-completed" type="datetime-local" className="rd-input" value={completedAt} onChange={(e) => setCompletedAt(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <div className="rd-modal-footer">
+            <button type="submit" className="rd-btn rd-btn-primary" disabled={saving}>
+              {saving ? t('common.saving') : t('common.save')}
+            </button>
+            <button type="button" className="rd-btn rd-btn-secondary" onClick={onClose} disabled={saving}>
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 export default function Drivers() {
@@ -81,9 +186,13 @@ export default function Drivers() {
   const [editModalDriverId, setEditModalDriverId] = useState('');
   const [editModalCarId, setEditModalCarId] = useState('');
   const [savingEditModal, setSavingEditModal] = useState(false);
+  const [editTripModal, setEditTripModal] = useState<TripSummary | null>(null);
+  const [deleteTripId, setDeleteTripId] = useState<string | null>(null);
+  const [savingTrip, setSavingTrip] = useState(false);
   const showPhone = canSeeDriverPhones(user?.role);
   const canViewDriverDetail = showPhone;
   const canEditDriverIds = user?.role === 'ADMIN';
+  const canEditTripHistory = showPhone;
 
   const listByCarType = useMemo(() => {
     if (carTypeTab === 'ALL') return list;
@@ -176,6 +285,57 @@ export default function Drivers() {
       setTripHistory(Array.isArray(trips) ? trips : []);
     }).finally(() => setDetailLoading(false));
   }, [selectedDriver?.id, canViewDriverDetail, tripHistoryFrom, tripHistoryTo]);
+
+  async function refetchTripsAndStats() {
+    if (!selectedDriver) return;
+    const fromParam = tripHistoryFrom ? `${tripHistoryFrom}T00:00:00.000Z` : undefined;
+    const toParam = tripHistoryTo ? `${tripHistoryTo}T23:59:59.999Z` : undefined;
+    const query = new URLSearchParams();
+    if (fromParam) query.set('from', fromParam);
+    if (toParam) query.set('to', toParam);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    const [stats, trips] = await Promise.all([
+      api.get<DriverStats>(`/users/${selectedDriver.id}/stats`).catch(() => null),
+      api.get<TripSummary[]>(`/users/${selectedDriver.id}/trip-history${qs}`).catch(() => []),
+    ]);
+    setDriverStats(stats ?? null);
+    setTripHistory(Array.isArray(trips) ? trips : []);
+  }
+
+  async function handleDeleteTrip(tripId: string) {
+    if (!selectedDriver) return;
+    setSavingTrip(true);
+    try {
+      await api.delete(`/users/${selectedDriver.id}/trip-history/${tripId}`);
+      await refetchTripsAndStats();
+      setDeleteTripId(null);
+    } catch {
+      // error toast could be added
+    } finally {
+      setSavingTrip(false);
+    }
+  }
+
+  async function handleSaveEditTrip(payload: Partial<TripSummary> & { startedAt?: string; completedAt?: string }) {
+    if (!selectedDriver || !editTripModal) return;
+    setSavingTrip(true);
+    try {
+      const body: Record<string, unknown> = {};
+      if (payload.pickupAddress !== undefined) body.pickupAddress = payload.pickupAddress;
+      if (payload.dropoffAddress !== undefined) body.dropoffAddress = payload.dropoffAddress;
+      if (payload.distanceKm !== undefined) body.distanceKm = payload.distanceKm;
+      if (payload.earningsCents !== undefined) body.earningsCents = payload.earningsCents;
+      if (payload.startedAt !== undefined) body.startedAt = payload.startedAt;
+      if (payload.completedAt !== undefined) body.completedAt = payload.completedAt;
+      await api.patch(`/users/${selectedDriver.id}/trip-history/${editTripModal.id}`, body);
+      await refetchTripsAndStats();
+      setEditTripModal(null);
+    } catch {
+      // error toast could be added
+    } finally {
+      setSavingTrip(false);
+    }
+  }
 
   function formatTripTime(start: string, end: string): string {
     const s = new Date(start);
@@ -481,13 +641,13 @@ export default function Drivers() {
                                 <TripCardMap
                                   pickupAddress={trip.pickupAddress}
                                   dropoffAddress={trip.dropoffAddress}
-                                  polyline={trip.polyline}
+                                  polyline={trip.routePolyline ?? trip.polyline}
                                   className="drivers-trip-card-map"
                                 />
                                 <span className="drivers-trip-card-map-hint">{t('drivers.viewRoute')}</span>
                               </a>
                               <div className="drivers-trip-card-body">
-                                <div className="drivers-trip-route">{trip.pickupAddress} → {trip.dropoffAddress}</div>
+                                <div className="drivers-trip-route">{shortTripAddress(trip.pickupAddress)} → {shortTripAddress(trip.dropoffAddress)}</div>
                                 <div className="drivers-trip-meta-row">
                                   <span className="drivers-trip-meta">
                                     <span className="drivers-trip-time">{formatTripTime(trip.startedAt, trip.completedAt)}</span>
@@ -517,7 +677,26 @@ export default function Drivers() {
                                   >
                                     {t('drivers.viewRoute')}
                                   </a>
-                                  <div className="drivers-trip-earnings">${(trip.earningsCents / 100).toFixed(2)}</div>
+                                  {canEditTripHistory && (
+                                    <span className="drivers-trip-card-actions">
+                                      <button
+                                        type="button"
+                                        className="rd-btn rd-btn--small drivers-trip-btn-edit"
+                                        onClick={(e) => { e.preventDefault(); setEditTripModal(trip); }}
+                                        aria-label={t('common.edit')}
+                                      >
+                                        {t('common.edit')}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="rd-btn rd-btn--small drivers-trip-btn-delete"
+                                        onClick={(e) => { e.preventDefault(); setDeleteTripId(trip.id); }}
+                                        aria-label={t('common.delete')}
+                                      >
+                                        {t('common.delete')}
+                                      </button>
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </li>
@@ -586,6 +765,40 @@ export default function Drivers() {
                   {savingEditModal ? t('common.saving') : t('common.save')}
                 </button>
                 <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setEditModalDriver(null)} disabled={savingEditModal}>
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Trip Modal (dispatcher/admin) */}
+        {editTripModal && selectedDriver && (
+          <EditTripModal
+            trip={editTripModal}
+            onClose={() => setEditTripModal(null)}
+            onSave={handleSaveEditTrip}
+            saving={savingTrip}
+            t={t}
+          />
+        )}
+
+        {/* Delete Trip Confirmation */}
+        {deleteTripId && selectedDriver && (
+          <div className="rd-modal-overlay" onClick={() => !savingTrip && setDeleteTripId(null)}>
+            <div className="rd-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+              <div className="rd-modal-header">
+                <h2>{t('drivers.deleteTripConfirmTitle')}</h2>
+                <button type="button" className="rd-btn" onClick={() => setDeleteTripId(null)} disabled={savingTrip}>×</button>
+              </div>
+              <div className="rd-modal-body">
+                <p>{t('drivers.deleteTripConfirmMessage')}</p>
+              </div>
+              <div className="rd-modal-footer">
+                <button type="button" className="rd-btn rd-btn-primary rd-btn--danger" onClick={() => handleDeleteTrip(deleteTripId)} disabled={savingTrip}>
+                  {savingTrip ? t('common.saving') : t('common.delete')}
+                </button>
+                <button type="button" className="rd-btn rd-btn-secondary" onClick={() => setDeleteTripId(null)} disabled={savingTrip}>
                   {t('common.cancel')}
                 </button>
               </div>

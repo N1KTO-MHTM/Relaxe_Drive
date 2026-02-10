@@ -240,7 +240,7 @@ export class OrdersService {
     orderId: string,
     status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED',
     driverId?: string,
-    body?: { distanceKm?: number; earningsCents?: number },
+    body?: { distanceKm?: number; earningsCents?: number; routePolyline?: string },
   ) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
@@ -270,6 +270,7 @@ export class OrdersService {
             completedAt: now,
             distanceKm,
             earningsCents,
+            routePolyline: body?.routePolyline ?? undefined,
           },
         });
         const milesToAdd = distanceKm / 1.60934;

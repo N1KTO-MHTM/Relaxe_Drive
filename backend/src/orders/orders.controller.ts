@@ -572,6 +572,7 @@ export class OrdersController {
       status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
       distanceKm?: number;
       earningsCents?: number;
+      routePolyline?: string;
     },
     @Request() req: { user: { id: string; role: string } },
   ) {
@@ -579,7 +580,7 @@ export class OrdersController {
       orderId,
       body.status,
       req.user.role === 'DRIVER' ? req.user.id : undefined,
-      { distanceKm: body.distanceKm, earningsCents: body.earningsCents },
+      { distanceKm: body.distanceKm, earningsCents: body.earningsCents, routePolyline: body.routePolyline },
     );
     await this.audit.log(req.user.id, 'order.status_change', 'order', {
       orderId,

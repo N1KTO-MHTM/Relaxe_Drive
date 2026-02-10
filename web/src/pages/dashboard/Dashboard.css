@@ -76,6 +76,61 @@
   color: var(--rd-text-muted);
 }
 
+/* Driver My orders: compact list — small info only (pickup, dropoff, ETA, mileage) */
+.dashboard-my-orders-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.dashboard-my-orders-item--compact {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rd-border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.dashboard-my-orders-item--compact:last-child {
+  border-bottom: none;
+}
+.dashboard-my-orders-item__row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.dashboard-my-orders-item__row--badge {
+  min-height: 1.25rem;
+}
+.dashboard-my-orders-item__badge {
+  flex-shrink: 0;
+}
+.dashboard-my-orders-item__row--address {
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--rd-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard-my-orders-item__pickup,
+.dashboard-my-orders-item__dropoff {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-my-orders-item__arrow {
+  flex-shrink: 0;
+  color: var(--rd-text-muted);
+  font-size: 0.75rem;
+}
+.dashboard-my-orders-item__row--meta {
+  font-size: 0.75rem;
+  color: var(--rd-text-muted);
+}
+.dashboard-my-orders-item__sep {
+  opacity: 0.7;
+}
+
 .dashboard-page__top {
   display: flex;
   align-items: center;
@@ -1081,6 +1136,37 @@
 }
 
 /* Turn-by-turn instructions list (driver) */
+/* Prominent next-turn banner (street names, arrow, distance) */
+.dashboard-nav-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  background: #166534;
+  color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.dashboard-nav-banner__arrow {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.dashboard-nav-banner__content {
+  min-width: 0;
+}
+.dashboard-nav-banner__instruction {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.dashboard-nav-banner__detail {
+  font-size: 0.95rem;
+  opacity: 0.95;
+  margin-top: 0.2rem;
+}
+
 .dashboard-route-instructions {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
@@ -1201,6 +1287,19 @@
   gap: 1rem;
   transform: translateY(0);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* In-flow card below driver status (does not cover map) */
+.driver-docked-actions--below-status {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  z-index: 1;
+  margin-top: 0.75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .driver-docked-actions--hidden {

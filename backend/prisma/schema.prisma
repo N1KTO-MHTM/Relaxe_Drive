@@ -159,6 +159,7 @@ model DriverTripSummary {
   completedAt    DateTime @map("completed_at")
   distanceKm     Float    @map("distance_km")
   earningsCents  Int      @default(0) @map("earnings_cents")
+  routePolyline  String?  @map("route_polyline")
   createdAt      DateTime @default(now()) @map("created_at")
 }
 

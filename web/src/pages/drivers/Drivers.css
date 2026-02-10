@@ -313,6 +313,35 @@ tbody tr[role="button"] {
   font-size: 0.7rem;
   opacity: 0.9;
 }
+.drivers-trip-card-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.drivers-trip-btn-edit {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--rd-accent);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+.drivers-trip-btn-edit:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+.drivers-trip-btn-delete {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.drivers-trip-btn-delete:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+.rd-btn--danger {
+  background: #dc2626;
+  color: white;
+  border: none;
+}
+.rd-btn--danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
 .drivers-trip-route-link {
   color: var(--rd-accent);
   text-decoration: none;

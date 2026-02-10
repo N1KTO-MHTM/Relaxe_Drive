@@ -350,7 +350,7 @@ export class UsersService {
   async updateAvailable(userId: string, available: boolean) {
     const result = await this.prisma.user.update({
       where: { id: userId },
-      data: { available },
+      data: { available, online: available },
       select: { id: true, available: true },
     });
     this.eventEmitter.emit('planning.recalculate');
@@ -456,6 +456,64 @@ export class UsersService {
     return this.prisma.driverTripSummary.findMany({
       where: { driverId, completedAt },
       orderBy: { completedAt: 'desc' },
+    });
+  }
+
+  /** Delete a trip summary (admin/dispatcher). Recomputes driver stats. */
+  async deleteTripSummary(driverId: string, tripId: string) {
+    const trip = await this.prisma.driverTripSummary.findFirst({
+      where: { id: tripId, driverId },
+    });
+    if (!trip) throw new NotFoundException('Trip not found');
+    await this.prisma.driverTripSummary.delete({ where: { id: tripId } });
+    await this.refreshDriverStatsFromTrips(driverId);
+  }
+
+  /** Update a trip summary (admin/dispatcher). Recomputes driver stats. */
+  async updateTripSummary(
+    driverId: string,
+    tripId: string,
+    data: {
+      pickupAddress?: string;
+      dropoffAddress?: string;
+      distanceKm?: number;
+      earningsCents?: number;
+      startedAt?: string;
+      completedAt?: string;
+    },
+  ) {
+    const trip = await this.prisma.driverTripSummary.findFirst({
+      where: { id: tripId, driverId },
+    });
+    if (!trip) throw new NotFoundException('Trip not found');
+    const payload: Record<string, unknown> = {};
+    if (data.pickupAddress != null) payload.pickupAddress = data.pickupAddress;
+    if (data.dropoffAddress != null) payload.dropoffAddress = data.dropoffAddress;
+    if (data.distanceKm != null) payload.distanceKm = data.distanceKm;
+    if (data.earningsCents != null) payload.earningsCents = data.earningsCents;
+    if (data.startedAt != null) payload.startedAt = new Date(data.startedAt);
+    if (data.completedAt != null) payload.completedAt = new Date(data.completedAt);
+    await this.prisma.driverTripSummary.update({
+      where: { id: tripId },
+      data: payload,
+    });
+    await this.refreshDriverStatsFromTrips(driverId);
+    return this.prisma.driverTripSummary.findUnique({ where: { id: tripId } });
+  }
+
+  /** Recompute totalEarningsCents and totalMiles from all DriverTripSummary for a driver. */
+  private async refreshDriverStatsFromTrips(driverId: string) {
+    const trips = await this.prisma.driverTripSummary.findMany({
+      where: { driverId },
+      select: { earningsCents: true, distanceKm: true },
+    });
+    const totalEarningsCents = trips.reduce((s, t) => s + t.earningsCents, 0);
+    const totalMiles = trips.reduce((s, t) => s + t.distanceKm / 1.60934, 0);
+    const now = new Date();
+    await this.prisma.driverStats.upsert({
+      where: { driverId },
+      create: { driverId, totalEarningsCents, totalMiles, updatedAt: now },
+      update: { totalEarningsCents, totalMiles, updatedAt: now },
     });
   }
 

@@ -9,6 +9,14 @@ interface DriverTripsModalProps {
     onClose: () => void;
 }
 
+function shortAddress(addr: string | null | undefined, maxLen = 42): string {
+    if (!addr) return '';
+    const parts = addr.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length <= 1) return addr.length <= maxLen ? addr : addr.slice(0, maxLen).trim() + '…';
+    const short = [parts[0], parts[1]].join(', ');
+    return short.length <= maxLen ? short : short.slice(0, maxLen).trim() + '…';
+}
+
 export default function DriverTripsModal({ driverId, driverName, onClose }: DriverTripsModalProps) {
     const { t } = useTranslation();
     const [trips, setTrips] = useState<Order[]>([]);
@@ -75,12 +83,10 @@ export default function DriverTripsModal({ driverId, driverName, onClose }: Driv
                                             {trip.completedAt ? new Date(trip.completedAt).toLocaleDateString() + ' ' + new Date(trip.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                                         </td>
                                         <td style={{ padding: '0.5rem' }}>
-                                            <div style={{ fontWeight: 500 }}>{trip.pickupAddress}</div>
-                                            <div style={{ color: '#6b7280', fontSize: '0.8em' }}>→ {trip.dropoffAddress}</div>
+                                            <div style={{ fontWeight: 500 }}>{shortAddress(trip.pickupAddress)}</div>
+                                            <div style={{ color: '#6b7280', fontSize: '0.8em' }}>→ {shortAddress(trip.dropoffAddress)}</div>
                                         </td>
-                                        <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600, color: '#059669' }}>
-                                            ${((trip.driverFeeCents || 0) / 100).toFixed(2)}
-                                        </td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'right', color: '#9ca3af' }}>—</td>
                                         <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                                             {trip.distanceKm ? (trip.distanceKm / 1.609).toFixed(1) + ' mi' : '-'}
                                         </td>
