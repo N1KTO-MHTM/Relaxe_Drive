@@ -1,0 +1,95 @@
+.passenger-routes-page {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--rd-space-md);
+  min-height: calc(100vh - 120px);
+}
+
+@media (max-width: 768px) {
+  .passenger-routes-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(300px, 50vh);
+  }
+}
+
+.passenger-routes-panel {
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-panel);
+  border-radius: var(--rd-radius-lg);
+  border: 1px solid var(--rd-border);
+  overflow-y: auto;
+}
+
+.passenger-routes-panel h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+}
+
+.passenger-routes-search {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.passenger-routes-search .rd-input {
+  flex: 1;
+  min-width: 140px;
+}
+
+.passenger-routes-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+}
+
+.passenger-routes-list-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--rd-border);
+  font-size: 0.875rem;
+}
+
+.passenger-routes-list-item:last-child {
+  border-bottom: none;
+}
+
+.passenger-routes-route {
+  display: block;
+  color: var(--rd-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.passenger-routes-meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--rd-text-muted);
+  margin-top: 0.2rem;
+}
+
+.passenger-routes-map-wrap {
+  min-height: 400px;
+  border-radius: var(--rd-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--rd-border);
+}
+
+.passenger-routes-map {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
+
+.passenger-routes-marker-inner {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--rd-accent);
+}
+
+.passenger-routes-marker-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--rd-accent-emerald, #10b981);
+}
