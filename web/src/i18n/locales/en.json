@@ -251,6 +251,8 @@
     "navToDropoff": "To dropoff",
     "orderStatus": "Status",
     "assignDriver": "Assign to Driver",
+    "assignDriverFirst": "Assign a driver above or click Done to create another order.",
+    "assignDriverThenDone": "Assign a driver above, or click Done to close.",
     "assign": "Assign",
     "bestSuggestions": "Best driver suggestions",
     "searchDriverPlaceholder": "Phone, name, ID, or email",

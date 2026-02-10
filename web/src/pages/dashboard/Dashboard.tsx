@@ -3903,11 +3903,180 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
+                  {!effectiveIsDriver && canAssign && createdOrderIdForAssign && (() => {
+                    const orderId = createdOrderIdForAssign;
+                    const sel = orders.find((o) => o.id === orderId);
+                    if (!sel || sel.driverId || (sel.status !== 'SCHEDULED' && sel.status !== 'SEARCHING')) return null;
+                    const etas = driverEtas[orderId]?.drivers ?? [];
+                    const sortedEtas = [...etas].sort(
+                      (a, b) =>
+                        (b.onTheWayToPickup ? 1 : 0) - (a.onTheWayToPickup ? 1 : 0) ||
+                        a.etaMinutesToPickup - b.etaMinutesToPickup,
+                    );
+                    const bestFiveByEta = sortedEtas.slice(0, 5);
+                    const assignSearch = (driverAssignSearch[orderId] ?? '').trim();
+                    const searchFilteredDrivers = assignSearch
+                      ? drivers.filter((d) => driverMatchesSearch(d as User, assignSearch))
+                      : [];
+                    return (
+                      <div
+                        className="dashboard-assign-panel dashboard-form-section"
+                        style={{
+                          marginTop: '1rem',
+                          padding: '0.75rem',
+                          background: 'var(--rd-bg-panel)',
+                          border: '1px solid var(--rd-border)',
+                          borderRadius: 8,
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                          <span style={{ fontWeight: 600 }}>{t('dashboard.assignDriver')}</span>
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn--small"
+                            onClick={() => { setCreatedOrderIdForAssign(null); setShowForm(false); }}
+                          >
+                            {t('dashboard.done')}
+                          </button>
+                        </div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem', color: 'var(--rd-text-muted)' }}>
+                          {t('dashboard.driverSearchPlaceholder')}
+                        </label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <input
+                            type="text"
+                            className="rd-input"
+                            placeholder={t('dashboard.driverSearchPlaceholder')}
+                            value={driverAssignSearch[orderId] ?? ''}
+                            onChange={(e) => setDriverAssignSearch((prev) => ({ ...prev, [orderId]: e.target.value }))}
+                            style={{ flex: '1 1 200px', minWidth: 180 }}
+                            aria-label={t('dashboard.driverSearchPlaceholder')}
+                          />
+                          {etas.length === 0 && (
+                            <button
+                              type="button"
+                              className="rd-btn rd-btn--small"
+                              onClick={() => loadDriverEtasForOrder(orderId)}
+                            >
+                              {t('dashboard.loadSuggestions')}
+                            </button>
+                          )}
+                        </div>
+                        {!assignSearch && (
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--rd-text-muted)' }}>
+                            {t('dashboard.bestSuggestions')} — {t('dashboard.top5ByEta')}
+                          </div>
+                        )}
+                        {assignSearch && searchFilteredDrivers.length > 0 && (
+                          <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--rd-text-muted)' }}>
+                            {t('dashboard.searchResults')}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 200, overflowY: 'auto' }}>
+                          {assignSearch ? (
+                            searchFilteredDrivers.slice(0, 10).map((d) => (
+                              <div
+                                key={d.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '0.5rem',
+                                  padding: '0.25rem 0',
+                                  borderBottom: '1px solid var(--rd-border)',
+                                }}
+                              >
+                                <span>
+                                  {d.nickname ?? d.id}
+                                  {(d as any)?.driverId && ` (${(d as any).driverId})`}
+                                  {(d as any)?.phone && ` · ${(d as any).phone}`}
+                                  {(d as any)?.email && ` · ${(d as any).email}`}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="rd-btn rd-btn--small rd-btn-primary"
+                                  disabled={!!assigningId}
+                                  onClick={() => {
+                                    handleAssign(orderId, d.id);
+                                    setCreatedOrderIdForAssign(null);
+                                    setShowForm(false);
+                                  }}
+                                >
+                                  {assigningId === orderId ? '…' : t('dashboard.assign')}
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            bestFiveByEta.map((d) => {
+                              const dr = drivers.find((x) => x.id === d.id) as User | undefined;
+                              return (
+                                <div
+                                  key={d.id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: '0.5rem',
+                                    padding: '0.25rem 0',
+                                    borderBottom: '1px solid var(--rd-border)',
+                                  }}
+                                >
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    {d.onTheWayToPickup && (
+                                      <span className="rd-badge" style={{ fontSize: '0.7rem', background: 'var(--rd-accent-neon)', color: '#0f172a' }} title={t('dashboard.onTheWayToPickupHint')}>
+                                        {t('dashboard.onTheWayToPickup')}
+                                      </span>
+                                    )}
+                                    {dr?.nickname ?? d.nickname ?? d.id}
+                                    {(dr as any)?.driverId && ` (${(dr as any).driverId})`}
+                                    {' · '}
+                                    <strong>{d.etaMinutesToPickup} min</strong> {t('dashboard.toPickup')}
+                                    {' · '}
+                                    {d.etaMinutesPickupToDropoff} min trip
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="rd-btn rd-btn--small rd-btn-primary"
+                                    disabled={!!assigningId}
+                                    onClick={() => {
+                                      handleAssign(orderId, d.id);
+                                      setCreatedOrderIdForAssign(null);
+                                      setShowForm(false);
+                                    }}
+                                  >
+                                    {assigningId === orderId ? '…' : t('dashboard.assign')}
+                                  </button>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                        {sortedEtas.length === 0 && !assignSearch && (
+                          <p className="rd-text-muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem' }}>
+                            {t('dashboard.loadSuggestionsHint')}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {submitError && (
                     <p style={{ color: 'var(--rd-color-critical)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{submitError}</p>
                   )}
+                  {createdOrderIdForAssign && orders.find((o) => o.id === createdOrderIdForAssign && !o.driverId) && (
+                    <p className="rd-text-muted" style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                      {t('dashboard.assignDriverThenDone')}
+                    </p>
+                  )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                    <button type="submit" className="rd-btn rd-btn-primary">{t('dashboard.createOrder')}</button>
+                    <button
+                      type="submit"
+                      className="rd-btn rd-btn-primary"
+                      disabled={!!(createdOrderIdForAssign && orders.find((o) => o.id === createdOrderIdForAssign && !o.driverId))}
+                      title={createdOrderIdForAssign && orders.find((o) => o.id === createdOrderIdForAssign && !o.driverId) ? t('dashboard.assignDriverFirst') : undefined}
+                    >
+                      {t('dashboard.createOrder')}
+                    </button>
                     <button type="button" className="rd-btn" onClick={() => { setShowForm(false); setSubmitError(''); setCreatedOrderIdForAssign(null); }}>{t('dashboard.cancel')}</button>
                   </div>
                 </form>

@@ -199,6 +199,8 @@
     "car": "Coche",
     "orderStatus": "Estado",
     "assignDriver": "Asignar conductor",
+    "assignDriverFirst": "Asigne un conductor arriba o pulse Listo para crear otro pedido.",
+    "assignDriverThenDone": "Asigne un conductor arriba o pulse Listo para cerrar.",
     "bestSuggestions": "Mejores sugerencias de conductores",
     "searchResults": "Resultados de búsqueda",
     "top5ByEta": "Top 5 por tiempo de llegada",
