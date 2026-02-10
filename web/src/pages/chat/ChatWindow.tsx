@@ -44,20 +44,22 @@ export default function ChatWindow({
         background: 'transparent',
       }}
     >
-      {/* Header */}
+      {/* Header: title can shrink so Close button is never cut off on mobile */}
       <div
         style={{
-          padding: '1rem',
+          padding: '0.75rem 1rem',
           background: 'rgba(15, 23, 42, 0.8)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          gap: '0.5rem',
           boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          minWidth: 0,
         }}
       >
-        <div style={{ minWidth: 0 }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#fff' }}>
+        <div style={{ minWidth: 0, overflow: 'hidden' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {chat.driver?.nickname || chat.driver?.phone || t('chat.title')}
           </h3>
           <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
@@ -172,7 +174,7 @@ export default function ChatWindow({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* Input: row wraps on mobile so nothing is cut off */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -182,12 +184,14 @@ export default function ChatWindow({
           setSelectedFile(null);
         }}
         style={{
-          padding: '1rem',
+          padding: '0.75rem 1rem',
           background: 'rgba(15, 23, 42, 0.8)',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.5rem',
+          minWidth: 0,
+          boxSizing: 'border-box',
         }}
       >
         {selectedFile && (
@@ -202,7 +206,7 @@ export default function ChatWindow({
               borderRadius: '4px',
             }}
           >
-            <span>📎 {selectedFile.name}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>📎 {selectedFile.name}</span>
             <button
               type="button"
               onClick={() => setSelectedFile(null)}
@@ -211,13 +215,14 @@ export default function ChatWindow({
                 border: 'none',
                 color: '#ef4444',
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
               ✕
             </button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="chat-window__input-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', minWidth: 0 }}>
           <input
             type="file"
             ref={fileInputRef}
@@ -244,17 +249,20 @@ export default function ChatWindow({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             style={{
-              padding: '0.75rem',
+              padding: '0.5rem',
               background: 'rgba(255, 255, 255, 0.1)',
               color: '#fff',
               border: 'none',
               borderRadius: '50%',
               cursor: 'pointer',
-              width: '42px',
-              height: '42px',
+              width: 40,
+              height: 40,
+              minWidth: 40,
+              minHeight: 40,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
             title={t('chat.sendImageFiles')}
             aria-label={t('chat.sendImageFiles')}
@@ -265,17 +273,20 @@ export default function ChatWindow({
             type="button"
             onClick={() => cameraInputRef.current?.click()}
             style={{
-              padding: '0.75rem',
+              padding: '0.5rem',
               background: 'rgba(255, 255, 255, 0.1)',
               color: '#fff',
               border: 'none',
               borderRadius: '50%',
               cursor: 'pointer',
-              width: '42px',
-              height: '42px',
+              width: 40,
+              height: 40,
+              minWidth: 40,
+              minHeight: 40,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
             title={t('chat.takePicture')}
             aria-label={t('chat.takePicture')}
@@ -284,25 +295,29 @@ export default function ChatWindow({
           </button>
           <input
             type="text"
+            className="chat-window__text-input"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder={t('chat.startConversation')}
             style={{
-              flex: 1,
-              padding: '0.75rem',
+              flex: '1 1 120px',
+              minWidth: 0,
+              padding: '0.75rem 1rem',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               background: 'rgba(255, 255, 255, 0.05)',
               color: '#fff',
               borderRadius: '9999px',
               outline: 'none',
               fontSize: '0.95rem',
+              boxSizing: 'border-box',
             }}
           />
           <button
             type="submit"
+            className="chat-window__send-btn"
             disabled={!inputText.trim() && !selectedFile}
             style={{
-              padding: '0.75rem 1.5rem',
+              padding: '0.75rem 1.25rem',
               background: 'var(--rd-accent-neon, #38bdf8)',
               color: '#fff',
               border: 'none',
@@ -310,6 +325,7 @@ export default function ChatWindow({
               fontWeight: 600,
               cursor: inputText.trim() || selectedFile ? 'pointer' : 'default',
               opacity: inputText.trim() || selectedFile ? 1 : 0.5,
+              flexShrink: 0,
             }}
           >
             Send

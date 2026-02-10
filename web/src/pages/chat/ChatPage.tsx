@@ -170,8 +170,8 @@ export default function ChatPage() {
       : null);
 
   return (
-    <div className="chat-page">
-      <div style={{ width: 320, minWidth: 280, maxWidth: '40%', height: '100%' }}>
+    <div className={`chat-page ${effectiveChat ? 'chat-page--conversation-open' : ''}`}>
+      <div className="chat-page__list" style={{ width: 320, minWidth: 280, maxWidth: '40%', height: '100%' }}>
         <ChatList
           chats={chats}
           selectedChatId={selectedChat?.id}
@@ -182,7 +182,7 @@ export default function ChatPage() {
           currentUserRole={user?.role}
         />
       </div>
-      <div style={{ flex: 1, height: '100%', minWidth: 0 }}>
+      <div className="chat-page__window" style={{ flex: 1, height: '100%', minWidth: 0 }}>
         {effectiveChat ? (
           <ChatWindow
             chat={effectiveChat}

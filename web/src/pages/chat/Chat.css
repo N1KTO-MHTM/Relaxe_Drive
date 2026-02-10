@@ -7,17 +7,42 @@
   overflow: hidden;
 }
 
-.chat-page > div:first-child {
+.chat-page__list {
   flex-shrink: 0;
   min-width: 0;
 }
 
-.chat-page > div:last-child {
+.chat-page__window {
   flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Mobile: single column — show list OR conversation, avoid overflow and cut-off */
+@media (max-width: 768px) {
+  .chat-page {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .chat-page__list {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0;
+    flex: 0 0 auto;
+    max-height: 50vh;
+  }
+
+  .chat-page--conversation-open .chat-page__list {
+    display: none;
+  }
+
+  .chat-page__window {
+    flex: 1;
+    min-height: 50vh;
+  }
 }
 
 /* Chat window: header, scrollable messages, fixed input */
@@ -26,6 +51,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chat-window > div:nth-child(2) {
@@ -34,9 +60,20 @@
   overflow-y: auto;
 }
 
-@media (max-width: 640px) {
-  .chat-page > div:first-child {
-    width: 100%;
-    max-width: 100%;
-  }
+/* Input row: prevent overflow on narrow screens (paperclip, camera, input, send) */
+.chat-window__input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.chat-window__input-row .chat-window__text-input {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.chat-window__input-row .chat-window__send-btn {
+  flex-shrink: 0;
 }

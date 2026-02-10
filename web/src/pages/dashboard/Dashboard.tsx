@@ -2062,22 +2062,34 @@ export default function Dashboard() {
 
   async function handleReportSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!driverLocation) return;
     setReportSubmitting(true);
     try {
+      let lat = driverLocation?.lat;
+      let lng = driverLocation?.lng;
+      if (lat == null || lng == null) {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        });
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      }
       await api.post('/reports', {
-        lat: driverLocation.lat,
-        lng: driverLocation.lng,
+        lat,
+        lng,
         type: reportType,
         description: reportDescription || undefined,
       });
       setReportSuccessParams({ type: reportType });
-      // Auto-close modal and reset form
       setShowReportModal(false);
       setReportType('POLICE');
       setReportDescription('');
-    } catch {
-      toast.error(t('dashboard.reportFailed'));
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message;
+      toast.error(msg ? String(msg) : t('dashboard.reportFailed'));
     } finally {
       setReportSubmitting(false);
     }
@@ -2530,6 +2542,26 @@ export default function Dashboard() {
         {!effectiveIsDriver && <h1>{t('dashboard.title')}</h1>}
         {effectiveIsDriver ? (
           <>
+          <div className="dashboard-driver-status-top-center" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center', marginBottom: currentDriverOrder ? '0.5rem' : 0 }}>
+            <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.85rem' }}>
+              <span className="rd-ws-dot" />
+              {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
+            </span>
+            <button
+              type="button"
+              className={`rd-btn rd-btn--small ${user?.available === false ? '' : ''}`}
+              style={{
+                fontSize: '0.85rem',
+                background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
+                border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
+                color: user?.available === false ? '#0f172a' : '#fca5a5',
+              }}
+              onClick={handleToggleAvailability}
+              disabled={availabilityUpdating}
+            >
+              {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+            </button>
+          </div>
           {currentDriverOrder && (
             <div className="driver-docked-actions driver-docked-actions--below-status">
           <div className="driver-docked-actions__header">
@@ -2594,25 +2626,7 @@ export default function Dashboard() {
                 : shortAddress(currentDriverOrder.dropoffAddress)}
             </div>
           </div>
-          {currentDriverOrder.status === 'ASSIGNED' &&
-            currentDriverOrder.arrivedAtPickupAt &&
-            !currentDriverOrder.leftPickupAt && (
-              <div style={{ marginBottom: '0.5rem' }}>
-                {currentDriverOrder.manualWaitMinutes != null ? (
-                  <div className="wait-timer-badge" style={{ animation: 'none' }}>
-                    <span>⏱ {currentDriverOrder.manualWaitMinutes} min</span>
-                    <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
-                  </div>
-                ) : manualTimerStart[currentDriverOrder.id] ? (
-                  <div className="wait-timer-badge">
-                    ⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s
-                    <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}>Stop</button>
-                  </div>
-                ) : (
-                  <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%', fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
-                )}
-              </div>
-            )}
+          {/* Google Maps, Waze, Apple Maps — back in card right under address (where they were) */}
           <div className="driver-docked-actions__nav-row" role="group" aria-label={t('dashboard.navigate')}>
             <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
               <span style={{ fontSize: '1.25rem' }}>🗺️</span>
@@ -2627,8 +2641,27 @@ export default function Dashboard() {
               {t('dashboard.navigationOnApple')}
             </button>
           </div>
-          {currentDriverOrder.status === 'ASSIGNED' && (
+          {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }}>
+              {/* Timer and saved note always shown together in one row */}
+              {currentDriverOrder.manualWaitMinutes != null ? (
+                <div className="wait-timer-badge" style={{ animation: 'none', margin: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <span>⏱ {currentDriverOrder.manualWaitMinutes} min</span>
+                  {currentDriverOrder.waitNotes && (
+                    <span style={{ fontSize: '0.85rem', opacity: 0.95 }} title={currentDriverOrder.waitNotes}>
+                      📝 {currentDriverOrder.waitNotes.length > 30 ? currentDriverOrder.waitNotes.slice(0, 30) + '…' : currentDriverOrder.waitNotes}
+                    </span>
+                  )}
+                  <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none' }} onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
+                </div>
+              ) : manualTimerStart[currentDriverOrder.id] ? (
+                <div className="wait-timer-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s</span>
+                  <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none' }} onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}>Stop</button>
+                </div>
+              ) : (
+                <button type="button" className="driver-docked-actions__btn rd-btn-secondary" style={{ fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
+              )}
               <button
                 type="button"
                 className="driver-docked-actions__btn"
@@ -2648,36 +2681,14 @@ export default function Dashboard() {
               >
                 {driverEtaSendingId === currentDriverOrder.id ? '…' : t('dashboard.im5Min')}
               </button>
-              {(currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt) && (
-                <button
-                  type="button"
-                  className="driver-docked-actions__btn"
-                  style={{ background: 'rgba(255,255,255,0.12)', fontSize: '0.9rem' }}
-                  onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}
-                  title={t('dashboard.addNoteWait')}
-                >
-                  {t('dashboard.addNote')}
-                </button>
-              )}
-              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', marginLeft: 'auto' }}>
-                <span className="rd-ws-dot" />
-                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
-              </span>
               <button
                 type="button"
-                className={`rd-btn rd-btn--small ${user?.available !== false ? 'driver-docked-actions__btn' : ''}`}
-                style={{
-                  fontSize: '0.8rem',
-                  padding: '0.35rem 0.5rem',
-                  background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
-                  border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
-                  color: user?.available === false ? '#0f172a' : '#fca5a5',
-                }}
-                onClick={handleToggleAvailability}
-                disabled={availabilityUpdating}
-                aria-busy={availabilityUpdating}
+                className="driver-docked-actions__btn"
+                style={{ background: 'rgba(255,255,255,0.12)', fontSize: '0.9rem' }}
+                onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}
+                title={t('dashboard.addNoteWait')}
               >
-                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+                {t('dashboard.addNote')}
               </button>
             </div>
           )}
@@ -2740,25 +2751,8 @@ export default function Dashboard() {
             </div>
           )}
           {effectiveIsDriver && !currentDriverOrder && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--rd-bg-panel)', borderRadius: 8 }}>
-              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.8rem' }}>
-                <span className="rd-ws-dot" />
-                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
-              </span>
-              <button
-                type="button"
-                className={`rd-btn rd-btn--small ${user?.available === false ? '' : ''}`}
-                style={{
-                  fontSize: '0.85rem',
-                  background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
-                  border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
-                  color: user?.available === false ? '#0f172a' : '#fca5a5',
-                }}
-                onClick={handleToggleAvailability}
-                disabled={availabilityUpdating}
-              >
-                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
-              </button>
+            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--rd-bg-panel)', borderRadius: 8, fontSize: '0.9rem', color: 'var(--rd-text-muted)' }}>
+              {t('dashboard.noMyOrders')}
             </div>
           )}
         </>
@@ -3501,11 +3495,25 @@ export default function Dashboard() {
                 <option value="terrain">{t('dashboard.mapStyleTerrain')}</option>
                 <option value="dark">{t('dashboard.mapStyleDark')}</option>
               </select>
-              {effectiveIsDriver && (
+            </div>
+            {effectiveIsDriver && (
+              <div
+                className="dashboard-map-controls dashboard-map-controls--bottom-right"
+                style={{
+                  position: 'absolute',
+                  bottom: 8,
+                  right: 8,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: 6,
+                  zIndex: 1000,
+                  pointerEvents: 'auto',
+                }}
+              >
                 <button
                   type="button"
                   onClick={() => setShowReportModal(true)}
-                  disabled={!driverLocation}
                   aria-label={t('dashboard.addReport')}
                   title={t('dashboard.addReport')}
                   style={{
@@ -3516,12 +3524,11 @@ export default function Dashboard() {
                     color: '#1e293b',
                     border: 'none',
                     boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
-                    cursor: driverLocation ? 'pointer' : 'not-allowed',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 20,
-                    opacity: driverLocation ? 1 : 0.6,
                   }}
                 >
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -3530,8 +3537,8 @@ export default function Dashboard() {
                     <line x1="8" y1="12" x2="16" y2="12" />
                   </svg>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
             <OrdersMap
               drivers={isDriver ? [] : driversForMap}
               showDriverMarkers={canAssign}
