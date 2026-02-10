@@ -120,13 +120,32 @@ export class OrdersController {
       etaMinutesToPickup: number;
       etaMinutesPickupToDropoff: number;
       etaMinutesTotal: number;
+      onTheWayToPickup?: boolean;
     }> = [];
     if (!pickupCoords || !dropoffCoords) {
       return { drivers: results, pickupCoords, dropoffCoords };
     }
+    const activeTargets = await this.ordersService.findActiveTripTargetsByDriver();
+    const driverTargetAddress = new Map(activeTargets.map((t) => [t.driverId, t.targetAddress]));
+    const NEAR_METERS = 3000; // consider "on the way" if current trip destination is within 3 km of new order pickup
+
     for (const d of driverList) {
       const toPickup = await this.geo.getEta({ lat: d.lat!, lng: d.lng! }, pickupCoords);
       const pickupToDrop = await this.geo.getEta(pickupCoords, dropoffCoords);
+      let onTheWayToPickup = false;
+      const targetAddress = driverTargetAddress.get(d.id);
+      if (targetAddress && targetAddress.trim()) {
+        const targetCoords = await this.geo.geocode(targetAddress.trim());
+        if (targetCoords) {
+          const distM = this.geo.distanceMeters(
+            targetCoords.lat,
+            targetCoords.lng,
+            pickupCoords.lat,
+            pickupCoords.lng,
+          );
+          if (distM <= NEAR_METERS) onTheWayToPickup = true;
+        }
+      }
       results.push({
         id: d.id,
         nickname: d.nickname,
@@ -136,9 +155,14 @@ export class OrdersController {
         etaMinutesToPickup: Math.round(toPickup.minutes * 10) / 10,
         etaMinutesPickupToDropoff: Math.round(pickupToDrop.minutes * 10) / 10,
         etaMinutesTotal: Math.round((toPickup.minutes + pickupToDrop.minutes) * 10) / 10,
+        onTheWayToPickup: onTheWayToPickup || undefined,
       });
     }
-    results.sort((a, b) => a.etaMinutesToPickup - b.etaMinutesToPickup);
+    results.sort(
+      (a, b) =>
+        (b.onTheWayToPickup ? 1 : 0) - (a.onTheWayToPickup ? 1 : 0) ||
+        a.etaMinutesToPickup - b.etaMinutesToPickup,
+    );
     return { drivers: results, pickupCoords, dropoffCoords };
   }
 
@@ -365,6 +389,31 @@ export class OrdersController {
     });
     this.planningService.recalculateAndEmit().catch(() => {});
     return this.transformOrder(created);
+  }
+
+  @Patch(':id/driver-eta')
+  @UseGuards(RolesGuard)
+  @Roles('DRIVER')
+  async reportDriverEta(
+    @Param('id') orderId: string,
+    @Body() body: { minutes: number },
+    @Request() req: { user: { id: string } },
+  ) {
+    const order = await this.ordersService.findById(orderId);
+    if (!order || order.driverId !== req.user.id) {
+      throw new ForbiddenException('You can only report ETA for your assigned orders');
+    }
+    const minutes = Math.max(0, Math.min(60, Math.round(Number(body?.minutes) || 5)));
+    const driver = await this.usersService.findById(req.user.id);
+    const driverName = driver?.nickname ?? 'Driver';
+    this.ws.broadcastEta({ orderId, driverId: req.user.id, driverName, minutes });
+    this.alerts.emitAlert('driver_eta', {
+      orderId,
+      driverId: req.user.id,
+      driverName,
+      minutes,
+    });
+    return { ok: true, minutes };
   }
 
   @Patch(':id/destination')

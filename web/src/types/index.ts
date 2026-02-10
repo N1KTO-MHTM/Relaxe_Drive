@@ -72,6 +72,8 @@ export interface DriverEta {
   etaMinutesToPickup: number;
   etaMinutesPickupToDropoff: number;
   etaMinutesTotal: number;
+  /** Driver is currently on a trip whose destination is near this order's pickup. */
+  onTheWayToPickup?: boolean;
 }
 
 export type OrderStatus =

@@ -52,3 +52,19 @@ jobs:
         with:
           name: web-dist
           path: web/dist
+
+  outdated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install all
+        run: npm ci && npm ci --prefix web && npm ci --prefix backend
+      - name: npm outdated (informational)
+        run: |
+          echo "=== Root ===" && (npm outdated || true)
+          echo "=== Web ===" && (npm outdated --prefix web || true)
+          echo "=== Backend ===" && (npm outdated --prefix backend || true)

@@ -97,6 +97,23 @@ export class OrdersService {
     });
   }
 
+  /** For driver-etas: drivers currently on a trip and their target (pickup or dropoff) address. */
+  async findActiveTripTargetsByDriver(): Promise<Array<{ driverId: string; targetAddress: string }>> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        status: { in: ['ASSIGNED', 'IN_PROGRESS'] },
+        driverId: { not: null },
+      },
+      select: { driverId: true, status: true, pickupAddress: true, dropoffAddress: true },
+    });
+    return orders
+      .filter((o) => o.driverId != null)
+      .map((o) => ({
+        driverId: o.driverId!,
+        targetAddress: o.status === 'ASSIGNED' ? o.pickupAddress : (o.dropoffAddress ?? o.pickupAddress),
+      }));
+  }
+
   async findConflicts(pickupAt: Date, bufferMinutes: number, excludeOrderId?: string) {
     const start = new Date(pickupAt.getTime() - bufferMinutes * 60 * 1000);
     const end = new Date(pickupAt.getTime() + bufferMinutes * 60 * 1000);

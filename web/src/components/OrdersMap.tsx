@@ -23,6 +23,8 @@ interface OrdersMapProps {
   currentUserLocation?: { lat: number; lng: number } | null;
   onMapClick?: (lat: number, lng: number) => void;
   pickPoint?: { lat: number; lng: number } | null;
+  /** When set, show this address in the pick-point marker popup instead of "Selected". */
+  pickPointLabel?: string | null;
   navMode?: boolean;
   centerTrigger?: number;
   reports?: DriverReportMap[];
@@ -300,6 +302,7 @@ export default function OrdersMap({
   currentUserLocation,
   onMapClick,
   pickPoint,
+  pickPointLabel,
   navMode = false,
   centerTrigger = 0,
   reports = [],
@@ -483,7 +486,8 @@ export default function OrdersMap({
     }
     if (pickPoint && Number.isFinite(pickPoint.lat) && Number.isFinite(pickPoint.lng)) {
       const m = L.marker([pickPoint.lat, pickPoint.lng]).addTo(map);
-      m.bindPopup('Selected', { closeOnClick: false });
+      const label = (pickPointLabel ?? '').trim() || 'Selected';
+      m.bindPopup(escapeHtml(label), { closeOnClick: false });
       pickPointMarkerRef.current = m;
     }
     return () => {
@@ -492,7 +496,7 @@ export default function OrdersMap({
         pickPointMarkerRef.current = null;
       }
     };
-  }, [pickPoint?.lat, pickPoint?.lng]);
+  }, [pickPoint?.lat, pickPoint?.lng, pickPointLabel]);
 
   // Create or remove driver cluster when showDriverMarkers toggles
   useEffect(() => {
@@ -556,10 +560,11 @@ export default function OrdersMap({
         const prev = marker.getLatLng();
         const distM = Math.sqrt((lat - prev.lat) ** 2 + (lng - prev.lng) ** 2) * 111320;
 
-        // Update icon (for status/color/rotation changes)
-        // Note: L.Marker setIcon might flicker if not careful, but divIcon with inner HTML transition should be okay
+        // Update icon when status/color (busy=red, available=green, offline=gray) or label changes
         const currentIcon = marker.getIcon() as L.DivIcon;
-        if (currentIcon.options.html !== icon.options.html) {
+        const currentHtml = typeof currentIcon.options.html === 'string' ? currentIcon.options.html : '';
+        const newHtml = typeof icon.options.html === 'string' ? icon.options.html : '';
+        if (currentHtml !== newHtml) {
           marker.setIcon(icon);
         }
 
@@ -685,12 +690,11 @@ export default function OrdersMap({
         });
         if (onShowDriverRoute) {
           newMarker.on('popupopen', () => {
-            const content = newMarker.getPopup()?.getContent();
-            if (content && typeof content !== 'string') {
-              const btn = (content as HTMLElement).querySelector?.('[data-action="show-driver-route"]');
-              if (btn) {
-                (btn as HTMLElement).onclick = () => onShowDriverRoute(driver);
-              }
+            const popup = newMarker.getPopup();
+            const el = (popup as L.Popup & { getElement?: () => HTMLElement }).getElement?.();
+            if (el) {
+              const btn = el.querySelector('[data-action="show-driver-route"]');
+              if (btn) (btn as HTMLElement).onclick = () => onShowDriverRoute(driver);
             }
           });
         }

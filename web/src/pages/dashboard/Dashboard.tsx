@@ -103,7 +103,11 @@ export default function Dashboard() {
 
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectConfirmOrderId, setRejectConfirmOrderId] = useState<string | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [bulkCancelling, setBulkCancelling] = useState(false);
   const [availabilityUpdating, setAvailabilityUpdating] = useState(false);
+  const [driverEtaSendingId, setDriverEtaSendingId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [routeData, setRouteData] = useState<OrderRouteData | null>(null);
   const [driverEtas, setDriverEtas] = useState<Record<string, { drivers: DriverEta[] }>>({});
@@ -120,6 +124,8 @@ export default function Dashboard() {
     null,
   );
   const [pickPoint, setPickPoint] = useState<{ lat: number; lng: number } | null>(null);
+  /** Address from last reverse-geocode (for "Pick on map") so the map marker shows address, not coordinates. */
+  const [pickPointAddress, setPickPointAddress] = useState<string | null>(null);
   /** Optional scheduled pickup date/time (empty = use "now" on backend). Format: datetime-local value (YYYY-MM-DDTHH:mm). */
   const [pickupAtForm, setPickupAtForm] = useState('');
   const [pickupType, setPickupType] = useState('');
@@ -146,6 +152,7 @@ export default function Dashboard() {
   void setAddressesTabPickup; void setAddressesTabDropoff; void setAddressesTabPhone;
   const [orderStatusFilter] = useState('');
   const [findByIdQuery] = useState('');
+  const [orderQuickFilter, setOrderQuickFilter] = useState<'all' | 'no_driver' | 'pickup_1h' | 'at_risk'>('all');
 
   const [isAutoOrder, setIsAutoOrder] = useState(false);
   const [dropoffImageUrl, setDropoffImageUrl] = useState('');
@@ -219,7 +226,6 @@ export default function Dashboard() {
   const [formPreviewRouteData, setFormPreviewRouteData] = useState<OrderRouteData | null>(null);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
   const [reportsRefreshTrigger, setReportsRefreshTrigger] = useState(0);
-  const [reportTicks, setReportTicks] = useState(0);
   const [driverAssignSearch, setDriverAssignSearch] = useState<Record<string, string>>({});
   const [_driverAssignByIdInput, _setDriverAssignByIdInput] = useState<Record<string, string>>({});
   const [selectedDriverDetail, setSelectedDriverDetail] = useState<{
@@ -267,8 +273,12 @@ export default function Dashboard() {
   const canCreateOrder =
     (isAdmin || isDispatcher || user?.role === 'CLIENT') && !effectiveIsDriver;
 
+  // Update "now" once per second when tab visible (for wait/ETA timers). Was 100ms and caused heavy lag.
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 100); // live clock (10×/s for smooth timers)
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible')
+        setNow(Date.now());
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -377,9 +387,75 @@ export default function Dashboard() {
         return false;
       });
     }
+    // Quick filters (dispatcher only)
+    if (!effectiveIsDriver && orderTab === 'active') {
+      if (orderQuickFilter === 'no_driver') out = out.filter((o) => !o.driverId);
+      else if (orderQuickFilter === 'pickup_1h') {
+        const now = Date.now();
+        const in1h = now + 60 * 60 * 1000;
+        out = out.filter((o) => {
+          const t = new Date(o.pickupAt).getTime();
+          return t >= now && t <= in1h;
+        });
+      } else if (orderQuickFilter === 'at_risk') {
+        out = out.filter((o) => o.riskLevel === 'HIGH' || o.riskLevel === 'MEDIUM');
+      }
+    }
     // Default sort by pickupAt (newest first)
     return out.sort((a, b) => new Date(b.pickupAt).getTime() - new Date(a.pickupAt).getTime());
-  }, [orders, completedOrders, orderTab, orderStatusFilter, findByIdQuery, effectiveIsDriver, user?.id]);
+  }, [orders, completedOrders, orderTab, orderStatusFilter, findByIdQuery, effectiveIsDriver, user?.id, orderQuickFilter]);
+
+  /** Driver: trips today = active (ASSIGNED/IN_PROGRESS) + completed today count. */
+  const driverTripsTodayActive = useMemo(
+    () =>
+      effectiveIsDriver && user?.id
+        ? orders.filter(
+            (o) =>
+              o.driverId === user.id &&
+              (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'),
+          ).length
+        : 0,
+    [effectiveIsDriver, user?.id, orders],
+  );
+  const [driverCompletedTodayCount, setDriverCompletedTodayCount] = useState<number | null>(null);
+  const [driverTodayOrderList, setDriverTodayOrderList] = useState<Order[]>([]);
+  useEffect(() => {
+    if (!effectiveIsDriver || !user?.id) return;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    api
+      .get<Order[]>(`/orders?from=${start.toISOString()}&to=${end.toISOString()}`)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        const mine = list.filter((o) => o.driverId === user?.id);
+        setDriverCompletedTodayCount(mine.filter((o) => o.status === 'COMPLETED').length);
+        setDriverTodayOrderList(mine);
+      })
+      .catch(() => {
+        setDriverCompletedTodayCount(null);
+        setDriverTodayOrderList([]);
+      });
+  }, [effectiveIsDriver, user?.id, orders.length]);
+
+  const driverTripsTodayTotal =
+    driverTripsTodayActive + (driverCompletedTodayCount ?? 0);
+
+  /** Driver: full list of today's trips (active + completed) for "Мои поездки на сегодня" block, sorted by pickupAt. */
+  const driverTripsTodayList = useMemo(() => {
+    if (!effectiveIsDriver || !user?.id) return [];
+    const active = orders.filter(
+      (o) =>
+        o.driverId === user.id &&
+        (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'),
+    );
+    const completed = driverTodayOrderList.filter((o) => o.status === 'COMPLETED');
+    const combined = [...active, ...completed];
+    return combined.sort(
+      (a, b) => new Date(a.pickupAt).getTime() - new Date(b.pickupAt).getTime(),
+    );
+  }, [effectiveIsDriver, user?.id, orders, driverTodayOrderList]);
 
   /** Driver Active tab: show current offer at top of My orders (same style as image 1) then assigned orders. */
   const driverOrderListWithOffer = useMemo(() => {
@@ -720,24 +796,7 @@ export default function Dashboard() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
-  // Dispatcher: Uber-style — push via WebSocket (drivers); poll as fallback when tab visible (8s)
-  useEffect(() => {
-    if (!canAssign || typeof document === 'undefined') return;
-    const FALLBACK_POLL_MS = 8000;
-    const t = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        api
-          .get<User[]>('/users')
-          .then((data) => {
-            setDrivers(Array.isArray(data) ? data.filter((u) => u.role === 'DRIVER') : []);
-          })
-          .catch(() => {});
-      }
-    }, FALLBACK_POLL_MS);
-    return () => clearInterval(t);
-  }, [canAssign]);
-
-  // Driver: Uber-style — push via WebSocket (orders, user.updated); poll as fallback when tab visible (8s)
+  // Driver: fallback poll orders when tab visible (8s). Dispatcher drivers poll is below (with driversRefreshTrigger).
   useEffect(() => {
     if (!effectiveIsDriver || !user?.id || typeof document === 'undefined') return;
     const FALLBACK_POLL_MS = 8000;
@@ -787,7 +846,12 @@ export default function Dashboard() {
       }
     }
     lastDriverLocationRef.current = { lat, lng, ts: now };
-    setDriverLocation({ lat, lng });
+    // Throttle state updates: max once per 2s or when moved >20m to reduce lag from GPS ticks
+    const shouldUpdate =
+      !prev ||
+      now - prev.ts >= 2000 ||
+      haversineM(prev.lat, prev.lng, lat, lng) > 20;
+    if (shouldUpdate) setDriverLocation({ lat, lng });
   }
 
   useEffect(() => {
@@ -958,6 +1022,29 @@ export default function Dashboard() {
     };
   }, [socket, user?.id, user?.role]);
 
+  // When tab becomes visible, refetch so data is fresh (avoids "не обновляется" after switching tabs)
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        refreshAllRef.current();
+      }, 300);
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // When form closes, clear pick-point label so next time we don't show stale address on map
+  useEffect(() => {
+    if (!showForm) setPickPointAddress(null);
+  }, [showForm]);
+
   // When we're in "new order + assign" flow and the created order gets a driver (e.g. assigned), close the form
   useEffect(() => {
     if (!createdOrderIdForAssign) return;
@@ -1127,9 +1214,18 @@ export default function Dashboard() {
         type?: string;
         orderId?: string;
         driverId?: string;
+        driverName?: string;
+        minutes?: number;
         pickupAddress?: string;
         pickupAt?: string;
       };
+      // Driver ETA: show toast to dispatcher when driver reports "I'm N min"
+      if (d?.type === 'driver_eta' && (user.role === 'ADMIN' || user.role === 'DISPATCHER')) {
+        const name = d.driverName ?? 'Driver';
+        const min = typeof d.minutes === 'number' ? d.minutes : 5;
+        toast.success(t('dashboard.driverEtaReported', { name, min }) || `${name}: ~${min} min`);
+        return;
+      }
       if (!d?.type || !document.hidden) return;
       const pickup = d.pickupAddress ?? '';
       if (user.role === 'DRIVER' && d.type === 'order.assigned' && d.driverId === user.id) {
@@ -1193,22 +1289,6 @@ export default function Dashboard() {
     const interval = setInterval(load, 8000); // Uber-style fallback poll (8s) when visible
     return () => clearInterval(interval);
   }, [canAssign]);
-
-  // 1s tick only when tab visible (timers for wait/ETA) — pause when hidden to save memory
-  useEffect(() => {
-    const hasInProgress = orders.some((o) => o.status === 'IN_PROGRESS' && o.startedAt);
-    const hasWaitTimer = orders.some(
-      (o) =>
-        (o.status === 'ASSIGNED' && o.arrivedAtPickupAt && !o.leftPickupAt) ||
-        (o.status === 'IN_PROGRESS' && o.arrivedAtMiddleAt && !o.leftMiddleAt),
-    );
-    if (!hasInProgress && !hasWaitTimer) return;
-    const t = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible')
-        setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(t);
-  }, [orders]);
 
   useEffect(() => {
     if (!confirmEndTripOrderId) return;
@@ -1524,23 +1604,16 @@ export default function Dashboard() {
     const interval = setInterval(load, 8000); // Uber-style fallback poll (8s)
     return () => clearInterval(interval);
   }, [canAssign, driversRefreshTrigger]);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'visible')
-        setReportTicks((n) => n + 1);
-    }, 10_000);
-    return () => clearInterval(interval);
-  }, []);
 
-  /** Reports visible on map: only from the last 5 minutes (then removed). */
+  /** Reports visible on map: only from the last 5 minutes. Use now so one 1s tick drives refresh. */
   const reportsOnMap = useMemo(() => {
-    const now = Date.now();
+    const t = now;
     const maxAgeMs = 5 * 60 * 1000;
     return reports.filter((r) => {
-      const created = r.createdAt ? new Date(r.createdAt).getTime() : now;
-      return now - created < maxAgeMs;
+      const created = r.createdAt ? new Date(r.createdAt).getTime() : t;
+      return t - created < maxAgeMs;
     });
-  }, [reports, reportTicks]);
+  }, [reports, now]);
 
   const MOVE_AWAY_METERS = 80;
   useEffect(() => {
@@ -1618,13 +1691,18 @@ export default function Dashboard() {
   }
 
   // Live geo: driver location sent to server so dispatcher sees it. Uses watchPosition so updates
-  // can continue when tab is in background (e.g. browser minimized on phone). Stops only when driver taps "Go offline".
+  // can continue when tab is in background. Dependency only on "has active order" to avoid re-running on every orders update.
+  const hasDriverActiveOrder = Boolean(
+    user?.role === 'DRIVER' &&
+      user?.id &&
+      orders.some(
+        (o) =>
+          (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS') && o.driverId === user?.id,
+      ),
+  );
   useEffect(() => {
     if (user?.role !== 'DRIVER' || !navigator.geolocation || user?.available === false) return;
-    const hasActiveOrder = orders.some(
-      (o) => o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS',
-    );
-    const sendIntervalMs = hasActiveOrder ? 4000 : 10000; // Uber-style: ~4s on trip, 10s when free
+    const sendIntervalMs = hasDriverActiveOrder ? 4000 : 10000; // ~4s on trip, 10s when free
     let lastSentTs = 0;
     const geoOptions: PositionOptions = {
       enableHighAccuracy: true,
@@ -1673,7 +1751,7 @@ export default function Dashboard() {
       navigator.geolocation.clearWatch(watchId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [user?.id, user?.role, user?.available, orders.map((o) => o.status).join(',')]);
+  }, [user?.id, user?.role, user?.available, hasDriverActiveOrder]);
 
   // Compass/device orientation: rotate driver arrow when phone rotates (e.g. when stationary)
   useEffect(() => {
@@ -1737,6 +1815,17 @@ export default function Dashboard() {
       toast.error(t('toast.assignFailed'));
     } finally {
       setAssigningId(null);
+    }
+  }
+
+  /** When dispatcher clicks "Show route" on a driver popup: select that driver's active order so the map shows the route. */
+  function handleShowDriverRoute(driver: DriverForMap) {
+    const order = orders.find(
+      (o) => o.driverId === driver.id && (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS'),
+    );
+    if (order) {
+      setSelectedOrderId(order.id);
+      setMapCenterTrigger((n) => n + 1);
     }
   }
 
@@ -1849,6 +1938,21 @@ export default function Dashboard() {
     }
     try {
       await api.patch(`/orders/${orderId}/status`, body);
+      // Optimistic update: apply status change to local orders so status/colors update immediately
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id !== orderId
+            ? o
+            : {
+                ...o,
+                status,
+                ...(status === 'IN_PROGRESS' && o.status === 'ASSIGNED'
+                  ? { startedAt: new Date().toISOString() }
+                  : {}),
+                ...(status === 'COMPLETED' ? { completedAt: new Date().toISOString() } : {}),
+              },
+        ),
+      );
       if (!silent)
         toast.success(status === 'COMPLETED' ? t('toast.orderCompleted') : t('toast.rideStarted'));
       if (status === 'COMPLETED' && order && !silent) {
@@ -2180,18 +2284,26 @@ export default function Dashboard() {
   }
 
   async function setAddressFromCoords(lat: number, lng: number, which: 'pickup' | 'dropoff') {
-    const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     setReverseGeocodeLoading(true);
     try {
       const res = await api.get<{ address?: string | null }>(`/geo/reverse?lat=${lat}&lng=${lng}`);
       const addr = (res && typeof res === 'object' && res.address != null ? String(res.address) : '').trim();
-      const value = addr || fallback;
-      if (which === 'pickup') setPickupAddress(value);
-      else setDropoffAddress(value);
+      if (addr) {
+        if (which === 'pickup') setPickupAddress(addr);
+        else setDropoffAddress(addr);
+        setPickPointAddress(addr);
+      } else {
+        if (which === 'pickup') setPickupAddress('');
+        else setDropoffAddress('');
+        setPickPointAddress(null);
+        toast.error(t('dashboard.addressNotDetected') || 'Address not detected - please type the address');
+      }
       setPickPoint({ lat, lng });
     } catch {
-      if (which === 'pickup') setPickupAddress(fallback);
-      else setDropoffAddress(fallback);
+      if (which === 'pickup') setPickupAddress('');
+      else setDropoffAddress('');
+      setPickPointAddress(null);
+      toast.error(t('dashboard.addressNotDetected') || 'Address not detected - please type the address');
       setPickPoint({ lat, lng });
     } finally {
       setReverseGeocodeLoading(false);
@@ -2467,6 +2579,29 @@ export default function Dashboard() {
               {t('dashboard.navigationOnApple')}
             </button>
           </div>
+          {currentDriverOrder.status === 'ASSIGNED' && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <button
+                type="button"
+                className="driver-docked-actions__btn"
+                style={{ background: 'rgba(255,255,255,0.15)', fontSize: '0.9rem' }}
+                disabled={driverEtaSendingId === currentDriverOrder.id}
+                onClick={async () => {
+                  setDriverEtaSendingId(currentDriverOrder.id);
+                  try {
+                    await api.patch(`/orders/${currentDriverOrder.id}/driver-eta`, { minutes: 5 });
+                    toast.success(t('dashboard.driverEtaSent'));
+                  } catch {
+                    toast.error(t('common.error'));
+                  } finally {
+                    setDriverEtaSendingId(null);
+                  }
+                }}
+              >
+                {driverEtaSendingId === currentDriverOrder.id ? '…' : t('dashboard.im5Min')}
+              </button>
+            </div>
+          )}
           <div className="driver-docked-actions__grid">
             {currentDriverOrder.status === 'ASSIGNED' &&
               (currentDriverOrder.arrivedAtPickupAt ? (
@@ -2875,6 +3010,178 @@ export default function Dashboard() {
       <div
         className={`dashboard-page__grid ${canCreateOrder ? 'dashboard-page__grid--with-create-order' : ''}`}
       >
+        {canAssign && !effectiveIsDriver && orderTab === 'active' && (
+          <div
+            className="dashboard-quick-filters"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.35rem',
+              padding: '0.5rem 0.75rem',
+              background: 'var(--rd-bg-panel)',
+              borderBottom: '1px solid var(--rd-border)',
+              alignItems: 'center',
+            }}
+          >
+            <span style={{ fontSize: '0.85rem', marginRight: '0.25rem' }}>Filter:</span>
+            {(['all', 'no_driver', 'pickup_1h', 'at_risk'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`rd-btn rd-btn--small ${orderQuickFilter === key ? 'rd-btn-primary' : ''}`}
+                onClick={() => setOrderQuickFilter(key)}
+              >
+                {key === 'all' ? t('dashboard.filterAll') : key === 'no_driver' ? t('dashboard.filterNoDriver') : key === 'pickup_1h' ? t('dashboard.filterPickup1h') : t('dashboard.filterAtRisk')}
+              </button>
+            ))}
+          </div>
+        )}
+        {canAssign && !effectiveIsDriver && orderTab === 'active' && (
+          <div
+            className="dashboard-bulk-actions"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              alignItems: 'center',
+              padding: '0.5rem 0.75rem',
+              background: 'var(--rd-bg-panel)',
+              borderBottom: '1px solid var(--rd-border)',
+            }}
+          >
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}>
+              <input
+                type="checkbox"
+                checked={filteredOrders.length > 0 && filteredOrders.every((o) => selectedOrderIds.has(o.id))}
+                onChange={(e) => {
+                  if (e.target.checked) setSelectedOrderIds(new Set(filteredOrders.map((o) => o.id)));
+                  else setSelectedOrderIds(new Set());
+                }}
+                aria-label={t('dashboard.bulkSelectOrders')}
+              />
+              {t('dashboard.bulkSelectOrders')}
+            </label>
+            <span className="rd-text-muted" style={{ fontSize: '0.85rem' }}>
+              {selectedOrderIds.size > 0 ? t('dashboard.selectedCount', { count: selectedOrderIds.size }) : ''}
+            </span>
+            {selectedOrderIds.size > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="rd-btn rd-btn--small rd-btn-primary"
+                  disabled={bulkAssigning || bulkCancelling}
+                  onClick={async () => {
+                    const ids = Array.from(selectedOrderIds);
+                    const assignable = ids.filter((id) => {
+                      const o = orders.find((x) => x.id === id);
+                      return o && !o.driverId && (o.status === 'SCHEDULED' || o.status === 'SEARCHING');
+                    });
+                    if (assignable.length === 0) {
+                      toast.error(t('dashboard.filterNoDriver') + ' — ' + t('dashboard.bulkSelectOrders'));
+                      return;
+                    }
+                    setBulkAssigning(true);
+                    const driverId = await new Promise<string | null>((resolve) => {
+                      const search = window.prompt(t('dashboard.driverSearchPlaceholder') + ' (ID or phone)');
+                      if (!search?.trim()) { resolve(null); return; }
+                      const match = drivers.find((d) => driverMatchesSearch(d as User, search.trim()!));
+                      resolve(match?.id ?? null);
+                    });
+                    if (driverId) {
+                      for (const id of assignable) {
+                        try {
+                          await api.patch(`/orders/${id}/assign`, { driverId });
+                        } catch {
+                          toast.error(t('common.error'));
+                        }
+                      }
+                      setSelectedOrderIds(new Set());
+                      toast.success(t('dashboard.assign'));
+                    }
+                    setBulkAssigning(false);
+                  }}
+                >
+                  {bulkAssigning ? '…' : t('dashboard.bulkAssign')}
+                </button>
+                <button
+                  type="button"
+                  className="rd-btn rd-btn--small"
+                  style={{ borderColor: 'var(--rd-color-critical)' }}
+                  disabled={bulkAssigning || bulkCancelling}
+                  onClick={async () => {
+                    if (!window.confirm(t('dashboard.confirmDeleteOrderMessage'))) return;
+                    setBulkCancelling(true);
+                    for (const id of Array.from(selectedOrderIds)) {
+                      try {
+                        await api.patch(`/orders/${id}/status`, { status: 'CANCELLED' });
+                      } catch {}
+                    }
+                    setSelectedOrderIds(new Set());
+                    toast.success(t('dashboard.bulkCancel'));
+                    setBulkCancelling(false);
+                  }}
+                >
+                  {bulkCancelling ? '…' : t('dashboard.bulkCancel')}
+                </button>
+                <button
+                  type="button"
+                  className="rd-btn rd-btn--small"
+                  onClick={() => setSelectedOrderIds(new Set())}
+                >
+                  {t('dashboard.clearSelection')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {canAssign && !effectiveIsDriver && orderTab === 'active' && filteredOrders.length > 0 && (
+          <div
+            style={{
+              maxHeight: 140,
+              overflowY: 'auto',
+              padding: '0.35rem 0.75rem',
+              background: 'var(--rd-bg-panel)',
+              borderBottom: '1px solid var(--rd-border)',
+              fontSize: '0.8rem',
+            }}
+          >
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {filteredOrders.slice(0, 50).map((o) => (
+                <li
+                  key={o.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.25rem 0',
+                    borderBottom: '1px solid var(--rd-border)',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedOrderIds.has(o.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedOrderIds((prev) => new Set([...prev, o.id]));
+                      else setSelectedOrderIds((prev) => { const s = new Set(prev); s.delete(o.id); return s; });
+                    }}
+                    aria-label={o.id}
+                  />
+                  <span style={{ minWidth: 48 }}>{new Date(o.pickupAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(o.pickupAddress || '').split(',')[0].trim() || '—'}</span>
+                  <span style={{ color: 'var(--rd-text-muted)' }}>{o.driverId ? drivers.find((d) => d.id === o.driverId)?.nickname ?? '—' : '—'}</span>
+                  <button
+                    type="button"
+                    className="rd-btn rd-btn--small"
+                    style={{ flexShrink: 0 }}
+                    onClick={() => setSelectedOrderId(o.id)}
+                  >
+                    {t('dashboard.showOnMap')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div
           className="dashboard-page__map rd-map-container"
           style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 320 }}
@@ -2915,7 +3222,11 @@ export default function Dashboard() {
             const sel = orders.find((o) => o.id === orderId);
             if (!sel || sel.driverId || (sel.status !== 'SCHEDULED' && sel.status !== 'SEARCHING')) return null;
             const etas = driverEtas[orderId]?.drivers ?? [];
-            const sortedEtas = [...etas].sort((a, b) => a.etaMinutesToPickup - b.etaMinutesToPickup);
+            const sortedEtas = [...etas].sort(
+              (a, b) =>
+                (b.onTheWayToPickup ? 1 : 0) - (a.onTheWayToPickup ? 1 : 0) ||
+                a.etaMinutesToPickup - b.etaMinutesToPickup,
+            );
             const bestFiveByEta = sortedEtas.slice(0, 5);
             const assignSearch = (driverAssignSearch[orderId] ?? '').trim();
             const searchFilteredDrivers = assignSearch
@@ -2977,7 +3288,12 @@ export default function Dashboard() {
                           borderBottom: '1px solid var(--rd-border)',
                         }}
                       >
-                        <span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          {d.onTheWayToPickup && (
+                            <span className="rd-badge" style={{ fontSize: '0.7rem', background: 'var(--rd-accent-neon)', color: '#0f172a' }} title={t('dashboard.onTheWayToPickupHint')}>
+                              {t('dashboard.onTheWayToPickup')}
+                            </span>
+                          )}
                           {dr?.nickname ?? d.nickname ?? d.id}
                           {(dr as any)?.driverId && ` (${(dr as any).driverId})`}
                           {' · '}
@@ -3116,6 +3432,7 @@ export default function Dashboard() {
             <OrdersMap
               drivers={isDriver ? [] : driversForMap}
               showDriverMarkers={canAssign}
+              onShowDriverRoute={canAssign ? handleShowDriverRoute : undefined}
               routeData={routeData}
               formPreviewRouteData={canCreateOrder && showForm ? formPreviewRouteData : undefined}
               routePickupAddress={
@@ -3143,6 +3460,7 @@ export default function Dashboard() {
                   : undefined
               }
               pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
+              pickPointLabel={canCreateOrder && showForm && pickPoint ? pickPointAddress : undefined}
               navMode={isDriver && !!routeData && !!driverLocation}
               centerTrigger={mapCenterTrigger}
               reports={reportsOnMap}
@@ -3156,7 +3474,7 @@ export default function Dashboard() {
               futureOrderPickups={
                 canAssign
                   ? futureOrderCoords
-                      .filter((f) => f.orderId !== selectedOrderId)
+                      .filter((f) => f.orderId !== selectedOrderId && (orderQuickFilter === 'all' || filteredOrders.some((o) => o.id === f.orderId)))
                       .map((f) => ({
                         orderId: f.orderId,
                         lat: f.pickupLat,
@@ -3474,6 +3792,57 @@ export default function Dashboard() {
           >
             <div className="rd-panel-header">
               <h2>{t('dashboard.myOrders')}</h2>
+            </div>
+            <div
+              className="dashboard-trips-today-block"
+              style={{
+                padding: '0.5rem 0.75rem',
+                marginBottom: '0.75rem',
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginBottom: driverTripsTodayList.length > 0 ? '0.5rem' : 0 }}>
+                <span style={{ fontWeight: 600 }}>{t('dashboard.tripsToday')}</span>
+                <span style={{ color: 'var(--rd-accent-neon)' }}>{driverTripsTodayTotal}</span>
+                {driverCompletedTodayCount != null && driverCompletedTodayCount > 0 && (
+                  <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+                    ({t('dashboard.tripsTodayCompleted', { count: driverCompletedTodayCount })})
+                  </span>
+                )}
+              </div>
+              {driverTripsTodayList.length > 0 && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.8rem', maxHeight: 140, overflowY: 'auto' }}>
+                  {driverTripsTodayList.map((o) => {
+                    const isActive = o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS';
+                    const timeStr = new Date(o.pickupAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                    const addr = (o.pickupAddress || '').split(',')[0].trim() || '—';
+                    return (
+                      <li
+                        key={o.id}
+                        style={{
+                          padding: '0.25rem 0',
+                          borderTop: '1px solid rgba(255,255,255,0.08)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.15rem',
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--rd-accent-neon)', minWidth: 40 }}>{timeStr}</span>
+                          <span style={{ color: isActive ? 'white' : 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{addr}</span>
+                        </span>
+                        {isActive && (
+                          <span className="rd-badge" style={{ fontSize: '0.65rem', alignSelf: 'flex-start', background: 'var(--rd-accent-neon)', color: '#0f172a' }}>
+                            {o.status === 'ASSIGNED' ? t('dashboard.tabToPickup') : t('dashboard.tabToDropoff')}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
             <div
               className="dashboard-order-tabs"
