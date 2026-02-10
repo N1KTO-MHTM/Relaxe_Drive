@@ -95,7 +95,6 @@ export default function Dashboard() {
   } | null>(null);
   const [showProblemZones] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
-  const [_stopUnderwayId, setStopUnderwayId] = useState<string | null>(null);
   const [confirmEndTripOrderId, setConfirmEndTripOrderId] = useState<string | null>(null);
   const [confirmEndTripSecondsLeft, setConfirmEndTripSecondsLeft] = useState(60);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1782,46 +1781,6 @@ export default function Dashboard() {
     }
   }
 
-  async function handleStopUnderway(orderId: string) {
-    setStopUnderwayId(orderId);
-    try {
-      // Capture driver's current location when stopping
-      const payload: { lat?: number; lng?: number; address?: string } = {};
-
-      if (driverLocation) {
-        payload.lat = driverLocation.lat;
-        payload.lng = driverLocation.lng;
-
-        // Try to get address from reverse geocoding
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${driverLocation.lat}&lon=${driverLocation.lng}`,
-          );
-          const data = await response.json();
-          if (data.display_name) {
-            payload.address = data.display_name;
-          }
-        } catch {
-          // Ignore geocoding errors
-        }
-      }
-
-      await api.patch(`/orders/${orderId}/stop-underway`, payload);
-      toast.success(t('dashboard.stoppedUnderway'));
-      const data = await api.get<Order[]>('/orders');
-      setOrders(Array.isArray(data) ? data : []);
-    } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { message?: string } }; message?: string })?.response?.data
-          ?.message ??
-        (e as { message?: string })?.message ??
-        t('toast.statusUpdateFailed');
-      toast.error(msg);
-    } finally {
-      setStopUnderwayId(null);
-    }
-  }
-
   function refetchRoute() {
     setRouteRefreshKey((k) => k + 1);
   }
@@ -2494,9 +2453,6 @@ export default function Dashboard() {
                     {statusUpdatingId === currentDriverOrder.id ? '…' : t('dashboard.complete')}
                   </button>
                 )}
-                <button type="button" className="driver-docked-actions__btn" disabled={_stopUnderwayId !== null} onClick={() => handleStopUnderway(currentDriverOrder.id)} title={t('dashboard.addStopUnderway')}>
-                  {_stopUnderwayId === currentDriverOrder.id ? '…' : (t('dashboard.addStopUnderway') || 'Add stop')}
-                </button>
                 <button type="button" className="driver-docked-actions__btn" onClick={() => {}}>
                   {t('dashboard.showList')}
                 </button>

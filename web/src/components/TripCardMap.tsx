@@ -12,6 +12,9 @@ function pruneGeocodeCache(): void {
   keysToDelete.forEach((k) => geocodeCache.delete(k));
 }
 
+const NOMINATIM_UA = 'RelaxeDrive/1.0 (Trip history map)';
+
+/** Geocode via backend first; if null, try Nominatim from client so trip history map still shows. */
 async function fetchCoords(address: string): Promise<{ lat: number; lng: number } | null> {
   const key = address.trim();
   if (!key) return null;
@@ -21,10 +24,27 @@ async function fetchCoords(address: string): Promise<{ lat: number; lng: number 
     const res = await api.get<{ lat: number | null; lng: number | null }>(
       `/geo/geocode?address=${encodeURIComponent(key)}`
     );
-    const coords =
+    let coords: { lat: number; lng: number } | null =
       res?.lat != null && res?.lng != null && Number.isFinite(res.lat) && Number.isFinite(res.lng)
         ? { lat: res.lat, lng: res.lng }
         : null;
+    if (!coords) {
+      try {
+        const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(key)}&format=json&limit=1`;
+        const nomRes = await fetch(nomUrl, { headers: { 'User-Agent': NOMINATIM_UA } });
+        if (nomRes.ok) {
+          const data = (await nomRes.json()) as Array<{ lat?: string; lon?: string }>;
+          const first = data?.[0];
+          if (first?.lat && first?.lon) {
+            const lat = parseFloat(first.lat);
+            const lng = parseFloat(first.lon);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) coords = { lat, lng };
+          }
+        }
+      } catch {
+        // keep coords null
+      }
+    }
     geocodeCache.set(key, coords);
     pruneGeocodeCache();
     return coords;
@@ -49,12 +69,18 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className, polyline
     pickup: { lat: number; lng: number };
     dropoff: { lat: number; lng: number };
   } | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
+    setLoadFailed(false);
     let cancelled = false;
     Promise.all([fetchCoords(pickupAddress), fetchCoords(dropoffAddress)]).then(([pickup, dropoff]) => {
-      if (cancelled || !pickup || !dropoff) return;
-      setCoords({ pickup, dropoff });
+      if (cancelled) return;
+      if (pickup && dropoff) {
+        setCoords({ pickup, dropoff });
+      } else {
+        setLoadFailed(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -99,6 +125,10 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className, polyline
     map.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
 
     const invalidate = () => map.invalidateSize();
+    requestAnimationFrame(() => {
+      invalidate();
+      setTimeout(invalidate, 50);
+    });
     const ro = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
@@ -154,7 +184,7 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className, polyline
       <div
         className={className}
         role="img"
-        aria-label="Route map loading"
+        aria-label={loadFailed ? 'Route map unavailable' : 'Route map loading'}
         style={{
           width: '100%',
           minWidth: 200,
@@ -171,8 +201,14 @@ export function TripCardMap({ pickupAddress, dropoffAddress, className, polyline
           fontSize: '0.875rem',
         }}
       >
-        <span style={{ opacity: 0.8 }}>Route map</span>
-        <span>…</span>
+        {loadFailed ? (
+          <span style={{ opacity: 0.9 }}>Map unavailable</span>
+        ) : (
+          <>
+            <span style={{ opacity: 0.8 }}>Route map</span>
+            <span>…</span>
+          </>
+        )}
       </div>
     );
   }
