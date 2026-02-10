@@ -992,6 +992,49 @@ export default function Dashboard() {
               : null,
           )
           .catch(() => null);
+
+      if (pickup && dropoff) {
+        api
+          .get<{
+            polyline?: string;
+            pickupCoords?: { lat: number; lng: number } | null;
+            dropoffCoords?: { lat: number; lng: number } | null;
+          }>(`/geo/route?origin=${encodeURIComponent(pickup)}&destination=${encodeURIComponent(dropoff)}`)
+          .then((r) => {
+            if (formGeocodeCancelRef.current) return;
+            const from = r?.pickupCoords ?? null;
+            const to = r?.dropoffCoords ?? null;
+            if (!from || !to) {
+              setFormPreviewRouteData(null);
+              return;
+            }
+            setFormPreviewRouteData({
+              pickupCoords: from,
+              dropoffCoords: to,
+              polyline: r?.polyline ?? '',
+            });
+          })
+          .catch(() => {
+            if (formGeocodeCancelRef.current) return;
+            Promise.all([
+              geocode(pickup),
+              geocode(dropoff),
+            ]).then(([pickupCoords, dropoffCoords]) => {
+              if (formGeocodeCancelRef.current) return;
+              if (!pickupCoords && !dropoffCoords) {
+                setFormPreviewRouteData(null);
+                return;
+              }
+              setFormPreviewRouteData({
+                pickupCoords: pickupCoords ?? null,
+                dropoffCoords: dropoffCoords ?? null,
+                polyline: '',
+              });
+            });
+          });
+        return;
+      }
+
       Promise.all([
         pickup ? geocode(pickup) : Promise.resolve(null),
         dropoff ? geocode(dropoff) : Promise.resolve(null),
@@ -1004,7 +1047,7 @@ export default function Dashboard() {
         setFormPreviewRouteData({
           pickupCoords: pickupCoords ?? null,
           dropoffCoords: dropoffCoords ?? null,
-          polyline: '', // OrdersMap will draw a simple line between coords when polyline is empty
+          polyline: '',
         });
       });
     }, 500);
@@ -3107,32 +3150,6 @@ export default function Dashboard() {
       >
         {canAssign && !effectiveIsDriver && orderTab === 'active' && (
           <div
-            className="dashboard-quick-filters"
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.35rem',
-              padding: '0.5rem 0.75rem',
-              background: 'var(--rd-bg-panel)',
-              borderBottom: '1px solid var(--rd-border)',
-              alignItems: 'center',
-            }}
-          >
-            <span style={{ fontSize: '0.85rem', marginRight: '0.25rem' }}>Filter:</span>
-            {(['all', 'no_driver', 'pickup_1h', 'at_risk'] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`rd-btn rd-btn--small ${orderQuickFilter === key ? 'rd-btn-primary' : ''}`}
-                onClick={() => setOrderQuickFilter(key)}
-              >
-                {key === 'all' ? t('dashboard.filterAll') : key === 'no_driver' ? t('dashboard.filterNoDriver') : key === 'pickup_1h' ? t('dashboard.filterPickup1h') : t('dashboard.filterAtRisk')}
-              </button>
-            ))}
-          </div>
-        )}
-        {canAssign && !effectiveIsDriver && orderTab === 'active' && (
-          <div
             className="dashboard-bulk-actions"
             style={{
               display: 'flex',
@@ -3338,8 +3355,8 @@ export default function Dashboard() {
                   fontSize: '0.85rem',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.35rem' }}>
-                  <span style={{ fontWeight: 600 }}>{t('dashboard.assignDriver')} — {t('dashboard.bestSuggestions')}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 600 }}>{t('dashboard.assignDriver')}</span>
                   <button
                     type="button"
                     className="rd-btn rd-btn--small"
@@ -3348,15 +3365,18 @@ export default function Dashboard() {
                     {t('dashboard.done')}
                   </button>
                 </div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.25rem', color: 'var(--rd-text-muted)' }}>
+                  {t('dashboard.driverSearchPlaceholder')}
+                </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <input
                     type="text"
                     className="rd-input"
-                    placeholder={t('dashboard.searchDriverPlaceholder')}
+                    placeholder={t('dashboard.driverSearchPlaceholder')}
                     value={driverAssignSearch[orderId] ?? ''}
                     onChange={(e) => setDriverAssignSearch((prev) => ({ ...prev, [orderId]: e.target.value }))}
-                    style={{ minWidth: 180, maxWidth: 260 }}
-                    aria-label={t('dashboard.searchDriverPlaceholder')}
+                    style={{ flex: '1 1 200px', minWidth: 180 }}
+                    aria-label={t('dashboard.driverSearchPlaceholder')}
                   />
                   {etas.length === 0 && (
                     <button
@@ -3368,10 +3388,19 @@ export default function Dashboard() {
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 160, overflowY: 'auto' }}>
-                  {bestFiveByEta.map((d) => {
-                    const dr = drivers.find((x) => x.id === d.id) as User | undefined;
-                    return (
+                {!assignSearch && (
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--rd-text-muted)' }}>
+                    {t('dashboard.bestSuggestions')} — {t('dashboard.top5ByEta')}
+                  </div>
+                )}
+                {assignSearch && searchFilteredDrivers.length > 0 && (
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--rd-text-muted)' }}>
+                    {t('dashboard.searchResults')}
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 200, overflowY: 'auto' }}>
+                  {assignSearch ? (
+                    searchFilteredDrivers.slice(0, 10).map((d) => (
                       <div
                         key={d.id}
                         style={{
@@ -3383,18 +3412,11 @@ export default function Dashboard() {
                           borderBottom: '1px solid var(--rd-border)',
                         }}
                       >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                          {d.onTheWayToPickup && (
-                            <span className="rd-badge" style={{ fontSize: '0.7rem', background: 'var(--rd-accent-neon)', color: '#0f172a' }} title={t('dashboard.onTheWayToPickupHint')}>
-                              {t('dashboard.onTheWayToPickup')}
-                            </span>
-                          )}
-                          {dr?.nickname ?? d.nickname ?? d.id}
-                          {(dr as any)?.driverId && ` (${(dr as any).driverId})`}
-                          {' · '}
-                          <strong>{d.etaMinutesToPickup} min</strong> {t('dashboard.toPickup')}
-                          {' · '}
-                          {d.etaMinutesPickupToDropoff} min trip
+                        <span>
+                          {d.nickname ?? d.id}
+                          {(d as any)?.driverId && ` (${(d as any).driverId})`}
+                          {(d as any)?.phone && ` · ${(d as any).phone}`}
+                          {(d as any)?.email && ` · ${(d as any).email}`}
                         </span>
                         <button
                           type="button"
@@ -3409,39 +3431,51 @@ export default function Dashboard() {
                           {assigningId === orderId ? '…' : t('dashboard.assign')}
                         </button>
                       </div>
-                    );
-                  })}
-                  {assignSearch && searchFilteredDrivers.slice(0, 5).map((d) => (
-                    <div
-                      key={d.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.5rem',
-                        padding: '0.25rem 0',
-                        borderBottom: '1px solid var(--rd-border)',
-                      }}
-                    >
-                      <span>
-                        {d.nickname ?? d.id}
-                        {(d as any)?.driverId && ` (${(d as any).driverId})`}
-                        {(d as any)?.email && ` · ${(d as any).email}`}
-                      </span>
-                      <button
-                        type="button"
-                        className="rd-btn rd-btn--small rd-btn-primary"
-                        disabled={!!assigningId}
-                        onClick={() => {
-                          handleAssign(orderId, d.id);
-                          setCreatedOrderIdForAssign(null);
-                          setShowForm(false);
-                        }}
-                      >
-                        {assigningId === orderId ? '…' : t('dashboard.assign')}
-                      </button>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    bestFiveByEta.map((d) => {
+                      const dr = drivers.find((x) => x.id === d.id) as User | undefined;
+                      return (
+                        <div
+                          key={d.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            padding: '0.25rem 0',
+                            borderBottom: '1px solid var(--rd-border)',
+                          }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                            {d.onTheWayToPickup && (
+                              <span className="rd-badge" style={{ fontSize: '0.7rem', background: 'var(--rd-accent-neon)', color: '#0f172a' }} title={t('dashboard.onTheWayToPickupHint')}>
+                                {t('dashboard.onTheWayToPickup')}
+                              </span>
+                            )}
+                            {dr?.nickname ?? d.nickname ?? d.id}
+                            {(dr as any)?.driverId && ` (${(dr as any).driverId})`}
+                            {' · '}
+                            <strong>{d.etaMinutesToPickup} min</strong> {t('dashboard.toPickup')}
+                            {' · '}
+                            {d.etaMinutesPickupToDropoff} min trip
+                          </span>
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn--small rd-btn-primary"
+                            disabled={!!assigningId}
+                            onClick={() => {
+                              handleAssign(orderId, d.id);
+                              setCreatedOrderIdForAssign(null);
+                              setShowForm(false);
+                            }}
+                          >
+                            {assigningId === orderId ? '…' : t('dashboard.assign')}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
                 {sortedEtas.length === 0 && !assignSearch && (
                   <p className="rd-text-muted" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem' }}>
@@ -3617,6 +3651,32 @@ export default function Dashboard() {
         </div>
         {canCreateOrder && (
           <aside className="dashboard-page__create-order-panel" aria-label={t('dashboard.newOrderForm')}>
+            {canAssign && !effectiveIsDriver && orderTab === 'active' && (
+              <div
+                className="dashboard-quick-filters"
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.35rem',
+                  padding: '0.5rem 0',
+                  marginBottom: '0.75rem',
+                  borderBottom: '1px solid var(--rd-border)',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '0.85rem', marginRight: '0.25rem' }}>Filter:</span>
+                {(['all', 'no_driver', 'pickup_1h', 'at_risk'] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`rd-btn rd-btn--small ${orderQuickFilter === key ? 'rd-btn-primary' : ''}`}
+                    onClick={() => setOrderQuickFilter(key)}
+                  >
+                    {key === 'all' ? t('dashboard.filterAll') : key === 'no_driver' ? t('dashboard.filterNoDriver') : key === 'pickup_1h' ? t('dashboard.filterPickup1h') : t('dashboard.filterAtRisk')}
+                  </button>
+                ))}
+              </div>
+            )}
             {showForm ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>

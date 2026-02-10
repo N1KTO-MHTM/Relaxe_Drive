@@ -256,6 +256,8 @@
     "searchDriverPlaceholder": "Phone, name, ID, or email",
     "loadSuggestions": "Load suggestions",
     "loadSuggestionsHint": "Click Load suggestions to see drivers near pickup with ETA.",
+    "searchResults": "Search results",
+    "top5ByEta": "Top 5 by ETA",
     "toPickup": "to pickup",
     "assignedDriver": "Assigned driver",
     "selectDriver": "Select driver…",

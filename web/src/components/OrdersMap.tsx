@@ -1155,17 +1155,17 @@ function OrdersMap({
     } else if (dropoffCoords) {
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
-    // Route style: thick and smooth so roads are clearly visible (user asked for thicker, less crooked)
+    // Route style: thin so drivers can see roads and street names; smooth line along actual roads
     const routeOutline = {
       color: '#0f172a',
-      weight: 32,
+      weight: 10,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
       smoothFactor: 1.5,
     };
     const routeMain = {
       color: '#2563eb',
-      weight: 20,
+      weight: 6,
       opacity: 1,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
@@ -1178,7 +1178,7 @@ function OrdersMap({
           L.latLng(lat, lng),
         );
         const outline = L.polyline(latLngs, { ...routeOutline, dashArray: '14,12' }).addTo(map);
-        const line = L.polyline(latLngs, { ...routeMain, weight: 14, dashArray: '12,10' }).addTo(
+        const line = L.polyline(latLngs, { ...routeMain, weight: 5, dashArray: '12,10' }).addTo(
           map,
         );
         routeLayersRef.current.push(outline, line);
