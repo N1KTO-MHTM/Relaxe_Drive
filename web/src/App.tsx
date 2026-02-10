@@ -24,6 +24,7 @@ const Statements = lazy(() => import('./pages/statements/Statements'));
 const Support = lazy(() => import('./pages/support/Support'));
 const Addresses = lazy(() => import('./pages/addresses/Addresses'));
 const PhoneBase = lazy(() => import('./pages/phone-base/PhoneBase'));
+const PassengerRoutes = lazy(() => import('./pages/passenger-routes/PassengerRoutes'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="/statements" element={<Statements />} />
         <Route path="/addresses" element={<Addresses />} />
         <Route path="/phone-base" element={<PhoneBase />} />
+        <Route path="/passenger-routes" element={<PassengerRoutes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

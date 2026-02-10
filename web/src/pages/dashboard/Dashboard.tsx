@@ -150,7 +150,6 @@ export default function Dashboard() {
   const [isAutoOrder, setIsAutoOrder] = useState(false);
   const [dropoffImageUrl, setDropoffImageUrl] = useState('');
   const [orderOffer, setOrderOffer] = useState<Order | null>(null);
-  const [offerCountdown, setOfferCountdown] = useState(0);
   const [offerRouteData, setOfferRouteData] = useState<{
     driverToPickupMinutes: number;
     durationMinutes: number;
@@ -212,6 +211,8 @@ export default function Dashboard() {
       return () => clearTimeout(t);
     }
   }, [reportSuccessParams]);
+  /** When creating new order: geocoded preview of pickup/dropoff to show markers and route on map (debounced). */
+  const [formPreviewRouteData, setFormPreviewRouteData] = useState<OrderRouteData | null>(null);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
   const [reportsRefreshTrigger, setReportsRefreshTrigger] = useState(0);
   const [reportTicks, setReportTicks] = useState(0);
@@ -223,6 +224,8 @@ export default function Dashboard() {
   } | null>(null);
   const [driverTripsModalId, setDriverTripsModalId] = useState<string | null>(null);
   const [showRouteSelection, setShowRouteSelection] = useState(false);
+  /** When creating order: after "Create order" we keep form open and show Assign for this order id. */
+  const [createdOrderIdForAssign, setCreatedOrderIdForAssign] = useState<string | null>(null);
   const [driverSetDestinationAddress, setDriverSetDestinationAddress] = useState('');
   const [driverSetDestinationLoading, setDriverSetDestinationLoading] = useState(false);
   const autoStopSentForOrderIdRef = useRef<string | null>(null);
@@ -374,6 +377,14 @@ export default function Dashboard() {
     return out.sort((a, b) => new Date(b.pickupAt).getTime() - new Date(a.pickupAt).getTime());
   }, [orders, completedOrders, orderTab, orderStatusFilter, findByIdQuery, effectiveIsDriver, user?.id]);
 
+  /** Driver Active tab: show current offer at top of My orders (same style as image 1) then assigned orders. */
+  const driverOrderListWithOffer = useMemo(() => {
+    if (!effectiveIsDriver || orderTab !== 'active' || !orderOffer) return filteredOrders;
+    const alreadyIn = filteredOrders.some((o) => o.id === orderOffer.id);
+    if (alreadyIn) return filteredOrders;
+    return [orderOffer, ...filteredOrders];
+  }, [effectiveIsDriver, orderTab, filteredOrders, orderOffer]);
+
   /** Unique existing addresses from clients and orders — for autocomplete and "no duplicate" hint when creating order. */
   const existingAddresses = useMemo(() => {
     const set = new Set<string>();
@@ -414,6 +425,15 @@ export default function Dashboard() {
     if (!q) return existingAddresses.slice(0, 5);
     return existingAddresses.filter((a) => a.toLowerCase().includes(q)).slice(0, 5);
   }, [existingAddresses, middleAddress]);
+
+  /** Up to 5 passenger suggestions when phone number is entered (match by phone). */
+  const phoneSuggestions = useMemo(() => {
+    const q = orderPhone.trim().replace(/\s/g, '');
+    if (!q || q.length < 2) return [];
+    return passengersSuggestions
+      .filter((p) => (p.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')) || (p.phone ?? '').toLowerCase().includes(q.toLowerCase()))
+      .slice(0, 5);
+  }, [orderPhone, passengersSuggestions]);
 
   /** Addresses tab: up to 5 suggestions for pickup/dropoff (no duplicates). */
   // Removed unused suggestion variables - suggestions are computed inline in the UI
@@ -844,6 +864,52 @@ export default function Dashboard() {
     }
   }, [location.state, location.pathname, navigate, canCreateOrder, searchParams, setSearchParams]);
 
+  // When creating new order: debounced geocode of pickup/dropoff to show markers and route on map
+  const formGeocodeCancelRef = useRef(false);
+  useEffect(() => {
+    if (!showForm) {
+      setFormPreviewRouteData(null);
+      return;
+    }
+    const pickup = pickupAddress.trim();
+    const dropoff = dropoffAddress.trim();
+    if (!pickup && !dropoff) {
+      setFormPreviewRouteData(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      formGeocodeCancelRef.current = false;
+      const geocode = (addr: string) =>
+        api
+          .get<{ lat?: number | null; lng?: number | null }>(`/geo/geocode?address=${encodeURIComponent(addr)}`)
+          .then((r) =>
+            r?.lat != null && r?.lng != null && Number.isFinite(r.lat) && Number.isFinite(r.lng)
+              ? { lat: r.lat, lng: r.lng }
+              : null,
+          )
+          .catch(() => null);
+      Promise.all([
+        pickup ? geocode(pickup) : Promise.resolve(null),
+        dropoff ? geocode(dropoff) : Promise.resolve(null),
+      ]).then(([pickupCoords, dropoffCoords]) => {
+        if (formGeocodeCancelRef.current) return;
+        if (!pickupCoords && !dropoffCoords) {
+          setFormPreviewRouteData(null);
+          return;
+        }
+        setFormPreviewRouteData({
+          pickupCoords: pickupCoords ?? null,
+          dropoffCoords: dropoffCoords ?? null,
+          polyline: '', // OrdersMap will draw a simple line between coords when polyline is empty
+        });
+      });
+    }, 500);
+    return () => {
+      formGeocodeCancelRef.current = true;
+      clearTimeout(t);
+    };
+  }, [showForm, pickupAddress, dropoffAddress]);
+
   useEffect(() => {
     if (!socket || !user) return;
     const onOrders = (data: unknown) => {
@@ -873,6 +939,16 @@ export default function Dashboard() {
     };
   }, [socket, user?.id, user?.role]);
 
+  // When we're in "new order + assign" flow and the created order gets a driver (e.g. assigned), close the form
+  useEffect(() => {
+    if (!createdOrderIdForAssign) return;
+    const order = orders.find((o) => o.id === createdOrderIdForAssign);
+    if (order?.driverId) {
+      setCreatedOrderIdForAssign(null);
+      setShowForm(false);
+    }
+  }, [createdOrderIdForAssign, orders]);
+
   useEffect(() => {
     if (!socket) return;
     const onOffer = (data: unknown) => {
@@ -883,7 +959,6 @@ export default function Dashboard() {
         new Notification('New Order Offer!', { body: o.pickupAddress });
       }
       setOrderOffer(o);
-      setOfferCountdown(15);
     };
     socket.on('order.offer', onOffer);
     return () => {
@@ -891,15 +966,6 @@ export default function Dashboard() {
     };
   }, [socket, user?.role]);
 
-  useEffect(() => {
-    if (offerCountdown > 0) {
-      const t = setTimeout(() => setOfferCountdown((c) => c - 1), 1000);
-      return () => clearTimeout(t);
-    } else if (offerCountdown === 0 && orderOffer) {
-      setOrderOffer(null);
-      setOfferRouteData(null);
-    }
-  }, [offerCountdown, orderOffer]);
 
   // Fetch ETA/mileage for offer when driver has location (compact ride info)
   useEffect(() => {
@@ -1955,6 +2021,31 @@ export default function Dashboard() {
     }
   }
 
+  /** Open address in Apple Maps (daddr=address or lat,lng). */
+  function openAddressInAppleMaps(address: string) {
+    if (!address?.trim()) return;
+    window.open(
+      `https://maps.apple.com/?daddr=${encodeURIComponent(address.trim())}`,
+      '_blank',
+    );
+  }
+
+  /** Open full route in Apple Maps (destination = dropoff). */
+  function openFullRouteInAppleMaps(order: Order) {
+    const dest = order.dropoffAddress?.trim() || '';
+    if (!dest) return;
+    window.open(`https://maps.apple.com/?daddr=${encodeURIComponent(dest)}`, '_blank');
+  }
+
+  /** One-tap navigate: open Apple Maps. Driver→pickup when ASSIGNED; dropoff when IN_PROGRESS. */
+  function driverNavigateToCurrentApple(order: Order) {
+    if (order.status === 'ASSIGNED') {
+      openAddressInAppleMaps(order.pickupAddress);
+    } else {
+      openFullRouteInAppleMaps(order);
+    }
+  }
+
   function handleToggleAvailability() {
     if (availabilityUpdating) return;
     const next = user?.available === false;
@@ -2026,25 +2117,28 @@ export default function Dashboard() {
   }
 
   async function setAddressFromCoords(lat: number, lng: number, which: 'pickup' | 'dropoff') {
+    const fallback = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     setReverseGeocodeLoading(true);
     try {
-      const res = await api.get<{ address: string | null }>(`/geo/reverse?lat=${lat}&lng=${lng}`);
-      const addr = res?.address ?? '';
-      if (which === 'pickup') setPickupAddress(addr);
-      else setDropoffAddress(addr);
+      const res = await api.get<{ address?: string | null }>(`/geo/reverse?lat=${lat}&lng=${lng}`);
+      const addr = (res && typeof res === 'object' && res.address != null ? String(res.address) : '').trim();
+      const value = addr || fallback;
+      if (which === 'pickup') setPickupAddress(value);
+      else setDropoffAddress(value);
       setPickPoint({ lat, lng });
     } catch {
-      if (which === 'pickup') setPickupAddress('');
-      else setDropoffAddress('');
+      if (which === 'pickup') setPickupAddress(fallback);
+      else setDropoffAddress(fallback);
+      setPickPoint({ lat, lng });
     } finally {
       setReverseGeocodeLoading(false);
       setPickMode(null);
     }
   }
 
-  function handleMapClick(lat: number, lng: number) {
-    if (pickMode === 'pickup') setAddressFromCoords(lat, lng, 'pickup');
-    else if (pickMode === 'dropoff') setAddressFromCoords(lat, lng, 'dropoff');
+  function handleMapClick(lat: number, lng: number, which: 'pickup' | 'dropoff') {
+    setPickPoint({ lat, lng }); // show marker immediately
+    setAddressFromCoords(lat, lng, which);
   }
 
   function _handleUseMyLocation(which: 'pickup' | 'dropoff') {
@@ -2096,7 +2190,7 @@ export default function Dashboard() {
       pickupAtIso = d.toISOString();
     }
     try {
-      await api.post('/orders', {
+      const created = await api.post<Order>('/orders', {
         tripType: tripTypeForm,
         routeType: routeTypeForm,
         pickupAddress: pickupAddress.trim(),
@@ -2137,8 +2231,11 @@ export default function Dashboard() {
       setManualEntry(false);
       setIsAutoOrder(false);
       setDropoffImageUrl('');
-      setShowForm(false);
+      setFormPreviewRouteData(null);
+      setCreatedOrderIdForAssign(created?.id ?? null);
+      setShowForm(true);
       toast.success(t('toast.orderCreated'));
+      if (created?.id) loadDriverEtasForOrder(created.id);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create order');
       toast.error(t('toast.orderCreateFailed'));
@@ -2190,117 +2287,10 @@ export default function Dashboard() {
     const short = [parts[0], parts[1]].join(', ');
     return short.length <= maxLen ? short : short.slice(0, maxLen).trim() + '…';
   };
-  const assignedOrder = effectiveIsDriver
-    ? orders.find((o) => o.status === 'ASSIGNED' && o.driverId === user?.id)
-    : null;
-
   return (
     <div
       className={`dashboard-page ${effectiveIsDriver ? 'dashboard-page--driver' : ''} ${effectiveIsDriver && currentDriverOrder && routeData ? 'dashboard-page--driver-has-route' : ''}`}
     >
-      {assignedOrder && (
-        <div
-          className="dashboard-assigned-popup"
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <div className="rd-panel" style={{ maxWidth: 420, width: '100%' }}>
-            <h3>{t('dashboard.assignedPopupTitle')}</h3>
-            <p className="rd-text-muted">
-              {new Date(assignedOrder.pickupAt).toLocaleString()} — {assignedOrder.pickupAddress} →{' '}
-              {assignedOrder.dropoffAddress || (
-                <span style={{ color: '#ef4444' }}>Flexible Dropoff</span>
-              )}
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button
-                type="button"
-                className="rd-btn rd-btn-primary"
-                disabled={!!statusUpdatingId}
-                onClick={() => handleStatusChange(assignedOrder.id, 'IN_PROGRESS')}
-              >
-                {statusUpdatingId === assignedOrder.id ? '…' : t('dashboard.startRide')}
-              </button>
-              <button
-                type="button"
-                className="rd-btn rd-btn-danger"
-                disabled={!!rejectingId}
-                onClick={() => setRejectConfirmOrderId(assignedOrder.id)}
-              >
-                {rejectingId === assignedOrder.id ? '…' : t('dashboard.cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {effectiveIsDriver && orderOffer && (
-        <div
-          className="dashboard-offer-popup"
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1100,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <div
-            className="rd-panel"
-            style={{ maxWidth: 400, width: '100%', padding: '1.25rem' }}
-          >
-            <h3 style={{ fontSize: '1.15rem', margin: '0 0 0.5rem', color: 'var(--rd-accent-neon)' }}>
-              New Order Offer
-            </h3>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.75rem', color: offerCountdown < 5 ? 'var(--rd-color-critical)' : 'inherit' }}>
-              {offerCountdown}s
-            </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--rd-text-muted)', marginBottom: '0.5rem', textAlign: 'left' }}>
-              <div><strong>Pickup:</strong> {shortAddress(orderOffer.pickupAddress)}</div>
-              <div><strong>Dropoff:</strong> {shortAddress(orderOffer.dropoffAddress) || '—'}</div>
-            </div>
-            {offerRouteData && (
-              <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'left', color: 'var(--rd-text)' }}>
-                <span>ETA ~{Math.round(offerRouteData.driverToPickupMinutes ?? 0)} min to pickup</span>
-                {' · '}
-                <span>{(offerRouteData.distanceKm != null ? (offerRouteData.distanceKm / 1.60934).toFixed(1) : '0')} mi</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button
-                type="button"
-                className="rd-btn rd-btn-primary"
-                onClick={() => handleAcceptOffer(orderOffer.id)}
-                style={{ flex: 1 }}
-              >
-                Accept
-              </button>
-              <button
-                type="button"
-                className="rd-btn rd-btn-secondary"
-                onClick={() => handleDeclineOffer(orderOffer.id)}
-                style={{ flex: 1 }}
-              >
-                Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <div className={`dashboard-page__top ${effectiveIsDriver ? 'dashboard-page__top--driver' : ''}`}>
         {!effectiveIsDriver && <h1>{t('dashboard.title')}</h1>}
         {effectiveIsDriver ? (
@@ -2408,6 +2398,10 @@ export default function Dashboard() {
             <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
               <span style={{ fontSize: '1.25rem' }}>🚙</span>
               Waze
+            </button>
+            <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrentApple(currentDriverOrder)}>
+              <span style={{ fontSize: '1.25rem' }}>🍎</span>
+              {t('dashboard.navigationOnApple')}
             </button>
             {currentDriverOrder.status === 'ASSIGNED' &&
               (currentDriverOrder.arrivedAtPickupAt ? (
@@ -2851,12 +2845,14 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-          {!effectiveIsDriver && canAssign && selectedOrderId && (() => {
-            const sel = orders.find((o) => o.id === selectedOrderId);
+          {!effectiveIsDriver && canAssign && showForm && createdOrderIdForAssign && (() => {
+            const orderId = createdOrderIdForAssign;
+            const sel = orders.find((o) => o.id === orderId);
             if (!sel || sel.driverId || (sel.status !== 'SCHEDULED' && sel.status !== 'SEARCHING')) return null;
-            const etas = driverEtas[selectedOrderId]?.drivers ?? [];
+            const etas = driverEtas[orderId]?.drivers ?? [];
             const sortedEtas = [...etas].sort((a, b) => a.etaMinutesToPickup - b.etaMinutesToPickup);
-            const assignSearch = (driverAssignSearch[selectedOrderId] ?? '').trim();
+            const bestFiveByEta = sortedEtas.slice(0, 5);
+            const assignSearch = (driverAssignSearch[orderId] ?? '').trim();
             const searchFilteredDrivers = assignSearch
               ? drivers.filter((d) => driverMatchesSearch(d as User, assignSearch))
               : [];
@@ -2871,14 +2867,23 @@ export default function Dashboard() {
                   fontSize: '0.85rem',
                 }}
               >
-                <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>{t('dashboard.assignDriver')} — {t('dashboard.bestSuggestions')}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.35rem' }}>
+                  <span style={{ fontWeight: 600 }}>{t('dashboard.assignDriver')} — {t('dashboard.bestSuggestions')}</span>
+                  <button
+                    type="button"
+                    className="rd-btn rd-btn--small"
+                    onClick={() => { setCreatedOrderIdForAssign(null); setShowForm(false); }}
+                  >
+                    {t('dashboard.done')}
+                  </button>
+                </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <input
                     type="text"
                     className="rd-input"
                     placeholder={t('dashboard.searchDriverPlaceholder')}
-                    value={driverAssignSearch[selectedOrderId] ?? ''}
-                    onChange={(e) => setDriverAssignSearch((prev) => ({ ...prev, [selectedOrderId]: e.target.value }))}
+                    value={driverAssignSearch[orderId] ?? ''}
+                    onChange={(e) => setDriverAssignSearch((prev) => ({ ...prev, [orderId]: e.target.value }))}
                     style={{ minWidth: 180, maxWidth: 260 }}
                     aria-label={t('dashboard.searchDriverPlaceholder')}
                   />
@@ -2886,14 +2891,14 @@ export default function Dashboard() {
                     <button
                       type="button"
                       className="rd-btn rd-btn--small"
-                      onClick={() => loadDriverEtasForOrder(selectedOrderId)}
+                      onClick={() => loadDriverEtasForOrder(orderId)}
                     >
                       {t('dashboard.loadSuggestions')}
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxHeight: 160, overflowY: 'auto' }}>
-                  {sortedEtas.slice(0, 8).map((d) => {
+                  {bestFiveByEta.map((d) => {
                     const dr = drivers.find((x) => x.id === d.id) as User | undefined;
                     return (
                       <div
@@ -2919,9 +2924,13 @@ export default function Dashboard() {
                           type="button"
                           className="rd-btn rd-btn--small rd-btn-primary"
                           disabled={!!assigningId}
-                          onClick={() => handleAssign(selectedOrderId, d.id)}
+                          onClick={() => {
+                            handleAssign(orderId, d.id);
+                            setCreatedOrderIdForAssign(null);
+                            setShowForm(false);
+                          }}
                         >
-                          {assigningId === selectedOrderId ? '…' : t('dashboard.assign')}
+                          {assigningId === orderId ? '…' : t('dashboard.assign')}
                         </button>
                       </div>
                     );
@@ -2947,9 +2956,13 @@ export default function Dashboard() {
                         type="button"
                         className="rd-btn rd-btn--small rd-btn-primary"
                         disabled={!!assigningId}
-                        onClick={() => handleAssign(selectedOrderId, d.id)}
+                        onClick={() => {
+                          handleAssign(orderId, d.id);
+                          setCreatedOrderIdForAssign(null);
+                          setShowForm(false);
+                        }}
                       >
-                        {assigningId === selectedOrderId ? '…' : t('dashboard.assign')}
+                        {assigningId === orderId ? '…' : t('dashboard.assign')}
                       </button>
                     </div>
                   ))}
@@ -3039,6 +3052,7 @@ export default function Dashboard() {
               drivers={isDriver ? [] : driversForMap}
               showDriverMarkers={canAssign}
               routeData={routeData}
+              formPreviewRouteData={canCreateOrder && showForm ? formPreviewRouteData : undefined}
               currentUserLocation={isDriver ? driverLocation : undefined}
               driverMarkerStyle={undefined}
               currentUserSpeedMph={isDriver ? driverSpeedMph : undefined}
@@ -3048,7 +3062,11 @@ export default function Dashboard() {
               driverView={effectiveIsDriver}
               onToggleFullscreen={undefined}
               mapExpanded={undefined}
-              onMapClick={canCreateOrder && showForm && pickMode ? handleMapClick : undefined}
+              onMapClick={
+                canCreateOrder && showForm && pickMode
+                  ? (lat, lng) => handleMapClick(lat, lng, pickMode)
+                  : undefined
+              }
               pickPoint={canCreateOrder && showForm ? pickPoint : undefined}
               navMode={isDriver && !!routeData && !!driverLocation}
               centerTrigger={mapCenterTrigger}
@@ -3214,6 +3232,52 @@ export default function Dashboard() {
                       {t('dashboard.pickupTimePlaceholder')}
                     </p>
                   </div>
+                  <div className="dashboard-form-section" style={{ marginTop: '0.75rem' }}>
+                    <label>{t('dashboard.phoneNumberOptional')}</label>
+                    <input
+                      type="tel"
+                      className="rd-input"
+                      list="phone-suggestions-list"
+                      value={orderPhone}
+                      onChange={(e) => setOrderPhone(e.target.value)}
+                      placeholder={t('dashboard.phonePlaceholder')}
+                    />
+                    <datalist id="phone-suggestions-list">
+                      {phoneSuggestions.map((p) => (
+                        <option key={p.id} value={p.phone ?? ''} label={p.name ?? undefined} />
+                      ))}
+                    </datalist>
+                    {phoneSuggestions.length > 0 && (
+                      <div className="dashboard-phone-suggestions" style={{ marginTop: '0.35rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                        {phoneSuggestions.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className="rd-btn rd-btn--small"
+                            style={{ fontSize: '0.8rem' }}
+                            onClick={() => {
+                              setOrderPhone(p.phone ?? '');
+                              if (p.name != null) setOrderPassengerName(p.name);
+                              if (p.pickupAddr?.trim()) setPickupAddress(p.pickupAddr.trim());
+                              if (p.dropoffAddr?.trim()) setDropoffAddress(p.dropoffAddr.trim());
+                            }}
+                          >
+                            {p.phone} {p.name ? `· ${p.name}` : ''}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="dashboard-form-section">
+                    <label>{t('dashboard.passengerNameOptional')}</label>
+                    <input
+                      type="text"
+                      className="rd-input"
+                      value={orderPassengerName}
+                      onChange={(e) => setOrderPassengerName(e.target.value)}
+                      placeholder={t('dashboard.passengerNamePlaceholder')}
+                    />
+                  </div>
                   <div className="dashboard-form-address-section" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--rd-border)' }}>
                     <h3 className="rd-section-title" style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '1rem' }}>
                       {t('dashboard.addressCategoryPickupDropoff')}
@@ -3267,7 +3331,7 @@ export default function Dashboard() {
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                     <button type="submit" className="rd-btn rd-btn-primary">{t('dashboard.createOrder')}</button>
-                    <button type="button" className="rd-btn" onClick={() => { setShowForm(false); setSubmitError(''); }}>{t('dashboard.cancel')}</button>
+                    <button type="button" className="rd-btn" onClick={() => { setShowForm(false); setSubmitError(''); setCreatedOrderIdForAssign(null); }}>{t('dashboard.cancel')}</button>
                   </div>
                 </form>
               </>
@@ -3276,7 +3340,7 @@ export default function Dashboard() {
                 type="button"
                 className="rd-btn rd-btn-primary"
                 style={{ width: '100%' }}
-                onClick={() => { setPickupAtForm(getDefaultPickupAtForm()); setShowForm(true); }}
+                onClick={() => { setPickupAtForm(getDefaultPickupAtForm()); setCreatedOrderIdForAssign(null); setShowForm(true); }}
               >
                 + {t('dashboard.newOrder')}
               </button>
@@ -3319,29 +3383,32 @@ export default function Dashboard() {
                 {t('dashboard.refreshAll')}
               </button>
             </div>
-            {filteredOrders.length === 0 ? (
+            {driverOrderListWithOffer.length === 0 ? (
               <div className="rd-text-muted" style={{ padding: '0.75rem 0', fontSize: '0.9rem' }}>
                 <p style={{ margin: 0, fontWeight: 600 }}>{emptyMessage}</p>
                 <p style={{ margin: '0.35rem 0 0' }}>{t('dashboard.noMyOrdersHint')}</p>
               </div>
             ) : (
               <ul className="dashboard-my-orders-list-compact" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {filteredOrders.map((o) => {
+                {driverOrderListWithOffer.map((o) => {
+                  const isOffer = orderOffer != null && o.id === orderOffer.id && o.driverId !== user?.id;
                   const isMine = o.driverId === user?.id;
-                  const isTaken = !!o.driverId && !isMine;
+                  const isTaken = !!o.driverId && !isMine && !isOffer;
                   const etaMin =
-                    selectedOrderId === o.id && routeData?.durationMinutes != null
-                      ? routeData.durationMinutes
-                      : o.durationMinutes ?? null;
-                  const mileageKm = o.distanceKm ?? null;
+                    isOffer && offerRouteData
+                      ? Math.round(offerRouteData.driverToPickupMinutes ?? 0)
+                      : selectedOrderId === o.id && routeData?.durationMinutes != null
+                        ? routeData.durationMinutes
+                        : o.durationMinutes ?? null;
+                  const mileageKm = isOffer && offerRouteData ? offerRouteData.distanceKm : o.distanceKm ?? null;
                   const mi = mileageKm != null ? (Number(mileageKm) / 1.60934).toFixed(1) : null;
                   return (
                     <li
                       key={o.id}
                       className="dashboard-my-orders-item dashboard-my-orders-item--compact"
-                      role={isMine ? 'button' : undefined}
+                      role={isMine && !isOffer ? 'button' : undefined}
                       onClick={
-                        isMine
+                        isMine && !isOffer
                           ? () => {
                               setSelectedOrderId(o.id);
                               setMapCenterTrigger((n) => n + 1);
@@ -3349,7 +3416,7 @@ export default function Dashboard() {
                           : undefined
                       }
                       onKeyDown={
-                        isMine
+                        isMine && !isOffer
                           ? (e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
@@ -3361,7 +3428,12 @@ export default function Dashboard() {
                       }
                     >
                       <div className="dashboard-my-orders-item__row dashboard-my-orders-item__row--badge">
-                        {isMine && (
+                        {isOffer && (
+                          <span className="rd-badge dashboard-my-orders-item__badge" style={{ fontSize: '0.65rem', background: 'var(--rd-accent)', color: 'var(--rd-bg)' }}>
+                            {t('dashboard.newOffer')}
+                          </span>
+                        )}
+                        {isMine && !isOffer && (
                           <span className="rd-badge dashboard-my-orders-item__badge" style={{ fontSize: '0.65rem', background: 'var(--rd-accent-neon)', color: '#0f172a' }}>
                             {t('dashboard.assignedToYou')}
                           </span>
@@ -3383,6 +3455,24 @@ export default function Dashboard() {
                         {mi != null && <span>{mi} mi</span>}
                         {etaMin == null && mi == null && <span>—</span>}
                       </div>
+                      {isOffer && (
+                        <div className="dashboard-my-orders-item__row" style={{ marginTop: '0.5rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn-primary rd-btn--small"
+                            onClick={(e) => { e.stopPropagation(); handleAcceptOffer(o.id); }}
+                          >
+                            {t('dashboard.accept')}
+                          </button>
+                          <button
+                            type="button"
+                            className="rd-btn rd-btn-secondary rd-btn--small"
+                            onClick={(e) => { e.stopPropagation(); handleDeclineOffer(o.id); }}
+                          >
+                            {t('dashboard.reject')}
+                          </button>
+                        </div>
+                      )}
                     </li>
                   );
                 })}

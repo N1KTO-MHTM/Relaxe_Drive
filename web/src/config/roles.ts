@@ -17,6 +17,7 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/my-profile',
     '/addresses',
     '/phone-base',
+    '/passenger-routes',
   ],
   DISPATCHER: [
     '/dashboard',
@@ -32,6 +33,7 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/my-profile',
     '/addresses',
     '/phone-base',
+    '/passenger-routes',
   ],
   /** Driver: Dashboard (My trips), Translation, Support (Chat + Statements), My Profile; About and Driver reports via My Profile. */
   DRIVER: ['/dashboard', '/translation', '/support', '/chat', '/statements', '/my-profile', '/driver-reports', '/about'],
@@ -63,9 +65,10 @@ const FULL_NAV_ORDER: { path: string; key: string; group?: string }[] = [
   // Dispatch Center
   { path: '/drivers', key: 'drivers', group: 'dispatch' },
 
-  // Information (Addresses, Phone base — dispatchers/admins only)
+  // Information (Addresses, Phone base, Passenger routes — dispatchers/admins only)
   { path: '/addresses', key: 'addresses', group: 'information' },
   { path: '/phone-base', key: 'phoneBase', group: 'information' },
+  { path: '/passenger-routes', key: 'passengerRoutes', group: 'information' },
 
   // Driver support (Chat, Statements — subcategories)
   { path: '/chat', key: 'chat', group: 'driverSupport' },

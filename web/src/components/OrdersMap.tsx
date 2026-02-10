@@ -83,6 +83,8 @@ interface OrdersMapProps {
   mapStyle?: 'street' | 'satellite' | 'terrain' | 'dark';
   /** When driver popup "Show route" is clicked — parent can fetch and set routeData for that driver. */
   onShowDriverRoute?: (driver: DriverForMap) => void;
+  /** When creating new order: geocoded pickup/dropoff preview (markers + line). Takes precedence over routeData when set. */
+  formPreviewRouteData?: OrderRouteData | null;
 }
 
 /** Map style tile layer configs. Each style can have one or more layers (base + overlay). */
@@ -323,7 +325,9 @@ export default function OrdersMap({
   onMyLocation,
   mapStyle = 'street',
   onShowDriverRoute,
+  formPreviewRouteData,
 }: OrdersMapProps) {
+  const effectiveRouteData = formPreviewRouteData ?? routeData;
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -1060,8 +1064,8 @@ export default function OrdersMap({
     routeLayersRef.current = [];
     orderMarkersRef.current.forEach((m) => m.remove());
     orderMarkersRef.current = [];
-    if (!routeData) return;
-    const { pickupCoords, dropoffCoords, polyline, driverToPickupPolyline } = routeData;
+    if (!effectiveRouteData) return;
+    const { pickupCoords, dropoffCoords, polyline, driverToPickupPolyline } = effectiveRouteData;
     const allLatLngs: L.LatLng[] = [];
     if (
       currentUserLocation &&
@@ -1137,7 +1141,7 @@ export default function OrdersMap({
         // ignore
       }
     }
-    const altRoutes = routeData.alternativeRoutes ?? [];
+    const altRoutes = effectiveRouteData.alternativeRoutes ?? [];
     const effectivePolyline =
       altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
         ? altRoutes[selectedRouteIndex - 1].polyline
@@ -1151,6 +1155,24 @@ export default function OrdersMap({
         latLngs.forEach((ll) => allLatLngs.push(ll));
       } catch {
         // ignore
+      }
+    } else if (pickupCoords && dropoffCoords) {
+      // Form preview or route without polyline: draw simple line between pickup and dropoff
+      const latLngs = [
+        L.latLng(pickupCoords.lat, pickupCoords.lng),
+        L.latLng(dropoffCoords.lat, dropoffCoords.lng),
+      ];
+      const outline = L.polyline(latLngs, routeOutline).addTo(map);
+      const line = L.polyline(latLngs, routeMain).addTo(map);
+      routeLayersRef.current.push(outline, line);
+    }
+    // When showing form preview, fit map to markers so user sees the route
+    if (formPreviewRouteData && (pickupCoords || dropoffCoords)) {
+      const fitLatLngs: L.LatLng[] = [];
+      if (pickupCoords) fitLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
+      if (dropoffCoords) fitLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
+      if (fitLatLngs.length > 0) {
+        map.fitBounds(L.latLngBounds(fitLatLngs).pad(0.15), { maxZoom: 14 });
       }
     }
     altRoutes.forEach((alt, i) => {
@@ -1180,7 +1202,7 @@ export default function OrdersMap({
       orderMarkersRef.current = [];
     };
   }, [
-    routeData,
+    effectiveRouteData,
     currentUserLocation?.lat,
     currentUserLocation?.lng,
     showDriverMarkers,
@@ -1241,10 +1263,10 @@ export default function OrdersMap({
         .filter((d) => d.lat != null && d.lng != null)
         .forEach((d) => allLatLngs.push(L.latLng(d.lat!, d.lng!)));
     }
-    if (routeData?.pickupCoords)
-      allLatLngs.push(L.latLng(routeData.pickupCoords.lat, routeData.pickupCoords.lng));
-    if (routeData?.dropoffCoords)
-      allLatLngs.push(L.latLng(routeData.dropoffCoords.lat, routeData.dropoffCoords.lng));
+    if (effectiveRouteData?.pickupCoords)
+      allLatLngs.push(L.latLng(effectiveRouteData.pickupCoords.lat, effectiveRouteData.pickupCoords.lng));
+    if (effectiveRouteData?.dropoffCoords)
+      allLatLngs.push(L.latLng(effectiveRouteData.dropoffCoords.lat, effectiveRouteData.dropoffCoords.lng));
     if (allLatLngs.length > 0) {
       map.invalidateSize();
       map.fitBounds(L.latLngBounds(allLatLngs).pad(0.2), { maxZoom: 15 });
@@ -1290,19 +1312,23 @@ export default function OrdersMap({
           role="button"
           tabIndex={0}
           onClick={handlePickOverlayClick}
+          onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLDivElement).click()}
           style={{
             position: 'absolute',
-            inset: 0,
-            zIndex: 2000,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
             pointerEvents: 'auto',
             cursor: 'crosshair',
-            background: 'rgba(0,0,0,0.02)',
+            background: 'transparent',
           }}
           title="Click anywhere to set location"
         />
       )}
-      {((onRecenter && (navMode || showDriverMarkers || routeData)) || onMyLocation) && (
+      {((onRecenter && (navMode || showDriverMarkers || effectiveRouteData)) || onMyLocation) && (
         <div
           style={{
             position: 'absolute',
@@ -1324,7 +1350,7 @@ export default function OrdersMap({
               {myLocationLabel}
             </button>
           )}
-          {onRecenter && (navMode || showDriverMarkers || routeData) && (
+          {onRecenter && (navMode || showDriverMarkers || effectiveRouteData) && (
             <button
               type="button"
               className="rd-btn orders-map-recenter"

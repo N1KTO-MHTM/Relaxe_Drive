@@ -41,6 +41,14 @@ export class TranslationService {
     return { sourceText, targetText, sourceLang, targetLang };
   }
 
+  async getHistory(userId: string, limit = 50) {
+    return this.prisma.translationRecord.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
   private async callLibreTranslate(q: string, source: string, target: string): Promise<string | null> {
     const body: Record<string, string> = {
       q,
