@@ -10,49 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="google_translate_element" class="rd-gtranslate-wrap" style="position:fixed;top:8px;right:8px;z-index:99999;pointer-events:auto;min-width:140px;min-height:36px;display:flex;align-items:center;justify-content:flex-end;">
-      <span class="rd-gtranslate-placeholder" style="font-size:0.875rem;color:var(--rd-text-muted, #9ca3af);padding:4px 8px;">Language…</span>
-    </div>
     <div id="root"></div>
-    <script>
-      function googleTranslateElementInit() {
-        var el = document.getElementById('google_translate_element');
-        if (!el) return false;
-        try {
-          if (typeof google !== 'undefined' && google.translate && google.translate.TranslateElement) {
-            var ph = el.querySelector('.rd-gtranslate-placeholder');
-            if (ph) ph.remove();
-            new google.translate.TranslateElement({
-              pageLanguage: 'en',
-              layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-              autoDisplay: false
-            }, 'google_translate_element');
-            return true;
-          }
-        } catch (e) {}
-        return false;
-      }
-      window.__googleTranslateInit = googleTranslateElementInit;
-      function retryInit() {
-        var el = document.getElementById('google_translate_element');
-        if (el && !el.querySelector('.goog-te-combo') && (retryInit.n = (retryInit.n || 0) + 1) < 40) {
-          googleTranslateElementInit();
-          setTimeout(retryInit, 400);
-        }
-      }
-      setTimeout(retryInit, 800);
-      setTimeout(function() {
-        var el = document.getElementById('google_translate_element');
-        var ph = el && el.querySelector('.rd-gtranslate-placeholder');
-        if (ph && !el.querySelector('.goog-te-combo')) {
-          ph.textContent = 'Language';
-          ph.style.cursor = 'pointer';
-          ph.style.color = 'var(--rd-text, #e5e7eb)';
-          ph.onclick = function() { window.location.href = '/translation'; };
-        }
-      }, 5000);
-    </script>
-    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async defer></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
