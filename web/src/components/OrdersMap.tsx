@@ -369,6 +369,8 @@ function OrdersMap({
   const driverPathLayerRef = useRef<L.Polyline | null>(null);
   /** Per-driver markers for smooth position updates (no teleport). */
   const driverMarkersByIdRef = useRef<Map<string, L.Marker>>(new Map());
+  /** One-time: center map on driver when they open dashboard so POV is useful from the start. */
+  const hasInitialDriverCenterRef = useRef(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -1325,6 +1327,44 @@ function OrdersMap({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-center on button click (centerTrigger), not when drivers/route update
   }, [centerTrigger, focusCenter?.lat, focusCenter?.lng, focusZoom]);
+
+  // Driver: one-time initial center on driver (and route if any) so map POV is useful when dashboard loads.
+  useEffect(() => {
+    if (
+      !driverView ||
+      !mapRef.current ||
+      !currentUserLocation ||
+      !Number.isFinite(currentUserLocation.lat) ||
+      !Number.isFinite(currentUserLocation.lng) ||
+      hasInitialDriverCenterRef.current
+    )
+      return;
+    hasInitialDriverCenterRef.current = true;
+    const map = mapRef.current;
+    const allLatLngs: L.LatLng[] = [L.latLng(currentUserLocation.lat, currentUserLocation.lng)];
+    if (effectiveRouteData?.pickupCoords)
+      allLatLngs.push(L.latLng(effectiveRouteData.pickupCoords.lat, effectiveRouteData.pickupCoords.lng));
+    if (effectiveRouteData?.dropoffCoords)
+      allLatLngs.push(L.latLng(effectiveRouteData.dropoffCoords.lat, effectiveRouteData.dropoffCoords.lng));
+    map.invalidateSize();
+    if (allLatLngs.length > 1) {
+      map.fitBounds(L.latLngBounds(allLatLngs).pad(0.25), { maxZoom: 16 });
+    } else {
+      map.setView([currentUserLocation.lat, currentUserLocation.lng], 15);
+    }
+  }, [
+    driverView,
+    currentUserLocation?.lat,
+    currentUserLocation?.lng,
+    effectiveRouteData?.pickupCoords?.lat,
+    effectiveRouteData?.pickupCoords?.lng,
+    effectiveRouteData?.dropoffCoords?.lat,
+    effectiveRouteData?.dropoffCoords?.lng,
+  ]);
+
+  useEffect(() => {
+    if (!driverView) hasInitialDriverCenterRef.current = false;
+  }, [driverView]);
 
   // Driver "fixation": follow driver only when followDriverOnMap is true (after "My location" click). Stop when user pans/zooms.
   const programmaticMoveRef = useRef(false);

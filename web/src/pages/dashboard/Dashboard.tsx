@@ -121,6 +121,14 @@ export default function Dashboard() {
   const driverHeadingSmoothRef = useRef<number | null>(null);
   const driverHeadingLastRenderedRef = useRef<number | null>(null);
   const [standingStartedAt, setStandingStartedAt] = useState<number | null>(null);
+  const hasDriverActiveOrder = Boolean(
+    user?.role === 'DRIVER' &&
+      user?.id &&
+      orders.some(
+        (o) =>
+          (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS') && o.driverId === user?.id,
+      ),
+  );
   const [pickMode, setPickMode] = useState<'pickup' | 'dropoff' | null>(
     null,
   );
@@ -901,11 +909,13 @@ export default function Dashboard() {
       }
     }
     lastDriverLocationRef.current = { lat, lng, ts: now };
-    // Throttle state updates: max once per 2s or when moved >20m to reduce lag from GPS ticks
+    // Throttle state: when on active trip update more often so map and ETA feel live (1s or 15m); else 2s or 20m
+    const throttleMs = hasDriverActiveOrder ? 1000 : 2000;
+    const throttleM = hasDriverActiveOrder ? 15 : 20;
     const shouldUpdate =
       !prev ||
-      now - prev.ts >= 2000 ||
-      haversineM(prev.lat, prev.lng, lat, lng) > 20;
+      now - prev.ts >= throttleMs ||
+      haversineM(prev.lat, prev.lng, lat, lng) > throttleM;
     if (shouldUpdate) setDriverLocation({ lat, lng });
   }
 
@@ -1828,14 +1838,6 @@ export default function Dashboard() {
 
   // Live geo: driver location sent to server so dispatcher sees it. Uses watchPosition so updates
   // can continue when tab is in background. Dependency only on "has active order" to avoid re-running on every orders update.
-  const hasDriverActiveOrder = Boolean(
-    user?.role === 'DRIVER' &&
-      user?.id &&
-      orders.some(
-        (o) =>
-          (o.status === 'ASSIGNED' || o.status === 'IN_PROGRESS') && o.driverId === user?.id,
-      ),
-  );
   useEffect(() => {
     if (user?.role !== 'DRIVER' || !navigator.geolocation || user?.available === false) return;
     const sendIntervalMs = hasDriverActiveOrder ? 4000 : 10000; // ~4s on trip, 10s when free
@@ -2666,11 +2668,21 @@ export default function Dashboard() {
           {currentDriverOrder && (
             <div className="driver-docked-actions driver-docked-actions--below-status">
           <div className="driver-docked-actions__header">
-            <div>
+            <div className="driver-docked-actions__header-left">
               <div className="driver-docked-actions__title">
                 {currentDriverOrder.status === 'ASSIGNED'
                   ? t('dashboard.navToPickup')
                   : t('dashboard.navToDropoff')}
+                {routeData && (
+                  <span className="driver-docked-actions__title-distance">
+                    {' ~'}
+                    {(currentDriverOrder.status === 'ASSIGNED'
+                      ? (routeData.driverToPickupSteps?.reduce((acc, s) => acc + (s.distanceM ?? 0), 0) ?? 0) / 1609.34
+                      : (routeData.distanceKm ?? 0) / 1.60934
+                    ).toFixed(1)}
+                    {' mi'}
+                  </span>
+                )}
               </div>
               {(currentDriverOrder.passenger?.name || currentDriverOrder.passenger?.phone) && (
                 <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
@@ -2727,19 +2739,18 @@ export default function Dashboard() {
                 : shortAddress(currentDriverOrder.dropoffAddress)}
             </div>
           </div>
-          {/* Google Maps, Waze, Apple Maps — back in card right under address (where they were) */}
           <div className="driver-docked-actions__nav-row" role="group" aria-label={t('dashboard.navigate')}>
-            <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
-              <span style={{ fontSize: '1.25rem' }}>🗺️</span>
-              {t('dashboard.navigationOnGoogle')}
+            <button type="button" className="driver-docked-actions__nav-btn" onClick={() => driverNavigateToCurrent(currentDriverOrder)}>
+              <span className="driver-docked-actions__nav-icon">🗺️</span>
+              <span className="driver-docked-actions__nav-label">{t('dashboard.navigationOnGoogle')}</span>
             </button>
-            <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
-              <span style={{ fontSize: '1.25rem' }}>🚙</span>
-              Waze
+            <button type="button" className="driver-docked-actions__nav-btn" onClick={() => driverNavigateToCurrentWaze(currentDriverOrder)}>
+              <span className="driver-docked-actions__nav-icon">🚙</span>
+              <span className="driver-docked-actions__nav-label">Waze</span>
             </button>
-            <button type="button" className="driver-docked-actions__btn" onClick={() => driverNavigateToCurrentApple(currentDriverOrder)}>
-              <span style={{ fontSize: '1.25rem' }}>🍎</span>
-              {t('dashboard.navigationOnApple')}
+            <button type="button" className="driver-docked-actions__nav-btn" onClick={() => driverNavigateToCurrentApple(currentDriverOrder)}>
+              <span className="driver-docked-actions__nav-icon">🍎</span>
+              <span className="driver-docked-actions__nav-label">{t('dashboard.navigationOnApple')}</span>
             </button>
           </div>
           {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
