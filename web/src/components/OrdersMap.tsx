@@ -103,6 +103,16 @@ interface OrdersMapProps {
   routePickupAddress?: string | null;
   /** Address text for dropoff marker popup (when route is shown). Shown instead of just "Dropoff". */
   routeDropoffAddress?: string | null;
+  /** When driver view: compact "head destination" strip on the map (instruction + street/exit, distance to next, address, ETA). */
+  driverHeadDestination?: {
+    instruction: string;
+    address: string;
+    eta: string;
+    distanceMi: string;
+    durationMin: number;
+    /** Distance to next maneuver: "0.5 mi", "500 ft", etc. */
+    distanceToNext?: string;
+  } | null;
 }
 
 /** Map style tile layer configs. Each style can have one or more layers (base + overlay). */
@@ -349,6 +359,7 @@ function OrdersMap({
   formPreviewRouteData,
   routePickupAddress,
   routeDropoffAddress,
+  driverHeadDestination,
 }: OrdersMapProps) {
   const effectiveRouteData = formPreviewRouteData ?? routeData;
   const { t } = useTranslation();
@@ -1438,6 +1449,44 @@ function OrdersMap({
       style={{ position: 'relative', width: '100%', height: '100%', minHeight: 480 }}
     >
       <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 480 }} />
+
+      {driverView && driverHeadDestination && (
+        <div
+          className="orders-map-driver-head-destination"
+          role="region"
+          aria-label={t('dashboard.routeInstructions')}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            padding: '0.6rem 0.75rem',
+            background: 'rgba(21, 128, 61, 0.95)',
+            color: 'white',
+            borderRadius: '0 0 10px 10px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+            fontSize: '0.9rem',
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>
+            {driverHeadDestination.distanceToNext ? (
+              <span>{t('dashboard.turnIn', { dist: driverHeadDestination.distanceToNext })} · </span>
+            ) : null}
+            {driverHeadDestination.instruction}
+          </div>
+          <div style={{ opacity: 0.95, fontSize: '0.85rem' }}>
+            {driverHeadDestination.address && <span>{driverHeadDestination.address}</span>}
+            {driverHeadDestination.address && (driverHeadDestination.durationMin > 0 || driverHeadDestination.eta) && ' · '}
+            {driverHeadDestination.durationMin > 0 && <span>~{Math.round(driverHeadDestination.durationMin)} min</span>}
+            {driverHeadDestination.durationMin > 0 && driverHeadDestination.eta && ' · '}
+            {driverHeadDestination.eta && <span>ETA {driverHeadDestination.eta}</span>}
+            {driverHeadDestination.distanceMi && Number(driverHeadDestination.distanceMi) >= 0 && (
+              <span> · {driverHeadDestination.distanceMi} mi</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {onMapClick && !navMode && (
         <div

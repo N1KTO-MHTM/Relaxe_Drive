@@ -2753,6 +2753,25 @@ export default function Dashboard() {
               <span className="driver-docked-actions__nav-label">{t('dashboard.navigationOnApple')}</span>
             </button>
           </div>
+          {(currentDriverOrder.status === 'ASSIGNED' || currentDriverOrder.status === 'IN_PROGRESS') && !currentDriverOrder.dropoffAddress && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              <input
+                className="rd-input"
+                placeholder={t('dashboard.enterDropoff') || 'Enter dropoff address'}
+                value={driverSetDestinationAddress}
+                onChange={(e) => setDriverSetDestinationAddress(e.target.value)}
+                style={{ flex: '1 1 180px', minWidth: 0 }}
+              />
+              <button
+                type="button"
+                className="rd-btn rd-btn-primary"
+                disabled={driverSetDestinationLoading || !driverSetDestinationAddress.trim()}
+                onClick={() => handleSetDriverDestination(currentDriverOrder.id)}
+              >
+                {t('dashboard.set') || 'Set'}
+              </button>
+            </div>
+          )}
           {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }}>
               {/* Timer and saved note always shown together in one row */}
@@ -2899,7 +2918,7 @@ export default function Dashboard() {
           {t('dashboard.reconnecting')}
         </div>
       )}
-      {effectiveIsDriver &&
+      {false && effectiveIsDriver &&
         routeData &&
         (routeData.driverToPickupSteps?.length || routeData.steps?.length) &&
         (() => {
@@ -3668,6 +3687,25 @@ export default function Dashboard() {
               showDriverMarkers={canAssign}
               onShowDriverRoute={canAssign ? handleShowDriverRoute : undefined}
               routeData={routeData}
+              driverHeadDestination={
+                effectiveIsDriver && routeData && selectedOrderId
+                  ? (() => {
+                      const order = orders.find((o) => o.id === selectedOrderId);
+                      if (!order) return undefined;
+                      const toPickup = order.status === 'ASSIGNED';
+                      const steps = toPickup ? (routeData.driverToPickupSteps ?? []) : (routeData.steps ?? []);
+                      const durationMin = toPickup ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0);
+                      const eta = new Date(Date.now() + durationMin * 60_000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                      const address = toPickup ? order.pickupAddress : order.dropoffAddress;
+                      const firstStep = steps[0];
+                      const instruction = firstStep?.instruction || (firstStep?.type === 11 ? t('dashboard.navHeadToDestination') : firstStep?.type === 10 ? t('dashboard.navArrive') : t('dashboard.navContinue'));
+                      const distanceToNext = firstStep ? formatDistanceHint(firstStep.distanceM) : '';
+                      const distanceM = toPickup ? (routeData.driverToPickupSteps?.reduce((a, s) => a + (s.distanceM ?? 0), 0) ?? 0) : ((routeData.distanceKm ?? 0) * 1000);
+                      const distanceMi = (distanceM / 1609.34).toFixed(1);
+                      return { instruction, address: address ?? '', eta, distanceMi, durationMin, distanceToNext };
+                    })()
+                  : undefined
+              }
               formPreviewRouteData={canCreateOrder && showForm ? formPreviewRouteData : undefined}
               routePickupAddress={
                 canCreateOrder && showForm && formPreviewRouteData
