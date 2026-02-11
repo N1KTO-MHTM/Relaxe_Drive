@@ -28,10 +28,8 @@ function setGoogleTranslateLanguage(langCode: string): void {
 const LANGUAGES: { code: string; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'ru', label: 'Russian' },
+  { code: 'es', label: 'Spanish (Mexican)' },
   { code: 'ka', label: 'Georgian' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'he', label: 'Hebrew (Evrit)' },
-  { code: 'yi', label: 'Yiddish' },
 ];
 
 const SOURCE_OPTIONS = [{ code: 'auto', label: 'Auto' }, ...LANGUAGES];

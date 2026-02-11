@@ -287,7 +287,6 @@ export class OrdersService {
             completedAt: now,
             distanceKm,
             earningsCents,
-            routePolyline: body?.routePolyline ?? undefined,
           },
         });
         const milesToAdd = distanceKm / 1.60934;
