@@ -13,11 +13,11 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/support',
     '/chat',
     '/statements',
-    '/translation',
     '/my-profile',
     '/addresses',
     '/phone-base',
     '/passenger-routes',
+    '/translation',
   ],
   DISPATCHER: [
     '/dashboard',
@@ -29,13 +29,13 @@ export const ROLE_PATHS: Record<Role, string[]> = {
     '/support',
     '/chat',
     '/statements',
-    '/translation',
     '/my-profile',
     '/addresses',
     '/phone-base',
     '/passenger-routes',
+    '/translation',
   ],
-  /** Driver: Dashboard (My trips), Translation, Support (Chat + Statements), My Profile; About and Driver reports via My Profile. */
+  /** Driver: Dashboard (My trips), Translation (Google Translate), Support (Chat + Statements), My Profile; About and Driver reports via My Profile. */
   DRIVER: ['/dashboard', '/translation', '/support', '/chat', '/statements', '/my-profile', '/driver-reports', '/about'],
   CLIENT: [],
 };
@@ -47,7 +47,7 @@ export function canAccessPath(role: Role | null, path: string): boolean {
   return allowed.includes(path) || path === '/';
 }
 
-/** Driver nav: My trips, Translation, Support (Chat + Statements), My Profile. */
+/** Driver nav: My trips, Translation (Google Translate), Support, My Profile. */
 export const DRIVER_NAV_ITEMS: { path: string; key: string }[] = [
   { path: '/dashboard', key: 'myTrips' },
   { path: '/translation', key: 'translation' },

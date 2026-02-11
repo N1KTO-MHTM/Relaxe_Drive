@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../../i18n';
 import 'leaflet/dist/leaflet.css';
 import L from '../../components/leafletWithCluster';
 import { api } from '../../api/client';

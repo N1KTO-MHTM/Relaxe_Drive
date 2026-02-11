@@ -4,7 +4,6 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
-import './i18n';
 import './store/theme';
 import './styles/variables.css';
 import './styles/design-system.css';

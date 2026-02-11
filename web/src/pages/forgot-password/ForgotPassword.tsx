@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 
 export default function ForgotPassword() {
-  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const tokenFromUrl = searchParams.get('token');
 
@@ -31,11 +29,11 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError('');
     if (newPassword.length < 6) {
-      setError(t('roles.passwordMinLength'));
+      setError('Password must be at least 6 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError(t('auth.passwordMismatch'));
+      setError('Passwords do not match');
       return;
     }
     setResetting(true);
@@ -43,7 +41,7 @@ export default function ForgotPassword() {
       await api.post('/auth/reset-password', { token: tokenFromUrl, newPassword });
       setResetDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('auth.resetLinkInvalid'));
+      setError(e instanceof Error ? e.message : 'Invalid or expired reset link');
     } finally {
       setResetting(false);
     }
@@ -53,23 +51,23 @@ export default function ForgotPassword() {
     if (resetDone) {
       return (
         <div className="rd-panel" style={{ maxWidth: 400 }}>
-          <h1>{t('auth.forgotPassword')}</h1>
-          <p>{t('auth.resetPasswordDone')}</p>
+          <h1>Forgot password?</h1>
+          <p>Password has been reset. You can sign in with your new password.</p>
           <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-            <Link to="/login">{t('auth.login')}</Link>
+            <Link to="/login">Sign in</Link>
           </p>
         </div>
       );
     }
     return (
       <form onSubmit={handleResetWithToken}>
-        <h1>{t('auth.setNewPassword')}</h1>
+        <h1>Set new password</h1>
         {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
         <p style={{ color: 'var(--rd-text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-          {t('auth.setNewPasswordHint')}
+          Enter and confirm your new password. Link is valid 24 hours.
         </p>
         <div style={{ marginBottom: '1rem' }}>
-          <label className="rd-label">{t('auth.password')}</label>
+          <label className="rd-label">Password</label>
           <input
             type="password"
             className="rd-input"
@@ -81,7 +79,7 @@ export default function ForgotPassword() {
           />
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <label className="rd-label">{t('auth.confirmPassword')}</label>
+          <label className="rd-label">Confirm password</label>
           <input
             type="password"
             className="rd-input"
@@ -93,10 +91,10 @@ export default function ForgotPassword() {
           />
         </div>
         <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }} disabled={resetting}>
-          {resetting ? '…' : t('auth.setNewPasswordSubmit')}
+          {resetting ? '…' : 'Set password'}
         </button>
         <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-          <Link to="/login">{t('auth.login')}</Link>
+          <Link to="/login">Sign in</Link>
         </p>
       </form>
     );
@@ -105,10 +103,10 @@ export default function ForgotPassword() {
   if (sent) {
     return (
       <div className="rd-panel" style={{ maxWidth: 400 }}>
-        <h1>{t('auth.forgotPassword')}</h1>
-        <p>{t('auth.forgotPasswordSent')}</p>
+        <h1>Forgot password?</h1>
+        <p>If an account with this nickname exists, contact your administrator to reset the password.</p>
         <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-          <Link to="/login">{t('auth.login')}</Link>
+          <Link to="/login">Sign in</Link>
         </p>
       </div>
     );
@@ -116,13 +114,13 @@ export default function ForgotPassword() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h1>{t('auth.forgotPassword')}</h1>
+      <h1>Forgot password?</h1>
       {error && <p className="rd-text-critical" style={{ marginBottom: '1rem' }}>{error}</p>}
       <p style={{ color: 'var(--rd-text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-        {t('auth.forgotPasswordHint')}
+        Enter your nickname. An administrator can reset your password.
       </p>
       <div style={{ marginBottom: '1rem' }}>
-        <label className="rd-label">{t('auth.nickname')}</label>
+        <label className="rd-label">Nickname</label>
         <input
           type="text"
           className="rd-input"
@@ -132,10 +130,10 @@ export default function ForgotPassword() {
         />
       </div>
       <button type="submit" className="rd-btn rd-btn-primary" style={{ width: '100%' }}>
-        {t('auth.forgotPasswordSubmit')}
+        Request reset
       </button>
       <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-        <Link to="/login">{t('auth.login')}</Link>
+        <Link to="/login">Sign in</Link>
       </p>
     </form>
   );

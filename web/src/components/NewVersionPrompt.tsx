@@ -7,7 +7,7 @@
  * prompts the user to reload so both devices get the same build.
  */
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../i18n';
 
 const CHECK_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const CHECK_ON_VISIBLE = true;

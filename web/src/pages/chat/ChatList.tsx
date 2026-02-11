@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../../i18n';
 import { Chat } from '../../types/chat';
 
 export type ChatFilter = 'OPEN' | 'WAITING' | 'CLOSED';

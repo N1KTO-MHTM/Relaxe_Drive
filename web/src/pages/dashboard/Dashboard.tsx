@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../../i18n';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../../ws/useSocket';
 import { useAuthStore, type Role } from '../../store/auth';

@@ -1,19 +1,33 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+/**
+ * English-only strings. Google Translate widget is used for other languages.
+ * All UI text is in English here; users translate the page via Google Translate.
+ */
 import en from './locales/en.json';
-import ru from './locales/ru.json';
-import ka from './locales/ka.json';
-import es from './locales/es.json';
 
-const resources = { en: { translation: en }, ru: { translation: ru }, ka: { translation: ka }, es: { translation: es } };
+function get(obj: Record<string, unknown>, path: string): unknown {
+  return path.split('.').reduce((o: unknown, k: string) => (o as Record<string, unknown>)?.[k], obj);
+}
 
-i18n.use(initReactI18next).init({
-  resources,
-  lng: localStorage.getItem('relaxdrive-locale') || 'en',
-  fallbackLng: 'en',
-  interpolation: { escapeValue: false },
-});
+export function t(key: string, options?: Record<string, string | number>): string {
+  const raw = get(en as Record<string, unknown>, key);
+  if (typeof raw !== 'string') return key;
+  let s: string = raw;
+  if (options) {
+    for (const [k, v] of Object.entries(options)) {
+      s = s.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v));
+    }
+  }
+  return s;
+}
 
-i18n.on('languageChanged', (lng) => localStorage.setItem('relaxdrive-locale', lng));
+export function useTranslation(): { t: typeof t; i18n: { language: string; changeLanguage: (_: string) => void } } {
+  return {
+    t,
+    i18n: { language: 'en', changeLanguage: () => {} },
+  };
+}
 
-export default i18n;
+/** No-op for backend locale; page translation is via Google Translate widget. */
+function changeLanguage(_locale: string): void {}
+
+export default { t, useTranslation, changeLanguage };

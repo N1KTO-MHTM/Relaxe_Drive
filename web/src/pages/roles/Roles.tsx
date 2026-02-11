@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../../i18n';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/auth';
 import type { Role } from '../../store/auth';
