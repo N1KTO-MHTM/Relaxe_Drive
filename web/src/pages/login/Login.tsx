@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../../i18n';
 import { useAuthStore, type Role } from '../../store/auth';
 import { api } from '../../api/client';
 import './Login.css';

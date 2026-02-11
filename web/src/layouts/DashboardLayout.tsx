@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import { useSocket } from '../ws/useSocket';
 import { api } from '../api/client';
