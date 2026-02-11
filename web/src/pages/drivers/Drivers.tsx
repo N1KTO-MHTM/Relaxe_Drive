@@ -84,10 +84,14 @@ interface EditTripModalProps {
   t: (key: string) => string;
 }
 
+const KM_PER_MI = 1.60934;
+
 function EditTripModal({ trip, onClose, onSave, saving, t }: EditTripModalProps) {
   const [pickupAddress, setPickupAddress] = useState(trip.pickupAddress);
   const [dropoffAddress, setDropoffAddress] = useState(trip.dropoffAddress);
-  const [distanceKm, setDistanceKm] = useState(String(trip.distanceKm ?? ''));
+  const [distanceMi, setDistanceMi] = useState(
+    () => (trip.distanceKm != null ? (trip.distanceKm / KM_PER_MI).toFixed(1) : ''),
+  );
   const [earningsCents, setEarningsCents] = useState(String(Math.round((trip.earningsCents ?? 0) / 100)));
   const [startedAt, setStartedAt] = useState(toDatetimeLocal(trip.startedAt));
   const [completedAt, setCompletedAt] = useState(toDatetimeLocal(trip.completedAt));
@@ -96,10 +100,11 @@ function EditTripModal({ trip, onClose, onSave, saving, t }: EditTripModalProps)
     e.preventDefault();
     const started = startedAt ? new Date(startedAt).toISOString() : undefined;
     const completed = completedAt ? new Date(completedAt).toISOString() : undefined;
+    const km = distanceMi === '' ? undefined : parseFloat(distanceMi) * KM_PER_MI;
     onSave({
       pickupAddress: pickupAddress.trim() || undefined,
       dropoffAddress: dropoffAddress.trim() || undefined,
-      distanceKm: distanceKm === '' ? undefined : parseFloat(distanceKm),
+      distanceKm: km,
       earningsCents: earningsCents === '' ? undefined : Math.round(parseFloat(earningsCents) * 100),
       startedAt: started,
       completedAt: completed,
@@ -125,8 +130,8 @@ function EditTripModal({ trip, onClose, onSave, saving, t }: EditTripModalProps)
             </div>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <div className="rd-form-group" style={{ flex: '1 1 120px' }}>
-                <label htmlFor="edit-trip-distance">{t('dashboard.distance')} (km)</label>
-                <input id="edit-trip-distance" type="number" step="0.1" min="0" className="rd-input" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} />
+                <label htmlFor="edit-trip-distance">{t('dashboard.distance')} (mi)</label>
+                <input id="edit-trip-distance" type="number" step="0.1" min="0" className="rd-input" value={distanceMi} onChange={(e) => setDistanceMi(e.target.value)} />
               </div>
               <div className="rd-form-group" style={{ flex: '1 1 100px' }}>
                 <label htmlFor="edit-trip-earnings">{t('dashboard.earnings')} ($)</label>

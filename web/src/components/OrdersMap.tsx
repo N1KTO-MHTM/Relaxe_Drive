@@ -59,6 +59,10 @@ interface OrdersMapProps {
   /** Optional "My location" button label and callback to center map on user's geo */
   myLocationLabel?: string;
   onMyLocation?: () => void;
+  /** When true (driver view): map follows driver position until user pans/zooms; set true when driver clicks "My location". */
+  followDriverOnMap?: boolean;
+  /** Called when driver pans or zooms the map so parent can turn off follow mode. */
+  onDriverStoppedFollow?: () => void;
   /** Restore saved map view (e.g. per-dispatcher). Applied only on first init. */
   initialCenter?: [number, number];
   initialZoom?: number;
@@ -338,6 +342,8 @@ function OrdersMap({
   mapExpanded,
   myLocationLabel,
   onMyLocation,
+  followDriverOnMap = false,
+  onDriverStoppedFollow,
   mapStyle = 'street',
   onShowDriverRoute,
   formPreviewRouteData,
@@ -1115,13 +1121,15 @@ function OrdersMap({
           allLatLngs.push(L.latLng(d.lat!, d.lng!));
         });
     }
-    if (!driverView) {
-      if (pickupCoords) {
-        const m = L.marker([pickupCoords.lat, pickupCoords.lng], {
-          icon: orderPickupIcon(orderRiskLevel),
-        }).addTo(map);
+    if (pickupCoords) {
+      const m = L.marker([pickupCoords.lat, pickupCoords.lng], {
+        icon: orderPickupIcon(driverView ? null : orderRiskLevel),
+      }).addTo(map);
+      const addr = (routePickupAddress ?? '').trim();
+      if (driverView) {
+        m.bindPopup(addr ? `<strong>Pickup</strong><br/>${escapeHtml(addr)}` : 'Pickup', { closeOnClick: false });
+      } else {
         const popupRows: string[] = ['<strong>Pickup</strong>'];
-        const addr = (routePickupAddress ?? '').trim();
         if (addr) popupRows.push(escapeHtml(addr));
         if (selectedOrderTooltip) {
           if (selectedOrderTooltip.eta)
@@ -1139,33 +1147,29 @@ function OrdersMap({
             popupRows.push(`Stop notes: ${escapeHtml(selectedOrderTooltip.waitMiddleNotes)}`);
         }
         m.bindPopup(popupRows.join('<br/>'), { closeOnClick: false });
-        orderMarkersRef.current.push(m);
-        allLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
       }
-      if (dropoffCoords) {
-        const m = L.marker([dropoffCoords.lat, dropoffCoords.lng]).addTo(map);
-        const dropoffAddr = (routeDropoffAddress ?? '').trim();
-        const dropoffPopup = dropoffAddr ? `<strong>Dropoff</strong><br/>${escapeHtml(dropoffAddr)}` : 'Dropoff';
-        m.bindPopup(dropoffPopup, { closeOnClick: false });
-        orderMarkersRef.current.push(m);
-        allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
-      }
-    } else if (pickupCoords) {
+      orderMarkersRef.current.push(m);
       allLatLngs.push(L.latLng(pickupCoords.lat, pickupCoords.lng));
-    } else if (dropoffCoords) {
+    }
+    if (dropoffCoords) {
+      const m = L.marker([dropoffCoords.lat, dropoffCoords.lng]).addTo(map);
+      const dropoffAddr = (routeDropoffAddress ?? '').trim();
+      const dropoffPopup = dropoffAddr ? `<strong>Dropoff</strong><br/>${escapeHtml(dropoffAddr)}` : 'Dropoff';
+      m.bindPopup(dropoffPopup, { closeOnClick: false });
+      orderMarkersRef.current.push(m);
       allLatLngs.push(L.latLng(dropoffCoords.lat, dropoffCoords.lng));
     }
-    // Route style: thin so drivers can see roads and street names; smooth line along actual roads
+    // Route style: driver view = thicker, brighter line (nav-style); dispatcher = thin so roads/names visible
     const routeOutline = {
-      color: '#0f172a',
-      weight: 10,
+      color: driverView ? '#0c4a6e' : '#0f172a',
+      weight: driverView ? 14 : 10,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
       smoothFactor: 1.5,
     };
     const routeMain = {
-      color: '#2563eb',
-      weight: 6,
+      color: driverView ? '#1d4ed8' : '#2563eb',
+      weight: driverView ? 8 : 6,
       opacity: 1,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
@@ -1322,8 +1326,49 @@ function OrdersMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-center on button click (centerTrigger), not when drivers/route update
   }, [centerTrigger, focusCenter?.lat, focusCenter?.lng, focusZoom]);
 
-  // Nav mode: map follows the driver (center on car when moving). Updates every 1s so map tracks driver.
+  // Driver "fixation": follow driver only when followDriverOnMap is true (after "My location" click). Stop when user pans/zooms.
+  const programmaticMoveRef = useRef(false);
   useEffect(() => {
+    if (!driverView || !followDriverOnMap || !mapRef.current || !currentUserLocation) return;
+    const map = mapRef.current;
+    const NAV_ZOOM = 17;
+    const followDriver = () => {
+      if (!mapRef.current || !currentUserLocation) return;
+      programmaticMoveRef.current = true;
+      map.setView([currentUserLocation.lat, currentUserLocation.lng], NAV_ZOOM);
+    };
+    followDriver();
+    const t = setInterval(followDriver, 500);
+    return () => clearInterval(t);
+  }, [driverView, followDriverOnMap, currentUserLocation?.lat, currentUserLocation?.lng]);
+
+  // When driver pans/zooms, turn off follow mode (so fixation works only after "My location" until next interaction).
+  useEffect(() => {
+    if (!driverView || !onDriverStoppedFollow || !mapRef.current) return;
+    const map = mapRef.current;
+    const onMoveEnd = () => {
+      if (programmaticMoveRef.current) {
+        programmaticMoveRef.current = false;
+        return;
+      }
+      onDriverStoppedFollow();
+    };
+    map.on('moveend', onMoveEnd);
+    const onDragStart = () => {
+      programmaticMoveRef.current = false;
+    };
+    map.on('dragstart', onDragStart);
+    map.on('zoomstart', onDragStart);
+    return () => {
+      map.off('moveend', onMoveEnd);
+      map.off('dragstart', onDragStart);
+      map.off('zoomstart', onDragStart);
+    };
+  }, [driverView, onDriverStoppedFollow]);
+
+  // Nav mode (dispatcher or when not using followDriverOnMap): map can follow driver when route + location.
+  useEffect(() => {
+    if (navMode && !driverView) return; // driver uses followDriverOnMap instead
     if (!navMode || !mapRef.current || !currentUserLocation) return;
     const map = mapRef.current;
     const NAV_ZOOM = 17;
@@ -1332,9 +1377,9 @@ function OrdersMap({
       map.setView([currentUserLocation.lat, currentUserLocation.lng], NAV_ZOOM);
     };
     followDriver();
-    const t = setInterval(followDriver, 500); // live map follow (2×/s)
+    const t = setInterval(followDriver, 500);
     return () => clearInterval(t);
-  }, [navMode, currentUserLocation?.lat, currentUserLocation?.lng]);
+  }, [navMode, driverView, currentUserLocation?.lat, currentUserLocation?.lng]);
 
   const handlePickOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!onMapClick || !mapRef.current) return;

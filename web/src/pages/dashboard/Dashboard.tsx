@@ -180,6 +180,7 @@ export default function Dashboard() {
   const [locationsFromPhoneOrders, setLocationsFromPhoneOrders] = useState<string[]>([]);
   const [locationsFromPhoneLoading, setLocationsFromPhoneLoading] = useState(false);
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0);
+  const [followDriverOnMap, setFollowDriverOnMap] = useState(false);
   const [myLocationCenter, setMyLocationCenter] = useState<{ lat: number; lng: number } | null>(
     null,
   );
@@ -258,6 +259,7 @@ export default function Dashboard() {
   });
   const [showTimerNoteModal, setShowTimerNoteModal] = useState<string | null>(null);
   const [timerNoteVal, setTimerNoteVal] = useState('');
+  const [passengerStopsVal, setPassengerStopsVal] = useState<number>(0);
 
   useEffect(() => {
     localStorage.setItem('relaxdrive_manual_timer_start', JSON.stringify(manualTimerStart));
@@ -290,29 +292,46 @@ export default function Dashboard() {
     setManualTimerStart((prev) => ({ ...prev, [key]: Date.now() }));
   };
 
-  const handleStopTimer = (orderId: string, type: 'pickup' | 'middle' = 'pickup') => {
-    setShowTimerNoteModal(`${orderId}:${type}`);
-    setTimerNoteVal('');
+  /** Stop timer and save elapsed minutes immediately (no modal). */
+  const handleStopTimer = async (orderId: string, type: 'pickup' | 'middle' = 'pickup') => {
+    const key = type === 'middle' ? `${orderId}_middle` : orderId;
+    const start = manualTimerStart[key];
+    const minutes = start ? Math.max(1, Math.ceil((Date.now() - start) / 60000)) : 0;
+    try {
+      await api.patch(`/orders/${orderId}/wait-info`, { minutes: minutes || undefined, notes: '', type });
+      setManualTimerStart((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      toast.success(t('dashboard.waitTimerSaved') || 'Wait info saved');
+      loadOrders(true);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save wait info');
+    }
   };
 
   const submitWaitInfo = async () => {
     if (!showTimerNoteModal) return;
     const [orderId, type] = showTimerNoteModal.split(':') as [string, 'pickup' | 'middle'];
-    const key = type === 'middle' ? `${orderId}_middle` : orderId;
-    const start = manualTimerStart[key];
-    const minutes = start ? Math.max(1, Math.ceil((Date.now() - start) / 60000)) : 0;
+    const order = orders.find((o) => o.id === orderId);
+    const existingMinutes = type === 'middle' ? order?.manualWaitMiddleMinutes : order?.manualWaitMinutes;
+    const notesWithStops =
+      passengerStopsVal > 0
+        ? `${t('dashboard.passengerStopsLabel', { count: passengerStopsVal })}. ${timerNoteVal}`.trim()
+        : timerNoteVal;
     try {
-      await api.patch(`/orders/${orderId}/wait-info`, { minutes: minutes || undefined, notes: timerNoteVal, type });
-      if (start) {
-        setManualTimerStart((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-      }
+      await api.patch(`/orders/${orderId}/wait-info`, {
+        minutes: existingMinutes ?? undefined,
+        notes: notesWithStops,
+        type,
+      });
       setShowTimerNoteModal(null);
       setTimerNoteVal('');
+      setPassengerStopsVal(0);
       toast.success(t('dashboard.waitTimerSaved') || 'Wait info saved');
+      loadOrders(true);
     } catch (err) {
       console.error(err);
       toast.error('Failed to save wait info');
@@ -611,8 +630,8 @@ export default function Dashboard() {
 
           if (targetLat != null && targetLng != null) {
             const distM = haversineM(d.lat, d.lng, targetLat, targetLng);
-            const distKm = Math.round((distM / 1000) * 10) / 10;
-            currentOrderDistance = `${distKm} km`;
+            const distMi = (distM / 1609.34).toFixed(1);
+            currentOrderDistance = `${distMi} mi`;
           }
         }
 
@@ -1567,9 +1586,26 @@ export default function Dashboard() {
       const q = params.toString() ? `?${params.toString()}` : '';
       api
         .get<OrderRouteData>(`/orders/${selectedOrderId}/route${q}`)
-        .then((data) => {
+        .then(async (data) => {
+          if (cancelled) return;
+          let finalData = data;
+          if ((!data.polyline || data.polyline.trim() === '') && data.pickupCoords && data.dropoffCoords) {
+            const order = orders.find((o) => o.id === selectedOrderId);
+            if (order?.pickupAddress?.trim() && order?.dropoffAddress?.trim()) {
+              try {
+                const routeByAddr = await api.get<{ polyline?: string }>(
+                  `/geo/route?origin=${encodeURIComponent(order.pickupAddress.trim())}&destination=${encodeURIComponent(order.dropoffAddress.trim())}`,
+                );
+                if (routeByAddr?.polyline?.trim()) {
+                  finalData = { ...data, polyline: routeByAddr.polyline };
+                }
+              } catch {
+                // keep data as-is
+              }
+            }
+          }
           if (!cancelled) {
-            setRouteData(data);
+            setRouteData(finalData);
             setSelectedRouteIndex(0);
           }
         })
@@ -1599,6 +1635,27 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, [selectedOrderId, isDriver, driverLocation?.lat, driverLocation?.lng, routeRefreshKey]);
+
+  // When route has no polyline (e.g. OSRM failed) but we have coords and order addresses, fetch road route for driver
+  useEffect(() => {
+    if (!selectedOrderId || !routeData?.pickupCoords || !routeData?.dropoffCoords) return;
+    if (routeData.polyline?.trim()) return;
+    const order = orders.find((o) => o.id === selectedOrderId);
+    if (!order?.pickupAddress?.trim() || !order?.dropoffAddress?.trim()) return;
+    let cancelled = false;
+    api
+      .get<{ polyline?: string }>(
+        `/geo/route?origin=${encodeURIComponent(order.pickupAddress.trim())}&destination=${encodeURIComponent(order.dropoffAddress.trim())}`,
+      )
+      .then((res) => {
+        if (cancelled || !res?.polyline?.trim()) return;
+        setRouteData((prev) => (prev ? { ...prev, polyline: res.polyline! } : prev));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedOrderId, routeData?.polyline, routeData?.pickupCoords, routeData?.dropoffCoords, orders]);
 
   useEffect(() => {
     const bbox = (() => {
@@ -2425,6 +2482,7 @@ export default function Dashboard() {
       (pos) => {
         setMyLocationCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setMapCenterTrigger((t) => t + 1);
+        setFollowDriverOnMap(true);
       },
       () => {},
       { enableHighAccuracy: true, timeout: 10000 },
@@ -2699,8 +2757,7 @@ export default function Dashboard() {
                 </div>
               ) : manualTimerStart[currentDriverOrder.id] ? (
                 <div className="wait-timer-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>⏱ {Math.floor((now - manualTimerStart[currentDriverOrder.id]) / 60000)}m {Math.floor(((now - manualTimerStart[currentDriverOrder.id]) % 60000) / 1000)}s</span>
-                  <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none' }} onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}>Stop</button>
+                  <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)' }} onClick={() => handleStopTimer(currentDriverOrder.id)}>{t('dashboard.stop')}</button>
                 </div>
               ) : (
                 <button type="button" className="driver-docked-actions__btn rd-btn-secondary" style={{ fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
@@ -2728,7 +2785,24 @@ export default function Dashboard() {
                 type="button"
                 className="driver-docked-actions__btn"
                 style={{ background: 'rgba(255,255,255,0.12)', fontSize: '0.9rem' }}
-                onClick={() => setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`)}
+                onClick={() => {
+                  const note = currentDriverOrder.waitNotes ?? '';
+                  const m = note.match(/^(?:\s*(?:Stops|Остановок|Paradas|გაჩერებები):\s*)?(\d{1,2})\.?\s*(.*)/i);
+                  if (m) {
+                    const n = parseInt(m[1], 10);
+                    if (n >= 1 && n <= 10) {
+                      setPassengerStopsVal(n);
+                      setTimerNoteVal(m[2].trim());
+                    } else {
+                      setPassengerStopsVal(0);
+                      setTimerNoteVal(note);
+                    }
+                  } else {
+                    setPassengerStopsVal(0);
+                    setTimerNoteVal(note);
+                  }
+                  setShowTimerNoteModal(`${currentDriverOrder.id}:pickup`);
+                }}
                 title={t('dashboard.addNoteWait')}
               >
                 {t('dashboard.addNote')}
@@ -2763,8 +2837,9 @@ export default function Dashboard() {
                         </div>
                       ) : manualTimerStart[`${currentDriverOrder.id}_middle`] ? (
                         <div className="wait-timer-badge" style={{ width: '100%', justifyContent: 'center' }}>
-                          ⏱ {Math.floor((now - manualTimerStart[`${currentDriverOrder.id}_middle`]) / 60000)}m {Math.floor(((now - manualTimerStart[`${currentDriverOrder.id}_middle`]) % 60000) / 1000)}s
-                          <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none', marginLeft: '0.5rem' }} onClick={() => handleStopTimer(currentDriverOrder.id, 'middle')}>Stop</button>
+                          <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)' }} onClick={() => handleStopTimer(currentDriverOrder.id, 'middle')}>
+                            {t('dashboard.stop')}
+                          </button>
                         </div>
                       ) : (
                         <button type="button" className="rd-btn rd-btn-secondary" style={{ width: '100%', fontWeight: 700, marginBottom: '0.5rem' }} onClick={() => handleStartTimer(currentDriverOrder.id, 'middle')}>Start Wait Timer</button>
@@ -2853,19 +2928,23 @@ export default function Dashboard() {
           const currentDistanceKm = selectedRouteIndex === 0 || !altRoutes[selectedRouteIndex - 1] ? mainDist : (altRoutes[selectedRouteIndex - 1]?.distanceKm ?? mainDist);
           const distanceMi = (currentDistanceKm / 1.60934).toFixed(1);
           return (
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div className="dashboard-driver-route-block" style={{ marginBottom: '0.5rem' }}>
               {steps.length > 0 && (
                 <div className="dashboard-nav-banner" role="region" aria-label={t('dashboard.routeInstructions')}>
                   <span className="dashboard-nav-banner__arrow" aria-hidden>{firstIcon}</span>
                   <div className="dashboard-nav-banner__content">
                     <div className="dashboard-nav-banner__instruction">{firstInstr}</div>
-                    <div className="dashboard-nav-banner__detail">{firstDistHint}{firstDistHint && firstInstr ? ` · ${firstInstr}` : ''}</div>
+                    <div className="dashboard-nav-banner__detail">
+                      {firstDistHint ? `${firstDistHint} to next` : ''}
+                      {firstDistHint && firstInstr ? ' · ' : ''}
+                      {firstInstr}
+                    </div>
                   </div>
                 </div>
               )}
               <div className="dashboard-route-bottom-bar">
                 <span className="dashboard-route-bottom-bar__eta">~{Math.round(durationMin)} min</span>
-                <span className="dashboard-route-bottom-bar__distance">{distanceMi} mi · {eta}</span>
+                <span className="dashboard-route-bottom-bar__distance">{distanceMi} mi · ETA {eta}</span>
                 {destAddress && <span className="dashboard-route-bottom-bar__address">{shortAddress(destAddress, 40)}</span>}
               </div>
               <NavBar
@@ -3007,7 +3086,7 @@ export default function Dashboard() {
                             }}
                           >
                             <span className="rd-text-muted">
-                              {route?.distanceKm ?? mainDist} km
+                              {((route?.distanceKm ?? mainDist) / 1.60934).toFixed(1)} mi
                             </span>
                             {route?.trafficLevel && (
                               <span
@@ -3625,6 +3704,8 @@ export default function Dashboard() {
               myLocationLabel={isDriver ? t('dashboard.myLocation') : undefined}
               mapStyle={mapStyle}
               onMyLocation={isDriver ? onMyLocationForMap : undefined}
+              followDriverOnMap={isDriver ? followDriverOnMap : false}
+              onDriverStoppedFollow={isDriver ? () => setFollowDriverOnMap(false) : undefined}
             />
             {/* Speedometer removed from map to avoid clutter. */}
             {/* Driver Trip Card moved to bottom panel */}
@@ -4786,46 +4867,66 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {showTimerNoteModal && (
-        <div
-          className="rd-modal-overlay"
-          role="dialog"
-          aria-modal="true"
-          tabIndex={0}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }}>
-            <h3 style={{ marginBottom: '1rem' }}>{t('dashboard.timerNoteModalTitle')}</h3>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              {t('dashboard.timerNoteModalLabel')}
-            </label>
-            <input
-              type="text"
-              className="rd-input"
-              value={timerNoteVal}
-              onChange={(e) => setTimerNoteVal(e.target.value)}
-              placeholder={t('dashboard.timerNoteModalPlaceholder')}
-              style={{ width: '100%', marginBottom: '1rem' }}
-            />
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" className="rd-btn rd-btn-primary" onClick={submitWaitInfo}>
-                {t('dashboard.timerNoteModalSave')}
-              </button>
-              <button type="button" className="rd-btn" onClick={() => setShowTimerNoteModal(null)}>
-                {t('common.cancel')}
-              </button>
+      {showTimerNoteModal && (() => {
+        const [orderId, type] = showTimerNoteModal.split(':') as [string, 'pickup' | 'middle'];
+        const order = orders.find((o) => o.id === orderId);
+        const savedMinutes = type === 'middle' ? order?.manualWaitMiddleMinutes : order?.manualWaitMinutes;
+        return (
+          <div
+            className="rd-modal-overlay"
+            role="dialog"
+            aria-modal="true"
+            tabIndex={0}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+            }}
+          >
+            <div className="rd-panel" style={{ maxWidth: 360, width: '90%', margin: 16 }}>
+              <h3 style={{ marginBottom: '1rem' }}>{t('dashboard.notesModalTitle')}</h3>
+              {savedMinutes != null && (
+                <p style={{ marginBottom: '1rem', fontSize: '0.95rem', color: 'var(--rd-text-muted)' }}>
+                  {t('dashboard.waitTimeInNotes')}: <strong>{savedMinutes} min</strong>
+                </p>
+              )}
+              <label style={{ display: 'block', marginBottom: '0.35rem' }}>{t('dashboard.passengerStopsSelect')}</label>
+              <select
+                className="rd-input"
+                value={passengerStopsVal}
+                onChange={(e) => setPassengerStopsVal(Number(e.target.value))}
+                style={{ width: '100%', marginBottom: '1rem' }}
+              >
+                <option value={0}>{t('dashboard.passengerStopsNone')}</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <label style={{ display: 'block', marginBottom: '0.35rem' }}>{t('dashboard.timerNoteModalLabel')}</label>
+              <input
+                type="text"
+                className="rd-input"
+                value={timerNoteVal}
+                onChange={(e) => setTimerNoteVal(e.target.value)}
+                placeholder={t('dashboard.timerNoteModalPlaceholder')}
+                style={{ width: '100%', marginBottom: '1rem' }}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="rd-btn rd-btn-primary" onClick={submitWaitInfo}>
+                  {t('dashboard.timerNoteModalSave')}
+                </button>
+                <button type="button" className="rd-btn" onClick={() => { setShowTimerNoteModal(null); setPassengerStopsVal(0); }}>
+                  {t('common.cancel')}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

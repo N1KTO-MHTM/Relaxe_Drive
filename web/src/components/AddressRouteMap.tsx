@@ -143,7 +143,7 @@ export function AddressRouteMap({ pickupAddress, dropoffAddress, className, heig
     <div className={className} style={{ width: '100%', minHeight: height || 200, borderRadius: 'var(--rd-radius)', overflow: 'hidden' }}>
       <div ref={containerRef} style={{ width: '100%', height: height || 220 }} aria-label="Route map" />
       <p className="rd-text-muted" style={{ marginTop: '0.35rem', fontSize: '0.875rem' }}>
-        ~{routeData.durationMinutes} min · {routeData.distanceKm} km
+        ~{routeData.durationMinutes} min · {(routeData.distanceKm / 1.60934).toFixed(1)} mi
       </p>
     </div>
   );

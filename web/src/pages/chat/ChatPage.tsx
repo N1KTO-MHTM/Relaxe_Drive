@@ -8,7 +8,7 @@ import { Chat, ChatMessage } from '../../types/chat';
 import './Chat.css';
 import { useAuthStore } from '../../store/auth';
 
-const DEFAULT_FILTER: ChatFilter = 'OPEN';
+const DEFAULT_FILTER: ChatFilter = 'WAITING';
 
 export default function ChatPage() {
   const { t } = useTranslation();
@@ -46,12 +46,18 @@ export default function ChatPage() {
 
     const fetchMessages = async () => {
       setLoadingMessages(true);
+      setMessages([]);
       try {
-        const msgs = await api.get<ChatMessage[]>(`/chat/${driverIdForRequest}/messages`);
-        if (msgs) {
-          setMessages(Array.isArray(msgs) ? msgs.reverse() : []);
-          await api.patch(`/chat/${driverIdForRequest}/read`, {}).catch(() => {});
+        const raw = await api.get<ChatMessage[] | { messages?: ChatMessage[]; data?: ChatMessage[] }>(`/chat/${driverIdForRequest}/messages`);
+        let list: ChatMessage[] = [];
+        if (Array.isArray(raw)) {
+          list = raw;
+        } else if (raw && typeof raw === 'object') {
+          const arr = (raw as { messages?: ChatMessage[] }).messages ?? (raw as { data?: ChatMessage[] }).data;
+          list = Array.isArray(arr) ? arr : [];
         }
+        setMessages(list.slice().reverse());
+        await api.patch(`/chat/${driverIdForRequest}/read`, {}).catch(() => {});
       } catch (err) {
         console.error('Failed to fetch messages', err);
         setMessages([]);

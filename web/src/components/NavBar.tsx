@@ -37,12 +37,11 @@ export default function NavBar({ steps, durationMinutes, phaseLabel, eta }: NavB
     if (!steps.length) return null;
     const first = steps[0];
     const dist = first.distanceM;
-    const distStr = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
-    const hintStr = formatDistanceHint(dist);
+    const hintStr = formatDistanceHint(dist); // mi / ft for driver
     const instruction = first.instruction || (first.type === 11 ? t('dashboard.navHeadToDestination') : first.type === 10 ? t('dashboard.navArrive') : t('dashboard.navContinue'));
     return {
       instruction,
-      distance: distStr,
+      distance: hintStr,
       hintStr,
       icon: STEP_TYPE_ICON[first.type] ?? '↑',
     };

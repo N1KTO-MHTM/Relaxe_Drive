@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request, Query, Res, UnauthorizedException } from '@nestjs/common';
 import { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -34,12 +34,16 @@ export class ReportsController {
     @Request() req: any,
     @Body() body: { lat: number; lng: number; type: string; description?: string },
   ) {
+    const userId = (req.user?.id ?? req.user?.userId ?? req.user?.sub) as string | undefined;
+    if (!userId || typeof userId !== 'string') {
+      throw new UnauthorizedException('User not authenticated');
+    }
     return this.reportsService.createReport({
       lat: body.lat,
       lng: body.lng,
       type: body.type,
       description: body.description,
-      userId: req.user.userId,
+      userId,
     });
   }
 
@@ -49,7 +53,8 @@ export class ReportsController {
     // If Admin/Dispatcher, could allow query param ?driverId=...
     // For now, return reports for the requesting user if they are a driver
     // Or all reports if Admin (to be implemented)
-    const userId = req.user.userId;
+    const userId = req.user?.id ?? req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
     return this.reportsService.getReportsForUser(userId, req.user.role);
   }
 
@@ -62,7 +67,8 @@ export class ReportsController {
     @Res() res: Response,
   ) {
     // Security check: Drivers can only download their own
-    if (req.user.role === 'DRIVER' && req.user.userId !== driverId) {
+    const uid = req.user?.id ?? req.user?.userId;
+    if (req.user.role === 'DRIVER' && uid !== driverId) {
       return res.status(403).send('Forbidden');
     }
 

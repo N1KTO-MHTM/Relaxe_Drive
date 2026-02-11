@@ -210,8 +210,27 @@
   overflow: visible;
 }
 
+/* Driver: flex column so map + orders always get space; top section scrolls if needed */
+.dashboard-page--driver {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100%;
+}
+
+.dashboard-page--driver .dashboard-page__top {
+  flex-shrink: 0;
+  max-height: 48vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 .dashboard-page--driver .dashboard-page__grid {
-  grid-template-columns: 1fr minmax(320px, 400px);
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: 1fr minmax(280px, 400px);
   grid-template-areas: 'map-area orders-area';
 }
 
@@ -219,6 +238,7 @@
   grid-area: orders-area;
   overflow-y: auto;
   min-width: 0;
+  min-height: 200px;
 }
 
 .dashboard-page--driver .dashboard-page__sidebar:first-of-type .rd-text-muted {
@@ -235,33 +255,38 @@
 
 /* Driver with accepted order + route: map ~20% bigger (no full-screen) */
 .dashboard-page--driver.dashboard-page--driver-has-route .dashboard-page__map {
-  min-height: 48vh;
-  max-height: 60vh;
+  min-height: 52vh;
+  max-height: 65vh;
 }
 
-/* Mobile: driver view — stack map above sidebar, readable stat rows */
+/* Mobile: driver view — stack map above sidebar; top section smaller so map + list visible */
 @media (max-width: 768px) {
+  .dashboard-page--driver .dashboard-page__top {
+    max-height: 40vh;
+  }
+
   .dashboard-page--driver .dashboard-page__grid {
     grid-template-columns: 1fr;
     grid-template-areas:
       'map-area'
       'orders-area';
-    grid-template-rows: minmax(280px, 45vh) 1fr;
+    grid-template-rows: minmax(220px, 38vh) 1fr;
   }
 
   .dashboard-page--driver .dashboard-page__map {
-    min-height: 280px;
-    max-height: 50vh;
+    min-height: 220px;
+    max-height: 38vh;
   }
 
   .dashboard-page--driver.dashboard-page--driver-has-route .dashboard-page__map {
-    min-height: 336px;
-    max-height: 60vh;
+    min-height: 280px;
+    max-height: 48vh;
   }
 
   .dashboard-page--driver .dashboard-page__sidebar {
     min-width: 0;
-    overflow: visible;
+    overflow-y: auto;
+    min-height: 180px;
   }
 }
 
@@ -1152,21 +1177,34 @@
   }
 }
 
+/* Driver route block: compact top so map is prominent (nav-style like Google Maps) */
+.dashboard-driver-route-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dashboard-driver-route-block .dashboard-nav-banner {
+  margin-bottom: 0;
+}
+.dashboard-driver-route-block .dashboard-route-bottom-bar {
+  margin-top: 0;
+}
+
 /* Turn-by-turn instructions list (driver) */
-/* Prominent next-turn banner (street names, arrow, distance) */
+/* Prominent next-turn banner (street names, arrow, distance in mi) */
 .dashboard-nav-banner {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1.25rem;
   margin-bottom: 0.75rem;
-  background: #166534;
+  background: #15803d;
   color: white;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 .dashboard-nav-banner__arrow {
-  font-size: 2.5rem;
+  font-size: 2.25rem;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -1174,14 +1212,14 @@
   min-width: 0;
 }
 .dashboard-nav-banner__instruction {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.25;
 }
 .dashboard-nav-banner__detail {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   opacity: 0.95;
-  margin-top: 0.2rem;
+  margin-top: 0.15rem;
 }
 
 /* My orders strip below map (driver full-screen) */

@@ -125,6 +125,7 @@ export default function RouteSelectionModal({ pickupAddress, dropoffAddress, onS
 }
 
 function formatDistance(km: number) {
-    if (km < 1) return `${Math.round(km * 1000)} m`;
-    return `${km.toFixed(1)} km`;
+    const mi = km / 1.60934;
+    if (mi < 0.1) return `${Math.round(km * 1000 * 3.28084)} ft`;
+    return `${mi < 1 ? mi.toFixed(1) : Math.round(mi * 10) / 10} mi`;
 }

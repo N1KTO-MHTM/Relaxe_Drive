@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RelaxDriveWsGateway } from '../websocket/websocket.gateway';
@@ -17,6 +17,9 @@ export class ReportsService {
     description?: string;
     userId: string;
   }) {
+    if (!data.userId || typeof data.userId !== 'string') {
+      throw new UnauthorizedException('userId is required to create a report');
+    }
     const report = await this.prisma.driverReport.create({
       data: {
         lat: data.lat,
