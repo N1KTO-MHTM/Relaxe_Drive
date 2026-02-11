@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+// i18n: local ./i18n (not react-i18next)
 import { useTranslation } from './i18n';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/auth';
