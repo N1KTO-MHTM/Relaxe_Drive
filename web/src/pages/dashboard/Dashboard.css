@@ -227,6 +227,30 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Driver top: status row first, then full order card (To pickup + GM/Waze/Apple) below — no clipping */
+.dashboard-driver-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-driver-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dashboard-driver-top .driver-docked-actions--below-status {
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+}
+
 .dashboard-page--driver .dashboard-page__grid {
   flex: 1;
   min-height: 0;

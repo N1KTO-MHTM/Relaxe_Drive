@@ -2644,28 +2644,28 @@ export default function Dashboard() {
       <div className={`dashboard-page__top ${effectiveIsDriver ? 'dashboard-page__top--driver' : ''}`}>
         {!effectiveIsDriver && <h1>{t('dashboard.title')}</h1>}
         {effectiveIsDriver ? (
-          <>
-          <div className="dashboard-driver-status-top-center" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center', marginBottom: currentDriverOrder ? '0.5rem' : 0 }}>
-            <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.85rem' }}>
-              <span className="rd-ws-dot" />
-              {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
-            </span>
-            <button
-              type="button"
-              className={`rd-btn rd-btn--small ${user?.available === false ? '' : ''}`}
-              style={{
-                fontSize: '0.85rem',
-                background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
-                border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
-                color: user?.available === false ? '#0f172a' : '#fca5a5',
-              }}
-              onClick={handleToggleAvailability}
-              disabled={availabilityUpdating}
-            >
-              {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
-            </button>
-          </div>
-          {currentDriverOrder && (
+          <div className="dashboard-driver-top">
+            <div className="dashboard-driver-status-row">
+              <span className={`rd-ws-pill ${connected ? 'connected' : ''}`} style={{ fontSize: '0.85rem' }}>
+                <span className="rd-ws-dot" />
+                {connected ? t('status.connected') : reconnecting ? t('dashboard.reconnecting') : t('dashboard.driverStatusOffline')}
+              </span>
+              <button
+                type="button"
+                className={`rd-btn rd-btn--small ${user?.available === false ? '' : ''}`}
+                style={{
+                  fontSize: '0.85rem',
+                  background: user?.available === false ? 'var(--rd-accent-emerald)' : 'rgba(239,68,68,0.25)',
+                  border: user?.available === false ? 'none' : '1px solid rgba(239,68,68,0.5)',
+                  color: user?.available === false ? '#0f172a' : '#fca5a5',
+                }}
+                onClick={handleToggleAvailability}
+                disabled={availabilityUpdating}
+              >
+                {availabilityUpdating ? '…' : user?.available !== false ? t('dashboard.goOffline') : t('dashboard.startOnline')}
+              </button>
+            </div>
+            {currentDriverOrder && (
             <div className="driver-docked-actions driver-docked-actions--below-status">
           <div className="driver-docked-actions__header">
             <div className="driver-docked-actions__header-left">
@@ -2903,7 +2903,7 @@ export default function Dashboard() {
               {t('dashboard.noMyOrders')}
             </div>
           )}
-        </>
+          </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             <span className={`rd-ws-pill ${connected ? 'connected' : ''}`}>
