@@ -2919,28 +2919,30 @@ export default function Dashboard() {
         </div>
       )}
       {false && effectiveIsDriver &&
-        routeData &&
-        (routeData.driverToPickupSteps?.length || routeData.steps?.length) &&
+        routeData != null &&
+        ((routeData?.driverToPickupSteps?.length ?? 0) > 0 || (routeData?.steps?.length ?? 0) > 0) &&
         (() => {
+          if (routeData == null) return null;
+          const rd = routeData as OrderRouteData;
           const toPickup = orders.some((o) => o.id === selectedOrderId && o.status === 'ASSIGNED');
-          const altRoutes = routeData.alternativeRoutes ?? [];
+          const altRoutes = rd.alternativeRoutes ?? [];
           const mainMin = toPickup
-            ? (routeData.driverToPickupMinutes ?? 0)
-            : (routeData.durationMinutes ?? 0);
-          const mainDist = routeData.distanceKm ?? 0;
+            ? (rd.driverToPickupMinutes ?? 0)
+            : (rd.durationMinutes ?? 0);
+          const mainDist = rd.distanceKm ?? 0;
           const mainRoute =
             selectedRouteIndex === 0 || altRoutes.length === 0
               ? {
                   durationMinutes: mainMin,
                   distanceKm: mainDist,
-                  trafficLevel: routeData.trafficLevel,
-                  trafficDelayMinutes: routeData.trafficDelayMinutes,
-                  hasTolls: routeData.hasTolls,
-                  tollCount: routeData.tollCount,
-                  summary: routeData.summary,
+                  trafficLevel: rd.trafficLevel,
+                  trafficDelayMinutes: rd.trafficDelayMinutes,
+                  hasTolls: rd.hasTolls,
+                  tollCount: rd.tollCount,
+                  summary: rd.summary,
                 }
               : null;
-          const steps = toPickup ? (routeData.driverToPickupSteps ?? []) : (routeData.steps ?? []);
+          const steps = toPickup ? (rd.driverToPickupSteps ?? []) : (rd.steps ?? []);
           const durationMin =
             altRoutes.length > 0 && selectedRouteIndex > 0 && altRoutes[selectedRouteIndex - 1]
               ? altRoutes[selectedRouteIndex - 1].durationMinutes
@@ -3158,13 +3160,14 @@ export default function Dashboard() {
                 </button>
                 {(() => {
                   const sel = orders.find((o) => o.id === selectedOrderId);
+                  if (sel == null) return null;
+                  const order = sel as Order;
 
                   // Flexible Dropoff: Driver can set destination if missing
                   if (
                     effectiveIsDriver &&
-                    sel &&
-                    !sel.dropoffAddress &&
-                    (sel.status === 'ASSIGNED' || sel.status === 'IN_PROGRESS')
+                    !order.dropoffAddress &&
+                    (order.status === 'ASSIGNED' || order.status === 'IN_PROGRESS')
                   ) {
                     return (
                       <div
@@ -3188,7 +3191,7 @@ export default function Dashboard() {
                           disabled={
                             driverSetDestinationLoading || !driverSetDestinationAddress.trim()
                           }
-                          onClick={() => handleSetDriverDestination(sel.id)}
+                          onClick={() => handleSetDriverDestination(order.id)}
                         >
                           Set
                         </button>
@@ -3196,14 +3199,14 @@ export default function Dashboard() {
                     );
                   }
 
-                  if (sel && sel.pickupAddress) {
+                  if (order.pickupAddress) {
                     return (
                       <>
                         <button
                           type="button"
                           className="rd-btn"
                           title={t('dashboard.openRouteInGoogleMaps')}
-                          onClick={() => openFullRouteInGoogleMaps(sel)}
+                          onClick={() => openFullRouteInGoogleMaps(order)}
                         >
                           {t('dashboard.openInGoogleMaps')}
                         </button>
@@ -3211,15 +3214,15 @@ export default function Dashboard() {
                           type="button"
                           className="rd-btn"
                           title={t('dashboard.openRouteInWaze')}
-                          onClick={() => openFullRouteInWaze(sel)}
+                          onClick={() => openFullRouteInWaze(order)}
                         >
                           {t('dashboard.openInWaze')}
                         </button>
-                        {effectiveIsDriver && sel.status === 'IN_PROGRESS' && (
+                        {effectiveIsDriver && order.status === 'IN_PROGRESS' && (
                           <button
                             type="button"
                             className="rd-btn rd-btn-primary"
-                            onClick={() => handleCompleteOrder(sel.id)}
+                            onClick={() => handleCompleteOrder(order.id)}
                           >
                             {t('dashboard.complete')}
                           </button>
@@ -3236,11 +3239,11 @@ export default function Dashboard() {
                         <button type="button" className="rd-btn" onClick={openInWaze}>
                           {t('dashboard.openInWaze')}
                         </button>
-                        {effectiveIsDriver && sel && sel.status === 'IN_PROGRESS' && (
+                        {effectiveIsDriver && order.status === 'IN_PROGRESS' && (
                           <button
                             type="button"
                             className="rd-btn rd-btn-primary"
-                            onClick={() => handleCompleteOrder(sel.id)}
+                            onClick={() => handleCompleteOrder(order.id)}
                           >
                             {t('dashboard.complete')}
                           </button>
