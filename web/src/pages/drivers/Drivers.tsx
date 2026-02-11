@@ -646,7 +646,6 @@ export default function Drivers() {
                                 <TripCardMap
                                   pickupAddress={trip.pickupAddress}
                                   dropoffAddress={trip.dropoffAddress}
-                                  polyline={trip.routePolyline ?? trip.polyline}
                                   className="drivers-trip-card-map"
                                 />
                                 <span className="drivers-trip-card-map-hint">{t('drivers.viewRoute')}</span>

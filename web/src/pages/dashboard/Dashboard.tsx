@@ -2772,25 +2772,28 @@ export default function Dashboard() {
               </button>
             </div>
           )}
-          {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
+          {(currentDriverOrder.status === 'ASSIGNED' || currentDriverOrder.status === 'IN_PROGRESS') && (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem', alignItems: 'center' }}>
-              {/* Timer and saved note always shown together in one row */}
-              {currentDriverOrder.manualWaitMinutes != null ? (
-                <div className="wait-timer-badge" style={{ animation: 'none', margin: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <span>⏱ {currentDriverOrder.manualWaitMinutes} min</span>
-                  {currentDriverOrder.waitNotes && (
-                    <span style={{ fontSize: '0.85rem', opacity: 0.95 }} title={currentDriverOrder.waitNotes}>
-                      📝 {currentDriverOrder.waitNotes.length > 30 ? currentDriverOrder.waitNotes.slice(0, 30) + '…' : currentDriverOrder.waitNotes}
-                    </span>
+              {currentDriverOrder.status === 'ASSIGNED' && currentDriverOrder.arrivedAtPickupAt && !currentDriverOrder.leftPickupAt && (
+                <>
+                  {currentDriverOrder.manualWaitMinutes != null ? (
+                    <div className="wait-timer-badge" style={{ animation: 'none', margin: 0, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <span>⏱ {currentDriverOrder.manualWaitMinutes} min</span>
+                      {currentDriverOrder.waitNotes && (
+                        <span style={{ fontSize: '0.85rem', opacity: 0.95 }} title={currentDriverOrder.waitNotes}>
+                          📝 {currentDriverOrder.waitNotes.length > 30 ? currentDriverOrder.waitNotes.slice(0, 30) + '…' : currentDriverOrder.waitNotes}
+                        </span>
+                      )}
+                      <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none' }} onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
+                    </div>
+                  ) : manualTimerStart[currentDriverOrder.id] ? (
+                    <div className="wait-timer-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)' }} onClick={() => handleStopTimer(currentDriverOrder.id)}>{t('dashboard.stop')}</button>
+                    </div>
+                  ) : (
+                    <button type="button" className="driver-docked-actions__btn rd-btn-secondary" style={{ fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
                   )}
-                  <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(0,0,0,0.2)', border: 'none' }} onClick={() => submitWaitInfoReset(currentDriverOrder.id)}>Reset</button>
-                </div>
-              ) : manualTimerStart[currentDriverOrder.id] ? (
-                <div className="wait-timer-badge" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button type="button" className="rd-btn rd-btn--small" style={{ background: 'rgba(239,68,68,0.25)', border: '1px solid rgba(239,68,68,0.5)' }} onClick={() => handleStopTimer(currentDriverOrder.id)}>{t('dashboard.stop')}</button>
-                </div>
-              ) : (
-                <button type="button" className="driver-docked-actions__btn rd-btn-secondary" style={{ fontWeight: 700 }} onClick={() => handleStartTimer(currentDriverOrder.id)}>Start Wait Timer</button>
+                </>
               )}
               <button
                 type="button"
@@ -3690,25 +3693,6 @@ export default function Dashboard() {
               showDriverMarkers={canAssign}
               onShowDriverRoute={canAssign ? handleShowDriverRoute : undefined}
               routeData={routeData}
-              driverHeadDestination={
-                effectiveIsDriver && routeData && selectedOrderId
-                  ? (() => {
-                      const order = orders.find((o) => o.id === selectedOrderId);
-                      if (!order) return undefined;
-                      const toPickup = order.status === 'ASSIGNED';
-                      const steps = toPickup ? (routeData.driverToPickupSteps ?? []) : (routeData.steps ?? []);
-                      const durationMin = toPickup ? (routeData.driverToPickupMinutes ?? 0) : (routeData.durationMinutes ?? 0);
-                      const eta = new Date(Date.now() + durationMin * 60_000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-                      const address = toPickup ? order.pickupAddress : order.dropoffAddress;
-                      const firstStep = steps[0];
-                      const instruction = firstStep?.instruction || (firstStep?.type === 11 ? t('dashboard.navHeadToDestination') : firstStep?.type === 10 ? t('dashboard.navArrive') : t('dashboard.navContinue'));
-                      const distanceToNext = firstStep ? formatDistanceHint(firstStep.distanceM) : '';
-                      const distanceM = toPickup ? (routeData.driverToPickupSteps?.reduce((a, s) => a + (s.distanceM ?? 0), 0) ?? 0) : ((routeData.distanceKm ?? 0) * 1000);
-                      const distanceMi = (distanceM / 1609.34).toFixed(1);
-                      return { instruction, address: address ?? '', eta, distanceMi, durationMin, distanceToNext };
-                    })()
-                  : undefined
-              }
               formPreviewRouteData={canCreateOrder && showForm ? formPreviewRouteData : undefined}
               routePickupAddress={
                 canCreateOrder && showForm && formPreviewRouteData
