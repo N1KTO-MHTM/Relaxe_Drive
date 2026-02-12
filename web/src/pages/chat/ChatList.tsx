@@ -23,7 +23,7 @@ export default function ChatList({
   currentUserRole,
 }: ChatListProps) {
   const { t } = useTranslation();
-  const isDriver = currentUserRole === 'DRIVER';
+  const isDriver = String(currentUserRole ?? '').toUpperCase() === 'DRIVER';
 
   const getStatusColor = (status: string, unread: number) => {
     if (status === 'WAITING' || unread > 0) return '#eab308';
@@ -32,7 +32,7 @@ export default function ChatList({
   };
 
   const filteredChats = isDriver
-    ? chats
+    ? chats.filter((chat) => (filter === 'OPEN' ? (chat.status === 'OPEN' || chat.status === 'WAITING') : chat.status === 'CLOSED'))
     : chats.filter((chat) => chat.status === filter);
 
   return (
@@ -46,39 +46,37 @@ export default function ChatList({
         background: 'var(--rd-bg-panel, rgba(0,0,0,0.2))',
       }}
     >
-      {!isDriver && (
-        <div
-          className="chat-filters"
-          style={{
-            padding: '1rem',
-            borderBottom: '1px solid var(--rd-border)',
-            display: 'flex',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          {(['OPEN', 'WAITING', 'CLOSED'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => onFilterChange(f)}
-              type="button"
-              className="rd-btn rd-btn--small"
-              style={{
-                background: filter === f ? 'var(--rd-accent-neon, #38bdf8)' : 'rgba(255,255,255,0.08)',
-                color: filter === f ? '#0f172a' : '#e2e8f0',
-                border: 'none',
-                padding: '0.35rem 0.75rem',
-                borderRadius: '9999px',
-                fontSize: '0.8rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              {f === 'OPEN' ? t('chat.filterChat') : f === 'WAITING' ? t('chat.filterWaiting') : t('chat.filterClosed')}
-            </button>
-          ))}
-        </div>
-      )}
+      <div
+        className="chat-filters"
+        style={{
+          padding: '1rem',
+          borderBottom: '1px solid var(--rd-border)',
+          display: 'flex',
+          gap: '0.5rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        {(isDriver ? (['OPEN', 'CLOSED'] as const) : (['WAITING', 'OPEN', 'CLOSED'] as const)).map((f) => (
+          <button
+            key={f}
+            onClick={() => onFilterChange(f)}
+            type="button"
+            className="rd-btn rd-btn--small"
+            style={{
+              background: filter === f ? 'var(--rd-accent-neon, #38bdf8)' : 'rgba(255,255,255,0.08)',
+              color: filter === f ? '#0f172a' : '#e2e8f0',
+              border: 'none',
+              padding: '0.35rem 0.75rem',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {f === 'OPEN' ? t('chat.filterChat') : f === 'WAITING' ? t('chat.filterWaiting') : t('chat.filterClosedChats')}
+          </button>
+        ))}
+      </div>
 
       <div className="chat-items" style={{ flex: 1, overflowY: 'auto' }}>
         {filteredChats.map((chat) => (

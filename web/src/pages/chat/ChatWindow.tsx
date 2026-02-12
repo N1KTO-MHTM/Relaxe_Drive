@@ -29,119 +29,66 @@ export default function ChatWindow({
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+  const isDriverView = chat.driverId === currentUserId;
+  const headerTitle = isDriverView ? t('chat.supportWith') : (chat.driver?.nickname || chat.driver?.phone || t('chat.title'));
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   return (
-    <div
-      className="chat-window"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: 'transparent',
-      }}
-    >
-      {/* Header: title can shrink so Close button is never cut off on mobile */}
-      <div
-        style={{
-          padding: '0.75rem 1rem',
-          background: 'rgba(15, 23, 42, 0.8)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '0.5rem',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          minWidth: 0,
-        }}
-      >
-        <div style={{ minWidth: 0, overflow: 'hidden' }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {chat.driver?.nickname || chat.driver?.phone || t('chat.title')}
-          </h3>
-          <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-            {chat.driver?.driverId ? `ID: ${chat.driver.driverId}` : ''}
-          </span>
+    <div className="chat-window chat-window--modern">
+      {/* Header: gradient blue, "Chat with [Name]", "We're online" */}
+      <div className="chat-window__header">
+        <div className="chat-window__header-inner">
+          <div className="chat-window__header-info">
+            <h3 className="chat-window__header-title">{headerTitle}</h3>
+            <span className="chat-window__header-status">{t('chat.weAreOnline')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onCloseChat}
+            className="chat-window__header-close"
+            aria-label={t('chat.closeChat')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onCloseChat}
-          aria-label={t('chat.closeChat')}
-          style={{
-            padding: '0.5rem 0.75rem',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            color: '#fff',
-            fontSize: '0.875rem',
-            flexShrink: 0,
-          }}
-        >
-          {t('chat.closeChat')}
-        </button>
       </div>
 
-      {/* Messages */}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          padding: '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}
-      >
+      {/* Messages: light area, bubbles */}
+      <div className="chat-window__messages">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '1rem', color: '#9ca3af' }}>Loading...</div>
+          <div className="chat-window__loading">Loading...</div>
         ) : (
-          messages.map((msg) => {
-            const isMe = msg.senderId === currentUserId;
-            return (
+          <>
+            {messages.length === 0 && isDriverView && (
+              <div className="chat-window__hint">{t('chat.typeToStart')}</div>
+            )}
+            {messages.map((msg) => {
+              const isMe = msg.senderId === currentUserId;
+              return (
               <div
                 key={msg.id}
-                style={{
-                  alignSelf: isMe ? 'flex-end' : 'flex-start',
-                  maxWidth: '70%',
-                  background: isMe ? 'var(--rd-accent-neon, #38bdf8)' : 'rgba(255, 255, 255, 0.1)',
-                  color: '#fff',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '12px',
-                  borderBottomRightRadius: isMe ? '2px' : '12px',
-                  borderBottomLeftRadius: isMe ? '12px' : '2px',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  position: 'relative',
-                }}
+                className={`chat-window__bubble ${isMe ? 'chat-window__bubble--me' : 'chat-window__bubble--them'}`}
               >
-                <div style={{ marginBottom: '0.25rem' }}>
+                <div className="chat-window__bubble-body">
                   {msg.fileUrl && (
-                    <div style={{ marginBottom: '0.5rem' }}>
+                    <div className="chat-window__bubble-file">
                       {msg.fileType?.startsWith('image/') ? (
                         <img
                           src={`${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}${msg.fileUrl}`}
                           alt="attachment"
-                          style={{
-                            maxWidth: '100%',
-                            borderRadius: '8px',
-                            maxHeight: '200px',
-                            objectFit: 'cover',
-                          }}
+                          className="chat-window__bubble-img"
                         />
                       ) : (
                         <a
                           href={`${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}${msg.fileUrl}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{
-                            color: '#fff',
-                            textDecoration: 'underline',
-                            fontSize: '0.9rem',
-                          }}
+                          className="chat-window__bubble-link"
                         >
                           📎 Attachment
                         </a>
@@ -150,31 +97,19 @@ export default function ChatWindow({
                   )}
                   {msg.message}
                 </div>
-                <div
-                  style={{
-                    fontSize: '0.7rem',
-                    color: isMe ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.6)',
-                    textAlign: 'right',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: '4px',
-                  }}
-                >
-                  {new Date(msg.createdAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                <div className="chat-window__bubble-meta">
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   {isMe && <span>{msg.read ? '✓✓' : '✓'}</span>}
                 </div>
               </div>
             );
-          })
+          })}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input: row wraps on mobile so nothing is cut off */}
+      {/* Input */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -183,16 +118,7 @@ export default function ChatWindow({
           setInputText('');
           setSelectedFile(null);
         }}
-        style={{
-          padding: '0.75rem 1rem',
-          background: 'rgba(15, 23, 42, 0.8)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.5rem',
-          minWidth: 0,
-          boxSizing: 'border-box',
-        }}
+        className="chat-window__form"
       >
         {selectedFile && (
           <div
@@ -298,37 +224,18 @@ export default function ChatWindow({
             className="chat-window__text-input"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={t('chat.startConversation')}
-            style={{
-              flex: '1 1 120px',
-              minWidth: 0,
-              padding: '0.75rem 1rem',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              background: 'rgba(255, 255, 255, 0.05)',
-              color: '#fff',
-              borderRadius: '9999px',
-              outline: 'none',
-              fontSize: '0.95rem',
-              boxSizing: 'border-box',
-            }}
+            placeholder={t('chat.enterYourMessage')}
           />
           <button
             type="submit"
             className="chat-window__send-btn"
             disabled={!inputText.trim() && !selectedFile}
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: 'var(--rd-accent-neon, #38bdf8)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '9999px',
-              fontWeight: 600,
-              cursor: inputText.trim() || selectedFile ? 'pointer' : 'default',
-              opacity: inputText.trim() || selectedFile ? 1 : 0.5,
-              flexShrink: 0,
-            }}
+            aria-label="Send"
           >
-            Send
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
           </button>
         </div>
       </form>

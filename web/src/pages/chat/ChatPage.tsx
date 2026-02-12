@@ -8,7 +8,7 @@ import { Chat, ChatMessage } from '../../types/chat';
 import './Chat.css';
 import { useAuthStore } from '../../store/auth';
 
-const DEFAULT_FILTER: ChatFilter = 'WAITING';
+const DEFAULT_FILTER: ChatFilter = 'OPEN';
 
 export default function ChatPage() {
   const { t } = useTranslation();
@@ -202,15 +202,18 @@ export default function ChatPage() {
           <div
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               height: '100%',
               background: 'var(--rd-bg-panel)',
               color: 'var(--rd-text-muted)',
               padding: '1rem',
+              textAlign: 'center',
             }}
           >
-            {t('chat.selectToStart')}
+            <p style={{ margin: 0 }}>{t('chat.selectToStart')}</p>
+            {isDriver && <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>{t('chat.typeToStart')}</p>}
           </div>
         )}
       </div>

@@ -810,7 +810,11 @@
     "filterChat": "Чаты",
     "filterWaiting": "Ожидание",
     "filterClosed": "Закрытые",
+    "filterClosedChats": "Закрытые чаты",
     "noChatsFound": "Нет диалогов",
+    "weAreOnline": "Мы на связи",
+    "enterYourMessage": "Введите сообщение...",
+    "typeToStart": "Напишите сообщение ниже, чтобы начать разговор с поддержкой.",
     "supportWith": "Поддержка"
   },
   "health": {

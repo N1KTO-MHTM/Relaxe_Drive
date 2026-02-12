@@ -819,10 +819,14 @@
     "exit": "გასვლა",
     "closeChat": "ჩატის დახურვა",
     "loadingChat": "იტვირთება…",
-    "filterChat": "ჩატი",
+    "filterChat": "ჩატები",
     "filterWaiting": "მოცდა",
     "filterClosed": "დახურული",
+    "filterClosedChats": "დახურული ჩატები",
     "noChatsFound": "საუბრები არ არის",
+    "weAreOnline": "ონლაინ ვართ",
+    "enterYourMessage": "შეიყვანეთ შეტყობინება...",
+    "typeToStart": "ჩაწერეთ შეტყობინება ქვემოთ, რომ დაიწყოთ საუბარი მხარდაჭერასთან.",
     "supportWith": "მხარდაჭერა"
   }
 }

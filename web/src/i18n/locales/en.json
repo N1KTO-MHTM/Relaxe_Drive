@@ -666,11 +666,15 @@
     "exit": "Exit",
     "closeChat": "Close chat",
     "loadingChat": "Loading support…",
-    "filterChat": "Chat",
+    "filterChat": "Chats",
     "filterWaiting": "Waiting",
     "filterClosed": "Closed",
+    "filterClosedChats": "Closed chats",
     "noChatsFound": "No conversations",
-    "supportWith": "Support"
+    "supportWith": "Support",
+    "weAreOnline": "We're online",
+    "enterYourMessage": "Enter your message...",
+    "typeToStart": "Type a message below to start a conversation with support."
   },
   "passengers": {
     "title": "Clients",

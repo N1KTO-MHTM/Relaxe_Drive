@@ -802,10 +802,14 @@
     "exit": "Salir",
     "closeChat": "Cerrar chat",
     "loadingChat": "Cargando soporte…",
-    "filterChat": "Chat",
+    "filterChat": "Chats",
     "filterWaiting": "En espera",
     "filterClosed": "Cerrado",
+    "filterClosedChats": "Chats cerrados",
     "noChatsFound": "Sin conversaciones",
+    "weAreOnline": "Estamos en línea",
+    "enterYourMessage": "Escribe tu mensaje...",
+    "typeToStart": "Escribe un mensaje abajo para iniciar una conversación con soporte.",
     "supportWith": "Soporte"
   },
   "toast": {
